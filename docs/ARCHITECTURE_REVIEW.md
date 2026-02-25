@@ -163,7 +163,7 @@
 
 ## 2.8 Đánh giá khả năng Scale hiện tại
 
-```
+```text
 Concurrent Users:  ~1-3 (SQLite write lock, no auth)
 Data Volume:       ~1,000 assets (no pagination, no index)
 File Storage:      ~5-10GB (local disk, no cleanup)
@@ -193,7 +193,7 @@ Availability:      Zero redundancy
 | **Độ khó** | Medium |
 | **Ưu tiên ROI** | ★★★★★ |
 
-```
+```text
 Cấu trúc thêm:
 ├── Models/ApplicationUser.cs        (kế thừa IdentityUser)
 ├── Services/AuthService.cs          (login, register, refresh token)
@@ -312,7 +312,7 @@ public class PagedResult<T>
 | **Impact kiến trúc** | Tách thành 3 layers rõ ràng. DI registration cho mỗi layer |
 | **Độ khó** | Medium |
 
-```
+```text
 Controllers/                     ← Chỉ nhận request + trả response
   AssetsController.cs
 Services/                        ← Business logic, validation, orchestration
@@ -392,7 +392,7 @@ public interface IStorageService
 | **Impact** | App.jsx giảm từ 650 → ~150 lines. Mỗi hook tự quản lý state + API call |
 | **Độ khó** | Medium |
 
-```
+```text
 src/
 ├── hooks/
 │   ├── useCollections.js      ← state + CRUD collections
@@ -569,7 +569,7 @@ modelBuilder.Entity<Asset>()
 
 ## Sơ đồ kiến trúc target-state
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                            CLIENTS                              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
@@ -629,7 +629,7 @@ modelBuilder.Entity<Asset>()
 
 ## Frontend Target Architecture
 
-```
+```text
 src/
 ├── api/                          ← Axios instance + typed API functions
 │   ├── client.ts                 (interceptors, auth token, error handler)
