@@ -570,61 +570,61 @@ modelBuilder.Entity<Asset>()
 ## Sơ đồ kiến trúc target-state
 
 ```
-┌───────────────────────────────────────────────────────────────────────┐
-│                            CLIENTS                                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │
-│  │  React SPA  │  │  Mobile App │  │  Public API  │                  │
-│  │  (Vite PWA) │  │  (future)   │  │  (future)   │                  │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                  │
-└─────────┼────────────────┼────────────────┼──────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                            CLIENTS                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  React SPA  │  │  Mobile App │  │  Public API │              │
+│  │  (Vite PWA) │  │  (future)   │  │  (future)   │              │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+└─────────┼────────────────┼────────────────┼─────────────────────┘
           │                │                │
           ▼                ▼                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     REVERSE PROXY / CDN                          │
-│                    (Nginx / Cloudflare)                           │
+│                     REVERSE PROXY / CDN                         │
+│                    (Nginx / Cloudflare)                         │
 │  ┌──────────────────────────────────────────────┐               │
-│  │  SSL Termination │ Rate Limiting │ Caching    │               │
+│  │  SSL Termination │ Rate Limiting │ Caching   │               │
 │  └──────────────────────────────────────────────┘               │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    API GATEWAY / BACKEND                          │
-│                   ASP.NET Core 9.0                                │
-│                                                                   │
+│                    API GATEWAY / BACKEND                        │
+│                   ASP.NET Core 9.0                              │
+│                                                                 │
 │  ┌────────────┐  ┌──────────────┐  ┌──────────────────────┐     │
-│  │ Controllers │→│  Services    │→│  Repositories         │     │
-│  │ (thin)      │  │ (biz logic) │  │ (EF Core + cache)    │     │
-│  └────────────┘  └──────────────┘  └──────────┬───────────┘     │
-│                                                │                  │
-│  ┌────────────┐  ┌──────────────┐              │                 │
-│  │ Auth (JWT) │  │ SignalR Hub  │              │                  │
-│  └────────────┘  └──────────────┘              │                 │
-│                                                │                  │
-│  ┌────────────┐  ┌──────────────┐              │                 │
-│  │ Middleware  │  │ Background   │              │                 │
-│  │ (Exception,│  │ Jobs         │              │                  │
-│  │  RateLimit,│  │ (Hangfire)   │              │                 │
-│  │  Logging)  │  │ - Thumbnails │              │                 │
-│  └────────────┘  │ - Cleanup    │              │                 │
-│                   │ - AI Tags    │              │                  │
-│                   └──────────────┘              │                 │
-└─────────────────────────────────────────────────┼────────────────┘
-                                                  │
-                    ┌─────────────────────────────┼──────────┐
-                    │                             │          │
-                    ▼                             ▼          ▼
-          ┌──────────────┐             ┌────────────┐  ┌──────────┐
-          │  PostgreSQL   │             │   Redis     │  │  Storage │
-          │  (Primary DB) │             │   (Cache +  │  │  Service │
-          │               │             │    Session + │  │          │
-          │  - Assets     │             │    Queue)   │  │  Local / │
-          │  - Collections│             └────────────┘  │  S3 /    │
-          │  - Users      │                              │  Azure   │
-          │  - Permissions│                              │  Blob    │
-          │  - Tags       │                              └──────────┘
-          │  - AuditLog   │
-          └──────────────┘
+│  │ Controllers│→ │  Services    │→ │  Repositories        │     │
+│  │ (thin)     │  │ (biz logic)  │  │ (EF Core + cache)    │     │
+│  └────────────┘  └──────────────┘  └───────────┬──────────┘     │
+│                                                │                │
+│  ┌────────────┐  ┌──────────────┐              │                │
+│  │ Auth (JWT) │  │ SignalR Hub  │              │                │
+│  └────────────┘  └──────────────┘              │                │
+│                                                │                │
+│  ┌────────────┐  ┌──────────────┐              │                │
+│  │ Middleware │  │ Background   │              │                │
+│  │ (Exception,│  │ Jobs         │              │                │
+│  │  RateLimit,│  │ (Hangfire)   │              │                │
+│  │  Logging)  │  │ - Thumbnails │              │                │
+│  └────────────┘  │ - Cleanup    │              │                │
+│                  │ - AI Tags    │              │                │
+│                  └──────────────┘              │                │
+└────────────────────────────────────────────────│────────────────┘
+                             ┌───────────────────┘
+       ┌─────────────────────┼───────────────────────┐
+       │                     │                       │
+       ▼                     ▼                       ▼
+┌───────────────┐   ┌──────────────────┐   ┌─────────────────────┐
+│  PostgreSQL   │   │  Redis           │   │  Storage Service    │
+│  (Primary DB) │   │  (Cache + Session│   │  Local / S3 / Azure │
+│               │   │  + Queue)        │   │  Blob               │
+│  - Assets     │   └──────────────────┘   └─────────────────────┘         
+│  - Collections│           
+│  - Users      │                           
+│  - Permissions│                           
+│  - Tags       │                           
+│  - AuditLog   │
+└───────────────┘
 ```
 
 ## Frontend Target Architecture
@@ -694,4 +694,4 @@ src/
 
 ---
 
-> *Tài liệu này nên được cập nhật sau mỗi giai đoạn hoàn thành. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*
+> *Tài liệu này được cập nhật sau mỗi giai đoạn hoàn thành. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*
