@@ -1,0 +1,6 @@
+@VAH.Backend_HostAddress = http://localhost:5027
+
+GET {{VAH.Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
