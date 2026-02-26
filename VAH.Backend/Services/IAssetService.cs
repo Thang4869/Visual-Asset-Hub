@@ -4,17 +4,17 @@ namespace VAH.Backend.Services;
 
 public interface IAssetService
 {
-    Task<PagedResult<Asset>> GetAssetsAsync(PaginationParams pagination);
-    Task<Asset?> GetByIdAsync(int id);
-    Task<Asset> CreateAssetAsync(Asset asset);
-    Task<List<Asset>> UploadFilesAsync(List<IFormFile> files, int collectionId, int? folderId);
-    Task<Asset> UpdatePositionAsync(int id, double positionX, double positionY);
-    Task<Asset> CreateFolderAsync(CreateFolderDto dto);
-    Task<Asset> CreateColorAsync(CreateColorDto dto);
-    Task<Asset> CreateColorGroupAsync(CreateColorGroupDto dto);
-    Task<Asset> CreateLinkAsync(CreateLinkDto dto);
-    Task<Asset> UpdateAssetAsync(int id, UpdateAssetDto dto);
-    Task<bool> DeleteAssetAsync(int id);
-    Task ReorderAssetsAsync(List<int> assetIds);
-    Task<List<Asset>> GetAssetsByGroupAsync(int groupId);
+    Task<PagedResult<Asset>> GetAssetsAsync(PaginationParams pagination, string userId);
+    Task<Asset?> GetByIdAsync(int id, string userId);
+    Task<Asset> CreateAssetAsync(Asset asset, string userId);
+    Task<List<Asset>> UploadFilesAsync(List<IFormFile> files, int collectionId, int? folderId, string userId);
+    Task<Asset> UpdatePositionAsync(int id, double positionX, double positionY, string userId);
+    Task<Asset> CreateFolderAsync(CreateFolderDto dto, string userId);
+    Task<Asset> CreateColorAsync(CreateColorDto dto, string userId);
+    Task<Asset> CreateColorGroupAsync(CreateColorGroupDto dto, string userId);
+    Task<Asset> CreateLinkAsync(CreateLinkDto dto, string userId);
+    Task<Asset> UpdateAssetAsync(int id, UpdateAssetDto dto, string userId);
+    Task<bool> DeleteAssetAsync(int id, string userId);
+    Task ReorderAssetsAsync(List<int> assetIds, string userId);
+    Task<List<Asset>> GetAssetsByGroupAsync(int groupId, string userId);
 }

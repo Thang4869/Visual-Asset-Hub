@@ -4,12 +4,12 @@ namespace VAH.Backend.Services;
 
 public interface ICollectionService
 {
-    Task<List<Collection>> GetAllAsync();
-    Task<Collection?> GetByIdAsync(int id);
-    Task<CollectionWithItemsResult> GetWithItemsAsync(int id, int? folderId);
-    Task<Collection> CreateAsync(Collection collection);
-    Task<Collection> UpdateAsync(int id, Collection collection);
-    Task<bool> DeleteAsync(int id);
+    Task<List<Collection>> GetAllAsync(string userId);
+    Task<Collection?> GetByIdAsync(int id, string userId);
+    Task<CollectionWithItemsResult> GetWithItemsAsync(int id, int? folderId, string userId);
+    Task<Collection> CreateAsync(Collection collection, string userId);
+    Task<Collection> UpdateAsync(int id, Collection collection, string userId);
+    Task<bool> DeleteAsync(int id, string userId);
 }
 
 /// <summary>

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
@@ -6,6 +8,7 @@ namespace VAH.Backend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class CollectionsController : ControllerBase
 {
     private readonly ICollectionService _collectionService;
@@ -15,11 +18,15 @@ public class CollectionsController : ControllerBase
         _collectionService = collectionService;
     }
 
+    private string GetUserId() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? throw new UnauthorizedAccessException("User identity not found.");
+
     // GET: api/collections
     [HttpGet]
     public async Task<ActionResult<List<Collection>>> GetCollections()
     {
-        var collections = await _collectionService.GetAllAsync();
+        var collections = await _collectionService.GetAllAsync(GetUserId());
         return Ok(collections);
     }
 
@@ -28,7 +35,7 @@ public class CollectionsController : ControllerBase
     public async Task<ActionResult<CollectionWithItemsResult>> GetCollectionWithItems(
         int id, [FromQuery] int? folderId = null)
     {
-        var result = await _collectionService.GetWithItemsAsync(id, folderId);
+        var result = await _collectionService.GetWithItemsAsync(id, folderId, GetUserId());
         return Ok(result);
     }
 
@@ -36,7 +43,7 @@ public class CollectionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Collection>> PostCollection(Collection collection)
     {
-        var created = await _collectionService.CreateAsync(collection);
+        var created = await _collectionService.CreateAsync(collection, GetUserId());
         return CreatedAtAction(nameof(GetCollections), new { id = created.Id }, created);
     }
 
@@ -44,7 +51,7 @@ public class CollectionsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCollection(int id, Collection collection)
     {
-        await _collectionService.UpdateAsync(id, collection);
+        await _collectionService.UpdateAsync(id, collection, GetUserId());
         return NoContent();
     }
 
@@ -52,7 +59,7 @@ public class CollectionsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCollection(int id)
     {
-        await _collectionService.DeleteAsync(id);
+        await _collectionService.DeleteAsync(id, GetUserId());
         return NoContent();
     }
 }

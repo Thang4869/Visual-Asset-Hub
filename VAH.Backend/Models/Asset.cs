@@ -20,7 +20,7 @@ public class Asset
     [MaxLength(2000)]
     public string Tags { get; set; } = string.Empty;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
     public double PositionX { get; set; } = 0;
     public double PositionY { get; set; } = 0;
@@ -34,4 +34,9 @@ public class Asset
     public int? ParentFolderId { get; set; } = null;
     public int SortOrder { get; set; } = 0;
     public bool IsFolder { get; set; } = false;
+
+    /// <summary>
+    /// Owner of this asset. Null for system/shared assets.
+    /// </summary>
+    public string? UserId { get; set; }
 }

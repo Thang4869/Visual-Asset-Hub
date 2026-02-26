@@ -8,15 +8,39 @@ const apiClient = axios.create({
   },
 });
 
-// Response interceptor — normalise errors
+// ---- Token helpers (localStorage) ----
+const TOKEN_KEY = 'vah_token';
+
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
+export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+
+// Request interceptor — attach JWT bearer token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+// Response interceptor — normalise errors & handle 401
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // Server returned an error response (4xx / 5xx)
       const { status, data } = error.response;
       const message = data?.detail || data?.title || error.message;
       console.error(`[API ${status}]`, message);
+
+      // If 401 and we had a token, it's expired — clear & reload
+      if (status === 401 && getToken()) {
+        clearToken();
+        window.location.reload();
+      }
     } else if (error.request) {
       console.error('[API] No response received:', error.message);
     } else {

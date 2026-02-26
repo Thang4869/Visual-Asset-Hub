@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
@@ -6,6 +8,7 @@ namespace VAH.Backend.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class AssetsController : ControllerBase
 {
     private readonly IAssetService _assetService;
@@ -15,11 +18,15 @@ public class AssetsController : ControllerBase
         _assetService = assetService;
     }
 
+    private string GetUserId() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? throw new UnauthorizedAccessException("User identity not found.");
+
     // GET: api/assets?page=1&pageSize=50&sortBy=createdAt&sortOrder=desc
     [HttpGet]
     public async Task<ActionResult<PagedResult<Asset>>> GetAssets([FromQuery] PaginationParams pagination)
     {
-        var result = await _assetService.GetAssetsAsync(pagination);
+        var result = await _assetService.GetAssetsAsync(pagination, GetUserId());
         return Ok(result);
     }
 
@@ -27,7 +34,7 @@ public class AssetsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Asset>> PostAsset(Asset asset)
     {
-        var created = await _assetService.CreateAssetAsync(asset);
+        var created = await _assetService.CreateAssetAsync(asset, GetUserId());
         return CreatedAtAction(nameof(GetAssets), new { id = created.Id }, created);
     }
 
@@ -38,7 +45,7 @@ public class AssetsController : ControllerBase
         [FromQuery] int collectionId = 1,
         [FromQuery] int? folderId = null)
     {
-        var createdAssets = await _assetService.UploadFilesAsync(files, collectionId, folderId);
+        var createdAssets = await _assetService.UploadFilesAsync(files, collectionId, folderId, GetUserId());
         return Ok(createdAssets);
     }
 
@@ -46,7 +53,7 @@ public class AssetsController : ControllerBase
     [HttpPut("{id}/position")]
     public async Task<ActionResult<Asset>> UpdateAssetPosition(int id, [FromBody] AssetPositionDto positionDto)
     {
-        var asset = await _assetService.UpdatePositionAsync(id, positionDto.PositionX, positionDto.PositionY);
+        var asset = await _assetService.UpdatePositionAsync(id, positionDto.PositionX, positionDto.PositionY, GetUserId());
         return Ok(asset);
     }
 
@@ -54,7 +61,7 @@ public class AssetsController : ControllerBase
     [HttpPost("create-folder")]
     public async Task<ActionResult<Asset>> CreateFolder([FromBody] CreateFolderDto dto)
     {
-        var folder = await _assetService.CreateFolderAsync(dto);
+        var folder = await _assetService.CreateFolderAsync(dto, GetUserId());
         return Ok(folder);
     }
 
@@ -62,7 +69,7 @@ public class AssetsController : ControllerBase
     [HttpPost("create-color")]
     public async Task<ActionResult<Asset>> CreateColor([FromBody] CreateColorDto dto)
     {
-        var color = await _assetService.CreateColorAsync(dto);
+        var color = await _assetService.CreateColorAsync(dto, GetUserId());
         return Ok(color);
     }
 
@@ -70,7 +77,7 @@ public class AssetsController : ControllerBase
     [HttpPost("create-color-group")]
     public async Task<ActionResult<Asset>> CreateColorGroup([FromBody] CreateColorGroupDto dto)
     {
-        var group = await _assetService.CreateColorGroupAsync(dto);
+        var group = await _assetService.CreateColorGroupAsync(dto, GetUserId());
         return Ok(group);
     }
 
@@ -78,7 +85,7 @@ public class AssetsController : ControllerBase
     [HttpPost("create-link")]
     public async Task<ActionResult<Asset>> CreateLink([FromBody] CreateLinkDto dto)
     {
-        var link = await _assetService.CreateLinkAsync(dto);
+        var link = await _assetService.CreateLinkAsync(dto, GetUserId());
         return Ok(link);
     }
 
@@ -86,7 +93,7 @@ public class AssetsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<Asset>> UpdateAsset(int id, [FromBody] UpdateAssetDto dto)
     {
-        var asset = await _assetService.UpdateAssetAsync(id, dto);
+        var asset = await _assetService.UpdateAssetAsync(id, dto, GetUserId());
         return Ok(asset);
     }
 
@@ -94,7 +101,7 @@ public class AssetsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAsset(int id)
     {
-        await _assetService.DeleteAssetAsync(id);
+        await _assetService.DeleteAssetAsync(id, GetUserId());
         return NoContent();
     }
 
@@ -102,7 +109,7 @@ public class AssetsController : ControllerBase
     [HttpPost("reorder")]
     public async Task<IActionResult> ReorderAssets([FromBody] ReorderAssetsDto dto)
     {
-        await _assetService.ReorderAssetsAsync(dto.AssetIds);
+        await _assetService.ReorderAssetsAsync(dto.AssetIds, GetUserId());
         return Ok();
     }
 
@@ -110,7 +117,7 @@ public class AssetsController : ControllerBase
     [HttpGet("group/{groupId}")]
     public async Task<ActionResult<List<Asset>>> GetAssetsByGroup(int groupId)
     {
-        var assets = await _assetService.GetAssetsByGroupAsync(groupId);
+        var assets = await _assetService.GetAssetsByGroupAsync(groupId, GetUserId());
         return Ok(assets);
     }
 }

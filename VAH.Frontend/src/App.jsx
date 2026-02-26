@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from './hooks/useAuth';
+import LoginPage from './components/LoginPage';
 import useCollections from './hooks/useCollections';
 import useAssets from './hooks/useAssets';
 import { staticUrl } from './api/client';
@@ -10,6 +12,7 @@ import ColorBoard from './components/ColorBoard';
 import './App.css';
 
 function App() {
+  const { isAuthenticated, user, logout } = useAuth();
   const [viewMode, setViewMode] = useState('browser');
   const [layoutMode, setLayoutMode] = useState('grid');
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +64,9 @@ function App() {
     handleMoveSelected,
     handleReorderAssets,
   } = useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems });
+
+  // ---- Auth gate (MUST be after all hooks) ----
+  if (!isAuthenticated) return <LoginPage />;
 
   // ------- derived flags -------
   const isColorCollection = selectedCollection?.type === 'color';
@@ -135,8 +141,11 @@ function App() {
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span className="notif-dot"></span>
           </button>
-          <div className="user-avatar" title="Người dùng">
-            VP
+          <button className="header-icon-btn" title="Đăng xuất" onClick={logout}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+          <div className="user-avatar" title={user?.displayName || 'User'}>
+            {user?.displayName ? user.displayName.slice(0, 2).toUpperCase() : 'U'}
           </div>
         </div>
       </header>

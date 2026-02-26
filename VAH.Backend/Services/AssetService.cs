@@ -23,9 +23,11 @@ public class AssetService : IAssetService
         _logger = logger;
     }
 
-    public async Task<PagedResult<Asset>> GetAssetsAsync(PaginationParams pagination)
+    public async Task<PagedResult<Asset>> GetAssetsAsync(PaginationParams pagination, string userId)
     {
-        var query = _context.Assets.AsQueryable();
+        var query = _context.Assets
+            .Where(a => a.UserId == userId)
+            .AsQueryable();
 
         // Sorting
         query = pagination.SortBy?.ToLower() switch
@@ -54,20 +56,22 @@ public class AssetService : IAssetService
         };
     }
 
-    public async Task<Asset?> GetByIdAsync(int id)
+    public async Task<Asset?> GetByIdAsync(int id, string userId)
     {
-        return await _context.Assets.FindAsync(id);
+        return await _context.Assets
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
     }
 
-    public async Task<Asset> CreateAssetAsync(Asset asset)
+    public async Task<Asset> CreateAssetAsync(Asset asset, string userId)
     {
         asset.CreatedAt = DateTime.UtcNow;
+        asset.UserId = userId;
         _context.Assets.Add(asset);
         await _context.SaveChangesAsync();
         return asset;
     }
 
-    public async Task<List<Asset>> UploadFilesAsync(List<IFormFile> files, int collectionId, int? folderId)
+    public async Task<List<Asset>> UploadFilesAsync(List<IFormFile> files, int collectionId, int? folderId, string userId)
     {
         if (files == null || files.Count == 0)
             throw new ArgumentException("No files uploaded.");
@@ -75,8 +79,9 @@ public class AssetService : IAssetService
         if (files.Count > _uploadConfig.MaxFilesPerRequest)
             throw new ArgumentException($"Maximum {_uploadConfig.MaxFilesPerRequest} files per request.");
 
-        // Validate collection exists
-        var collectionExists = await _context.Collections.AnyAsync(c => c.Id == collectionId);
+        // Validate collection exists and user has access (own or system)
+        var collectionExists = await _context.Collections
+            .AnyAsync(c => c.Id == collectionId && (c.UserId == userId || c.UserId == null));
         if (!collectionExists)
             throw new KeyNotFoundException($"Collection {collectionId} not found.");
 
@@ -119,7 +124,8 @@ public class AssetService : IAssetService
                 CreatedAt = DateTime.UtcNow,
                 CollectionId = collectionId,
                 ContentType = contentType,
-                ParentFolderId = folderId
+                ParentFolderId = folderId,
+                UserId = userId
             };
 
             _context.Assets.Add(asset);
@@ -130,9 +136,10 @@ public class AssetService : IAssetService
         return createdAssets;
     }
 
-    public async Task<Asset> UpdatePositionAsync(int id, double positionX, double positionY)
+    public async Task<Asset> UpdatePositionAsync(int id, double positionX, double positionY, string userId)
     {
-        var asset = await _context.Assets.FindAsync(id)
+        var asset = await _context.Assets
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             ?? throw new KeyNotFoundException("Asset not found.");
 
         asset.PositionX = positionX;
@@ -142,7 +149,7 @@ public class AssetService : IAssetService
         return asset;
     }
 
-    public async Task<Asset> CreateFolderAsync(CreateFolderDto dto)
+    public async Task<Asset> CreateFolderAsync(CreateFolderDto dto, string userId)
     {
         if (string.IsNullOrWhiteSpace(dto.FolderName))
             throw new ArgumentException("Folder name is required.");
@@ -157,7 +164,8 @@ public class AssetService : IAssetService
             CollectionId = dto.CollectionId,
             ParentFolderId = dto.ParentFolderId,
             SortOrder = 0,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UserId = userId
         };
 
         _context.Assets.Add(folder);
@@ -165,7 +173,7 @@ public class AssetService : IAssetService
         return folder;
     }
 
-    public async Task<Asset> CreateColorAsync(CreateColorDto dto)
+    public async Task<Asset> CreateColorAsync(CreateColorDto dto, string userId)
     {
         if (string.IsNullOrWhiteSpace(dto.ColorCode))
             throw new ArgumentException("Color code is required.");
@@ -180,7 +188,8 @@ public class AssetService : IAssetService
             GroupId = dto.GroupId,
             ParentFolderId = dto.ParentFolderId,
             SortOrder = dto.SortOrder ?? 0,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UserId = userId
         };
 
         _context.Assets.Add(color);
@@ -188,7 +197,7 @@ public class AssetService : IAssetService
         return color;
     }
 
-    public async Task<Asset> CreateColorGroupAsync(CreateColorGroupDto dto)
+    public async Task<Asset> CreateColorGroupAsync(CreateColorGroupDto dto, string userId)
     {
         if (string.IsNullOrWhiteSpace(dto.GroupName))
             throw new ArgumentException("Group name is required.");
@@ -203,7 +212,8 @@ public class AssetService : IAssetService
             CollectionId = dto.CollectionId,
             ParentFolderId = dto.ParentFolderId,
             SortOrder = dto.SortOrder ?? 0,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UserId = userId
         };
 
         _context.Assets.Add(group);
@@ -211,7 +221,7 @@ public class AssetService : IAssetService
         return group;
     }
 
-    public async Task<Asset> CreateLinkAsync(CreateLinkDto dto)
+    public async Task<Asset> CreateLinkAsync(CreateLinkDto dto, string userId)
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
             throw new ArgumentException("Name is required.");
@@ -232,7 +242,8 @@ public class AssetService : IAssetService
             CollectionId = dto.CollectionId,
             ParentFolderId = dto.ParentFolderId,
             SortOrder = 0,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UserId = userId
         };
 
         _context.Assets.Add(link);
@@ -240,9 +251,10 @@ public class AssetService : IAssetService
         return link;
     }
 
-    public async Task<Asset> UpdateAssetAsync(int id, UpdateAssetDto dto)
+    public async Task<Asset> UpdateAssetAsync(int id, UpdateAssetDto dto, string userId)
     {
-        var asset = await _context.Assets.FindAsync(id)
+        var asset = await _context.Assets
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             ?? throw new KeyNotFoundException("Asset not found.");
 
         if (!string.IsNullOrEmpty(dto.FileName))
@@ -260,9 +272,10 @@ public class AssetService : IAssetService
         return asset;
     }
 
-    public async Task<bool> DeleteAssetAsync(int id)
+    public async Task<bool> DeleteAssetAsync(int id, string userId)
     {
-        var asset = await _context.Assets.FindAsync(id)
+        var asset = await _context.Assets
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             ?? throw new KeyNotFoundException("Asset not found.");
 
         // Clean up physical file if it's an uploaded file (not a folder, link, or color)
@@ -294,14 +307,14 @@ public class AssetService : IAssetService
         return true;
     }
 
-    public async Task ReorderAssetsAsync(List<int> assetIds)
+    public async Task ReorderAssetsAsync(List<int> assetIds, string userId)
     {
         if (assetIds == null || assetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
 
-        // Batch fetch instead of N+1
+        // Batch fetch — only user's own assets
         var assets = await _context.Assets
-            .Where(a => assetIds.Contains(a.Id))
+            .Where(a => assetIds.Contains(a.Id) && a.UserId == userId)
             .ToListAsync();
 
         var assetMap = assets.ToDictionary(a => a.Id);
@@ -317,10 +330,10 @@ public class AssetService : IAssetService
         await _context.SaveChangesAsync();
     }
 
-    public async Task<List<Asset>> GetAssetsByGroupAsync(int groupId)
+    public async Task<List<Asset>> GetAssetsByGroupAsync(int groupId, string userId)
     {
         return await _context.Assets
-            .Where(a => a.GroupId == groupId)
+            .Where(a => a.GroupId == groupId && a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ToListAsync();
     }

@@ -19,7 +19,7 @@ public class Collection
 
     public int? ParentId { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
     [MaxLength(20)]
     public string Color { get; set; } = "#007bff";
@@ -31,4 +31,9 @@ public class Collection
 
     [MaxLength(20)]
     public string LayoutType { get; set; } = "grid";
+
+    /// <summary>
+    /// Owner of this collection. Null for system/shared collections.
+    /// </summary>
+    public string? UserId { get; set; }
 }

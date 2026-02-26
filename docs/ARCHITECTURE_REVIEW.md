@@ -82,10 +82,10 @@
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả nếu không cải thiện |
 | --- | --- | --- | --- |
-| **Authentication** | 🔴 HIGH | Không có. Bất kỳ ai biết URL đều truy cập được mọi API | Dữ liệu bị đọc/xóa/ghi đè bởi bất kỳ ai. Không thể deploy public |
-| **Authorization** | 🔴 HIGH | Không có role/permission | Mọi user có quyền admin. Không kiểm soát được hành vi |
-| **User isolation** | 🔴 HIGH | Không có entity User. Mọi data là global | Không thể biến thành multi-user. Dữ liệu lẫn lộn |
-| **Data ownership** | 🔴 HIGH | Không có `UserId` trên Asset/Collection | Không thể xác định ai sở hữu tài nguyên nào |
+| **Authentication** | ✅ RESOLVED | JWT Bearer + ASP.NET Identity. `[Authorize]` trên tất cả endpoints (trừ Auth, Health) | Đã khắc phục |
+| **Authorization** | ✅ RESOLVED | User-scoped data access. Mọi query filter theo UserId | Đã khắc phục |
+| **User isolation** | ✅ RESOLVED | `UserId` FK trên Asset + Collection. System collections (null) shared, user data isolated | Đã khắc phục |
+| **Data ownership** | ✅ RESOLVED | Service layer enforce `UserId == currentUser` trên mọi CRUD operation | Đã khắc phục |
 | **Input validation** | 🟡 MEDIUM | Chỉ có `[Required]` trên FileName/FilePath. DTO không validate | SQL injection risk thấp (EF Core parameterize), nhưng logic bugs cao. Có thể tạo asset với collectionId không tồn tại |
 | **File upload protection** | 🟡 MEDIUM | Không giới hạn size, type, số lượng file | Server bị DoS bằng upload file lớn. Upload `.exe`, `.php` shell |
 | **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` |
@@ -102,13 +102,13 @@
 | **Logging strategy** | 🟡 MEDIUM | Chỉ có default `ILogger` — không structured, không persistence | Không trace được bug production, không audit trail |
 | **Pagination** | 🔴 HIGH | `GetAssets()` → `ToListAsync()` load toàn bộ bảng | 10K assets → response 5MB+ → frontend freeze. Memory spike trên server |
 | **Query optimization** | 🟡 MEDIUM | N+1 risk trong `ReorderAssets` (FindAsync trong loop) | Performance tuyến tính O(n) cho mỗi reorder — degraded với dữ liệu lớn |
-| **Migration strategy** | 🔴 HIGH | `EnsureCreated()` — không migration | Mất data khi đổi schema. Không rollback được. Không deploy được nhiều instance đồng bộ schema |
+| **Migration strategy** | ✅ RESOLVED | `Database.Migrate()` + EF Core Migrations | Schema version controlled |
 
 ## 2.3 Database & Dữ liệu
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Schema versioning** | 🔴 HIGH | Không có migration. `EnsureCreated()` chỉ tạo mới, không update | Thay đổi model → phải xóa DB → mất toàn bộ data |
+| **Schema versioning** | ✅ RESOLVED | EF Core Migrations với `InitialCreate`. Auto-migrate on startup | Schema version controlled |
 | **Indexing** | 🟡 MEDIUM | Không index nào (ngoài PK tự động) | Query `WHERE CollectionId = ? AND ParentFolderId = ?` full table scan. Chậm tuyến tính |
 | **Full-text search** | 🟡 MEDIUM | Chỉ client-side filter bằng JS `.includes()` | Tìm kiếm chậm, không fuzzy match, không accent-insensitive, không rank relevance |
 | **Tags system** | 🟡 MEDIUM | Comma-separated string trong 1 cột | Không thể `WHERE tag = 'landscape'` hiệu quả. Phải `LIKE '%landscape%'` → false positives + full scan |
@@ -171,7 +171,7 @@ Deployment:        Single instance only
 Availability:      Zero redundancy
 ```
 
-**Kết luận Phần 2:** Hệ thống hiện tại là một **prototype/MVP hoạt động tốt trên local**, nhưng có **9 rủi ro mức HIGH** cần giải quyết trước khi đưa ra bất kỳ môi trường nào có user thực. Các rủi ro nghiêm trọng nhất tập trung ở: Authentication (zero), Pagination (zero), Migration (zero), Rate Limiting (zero).
+**Kết luận Phần 2:** Hệ thống hiện tại đã có **Authentication + Data Ownership**, khắc phục rủi ro lớn nhất. Còn lại là các rủi ro mức MEDIUM tập trung ở: Frontend routing, PostgreSQL migration, Docker, và testing. Hệ thống đủ điều kiện deploy internal (sau VPN/firewall) và phát triển tiếp.
 
 ---
 
@@ -183,7 +183,7 @@ Availability:      Zero redundancy
 > **Thời gian ước lượng:** 2-3 tuần  
 > **ROI:** Rất cao — chặn mọi rủi ro HIGH
 
-### 1.1 Authentication — JWT + ASP.NET Identity
+### 1.1 Authentication — JWT + ASP.NET Identity — ✅ HOÀN THÀNH (25/02/2026)
 
 | | Chi tiết |
 | --- | --- |
@@ -192,16 +192,18 @@ Availability:      Zero redundancy
 | **Impact** | Thêm `User` entity, `IdentityDbContext`, `[Authorize]` attribute trên tất cả controller. Frontend cần login page + token storage |
 | **Độ khó** | Medium |
 | **Ưu tiên ROI** | ★★★★★ |
+| **Trạng thái** | ✅ `ApplicationUser` kế thừa `IdentityUser` (DisplayName, CreatedAt). `AuthService` xử lý register/login + JWT generation. `AuthController`: POST /api/auth/register, POST /api/auth/login. `[Authorize]` trên Assets, Collections, Search controllers. JWT config đọc từ appsettings.json. Password policy: min 6 chars, require digit + lowercase |
 
 ```text
-Cấu trúc thêm:
+Cấu trúc đã thêm:
 ├── Models/ApplicationUser.cs        (kế thừa IdentityUser)
-├── Services/AuthService.cs          (login, register, refresh token)
+├── Models/AuthDTOs.cs               (RegisterDto, LoginDto, AuthResponseDto)
+├── Services/IAuthService.cs         (interface)
+├── Services/AuthService.cs          (login, register, JWT generation)
 ├── Controllers/AuthController.cs    (POST /api/auth/login, /register)
-├── Middleware/JwtMiddleware.cs
 ```
 
-### 1.2 EF Core Migrations (thay thế EnsureCreated)
+### 1.2 EF Core Migrations (thay thế EnsureCreated) — ✅ HOÀN THÀNH (25/02/2026)
 
 | | Chi tiết |
 | --- | --- |
@@ -210,6 +212,7 @@ Cấu trúc thêm:
 | **Impact** | Seed data chuyển vào `OnModelCreating` hoặc `IHostedService`. Schema version control |
 | **Độ khó** | Low |
 | **Ưu tiên ROI** | ★★★★★ |
+| **Trạng thái** | ✅ `Program.cs`: `EnsureCreated()` → `Database.Migrate()`. Migration `InitialCreate` tạo toàn bộ schema + indexes + FK + seed data. `CreatedAt` dùng `HasDefaultValueSql("datetime('now')")`. Thư mục `Migrations/` được version control |
 
 ### 1.3 Global Exception Handling Middleware
 
@@ -285,7 +288,7 @@ public class PagedResult<T>
 }
 ```
 
-### 1.7 User Entity + Data Ownership
+### 1.7 User Entity + Data Ownership — ✅ HOÀN THÀNH (25/02/2026)
 
 | | Chi tiết |
 | --- | --- |
@@ -294,6 +297,7 @@ public class PagedResult<T>
 | **Impact** | Migration mới, sửa mỗi controller endpoint để filter theo user |
 | **Độ khó** | Medium |
 | **Ưu tiên ROI** | ★★★★★ |
+| **Trạng thái** | ✅ `UserId` (nullable string) FK → `AspNetUsers` trên cả Asset và Collection. CASCADE delete. Index trên UserId. System collections (seed, UserId=null) hiển thị cho tất cả users. Mọi service method nhận `string userId` parameter. Controllers extract từ JWT `ClaimTypes.NameIdentifier`. Read: own + system. Create: gán UserId tự động. Update/Delete: chỉ own data |
 
 ---
 
@@ -690,8 +694,8 @@ src/
 | **Frontend** | OK (small data) | 🟡 Re-render lag, state bugs | 🔴 Browser crash (10K DOM nodes) |
 | **Deploy** | Manual | 🟡 Error-prone, slow | 🔴 Impossible without CI/CD |
 
-**Bottom line:** Giai đoạn 1 là **non-negotiable** trước khi có user thật. Giai đoạn 2 nên hoàn thành trước khi thêm feature mới. Giai đoạn 3 cần cho production deployment. Giai đoạn 4 là product differentiation.
+**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **5/6** (83%). Giai đoạn 3 cần cho production deployment. Giai đoạn 4 là product differentiation.
 
 ---
 
-> *Tài liệu này được cập nhật sau mỗi giai đoạn hoàn thành. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*
+> *Tài liệu này được cập nhật lần cuối: **25/02/2026**. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VAH.Backend.Data;
@@ -11,6 +13,7 @@ namespace VAH.Backend.Controllers;
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class SearchController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,6 +22,10 @@ public class SearchController : ControllerBase
     {
         _context = context;
     }
+
+    private string GetUserId() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? throw new UnauthorizedAccessException("User identity not found.");
 
     /// <summary>
     /// Search assets and collections by name/tags.
@@ -34,11 +41,14 @@ public class SearchController : ControllerBase
     {
         pageSize = Math.Min(pageSize, 100);
         page = Math.Max(page, 1);
+        var userId = GetUserId();
 
         var term = q?.Trim().ToLower() ?? string.Empty;
 
-        // ── Search Assets ──
-        var assetQuery = _context.Assets.AsQueryable();
+        // ── Search Assets (user-scoped) ──
+        var assetQuery = _context.Assets
+            .Where(a => a.UserId == userId)
+            .AsQueryable();
 
         if (!string.IsNullOrEmpty(term))
         {
@@ -60,15 +70,16 @@ public class SearchController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
 
-        // ── Search Collections (only when no type filter or when filtering won't make sense) ──
+        // ── Search Collections (user-scoped: system + own) ──
         var collections = new List<Collection>();
         var totalCollections = 0;
 
         if (string.IsNullOrEmpty(type) && !string.IsNullOrEmpty(term))
         {
-            var collQuery = _context.Collections.Where(c =>
-                c.Name.ToLower().Contains(term) ||
-                c.Description.ToLower().Contains(term));
+            var collQuery = _context.Collections
+                .Where(c => (c.UserId == userId || c.UserId == null) &&
+                    (c.Name.ToLower().Contains(term) ||
+                     c.Description.ToLower().Contains(term)));
 
             totalCollections = await collQuery.CountAsync();
             collections = await collQuery
