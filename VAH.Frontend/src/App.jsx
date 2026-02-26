@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './components/LoginPage';
 import useCollections from './hooks/useCollections';
@@ -11,7 +12,8 @@ import CollectionBrowser from './components/CollectionBrowser';
 import ColorBoard from './components/ColorBoard';
 import './App.css';
 
-function App() {
+/** Main authenticated layout — renders for /, /collections/:id, /collections/:id/folder/:folderId */
+function AppLayout() {
   const { isAuthenticated, user, logout } = useAuth();
   const [viewMode, setViewMode] = useState('browser');
   const [layoutMode, setLayoutMode] = useState('grid');
@@ -66,7 +68,7 @@ function App() {
   } = useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems });
 
   // ---- Auth gate (MUST be after all hooks) ----
-  if (!isAuthenticated) return <LoginPage />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   // ------- derived flags -------
   const isColorCollection = selectedCollection?.type === 'color';
@@ -412,6 +414,24 @@ function App() {
         )}
       </div>
     </div>
+  );
+}
+
+/** Root App component — defines routes */
+function App() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+      />
+      <Route path="/" element={<AppLayout />} />
+      <Route path="/collections/:collectionId" element={<AppLayout />} />
+      <Route path="/collections/:collectionId/folder/:folderId" element={<AppLayout />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

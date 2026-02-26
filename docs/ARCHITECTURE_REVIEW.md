@@ -411,14 +411,15 @@ src/
 │   └── AppContext.jsx         ← shared state (selectedCollection, user)
 ```
 
-### 2.6 React Router
+### 2.6 React Router — ✅ HOÀN THÀNH (27/02/2026)
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | Không routing → URL không reflect state → không bookmark/share/back-forward |
-| **Giải pháp** | `react-router-dom` v7: `/collections/:id`, `/collections/:id/folder/:folderId`, `/search?q=...` |
+| **Giải pháp** | `react-router-dom` v7: `/collections/:id`, `/collections/:id/folder/:folderId`, `/login` |
 | **Impact** | Restructure App.jsx thành route-based layout. Deep linking hoạt động |
 | **Độ khó** | Medium |
+| **Trạng thái** | ✅ `react-router-dom@7` cài đặt. `BrowserRouter` wrap app trong `main.jsx`. 4 routes: `/login`, `/`, `/collections/:collectionId`, `/collections/:collectionId/folder/:folderId`. `useCollections` hook sync URL ↔ state (pushes URL on navigate, reads URL on load/back-forward). Auth guard redirect `/login` ↔ `/`. AppLayout component render cho tất cả authenticated routes. Browser back/forward hoạt động. Deep link bookmarkable. |
 
 ---
 
@@ -694,8 +695,8 @@ src/
 | **Frontend** | OK (small data) | 🟡 Re-render lag, state bugs | 🔴 Browser crash (10K DOM nodes) |
 | **Deploy** | Manual | 🟡 Error-prone, slow | 🔴 Impossible without CI/CD |
 
-**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **5/6** (83%). Giai đoạn 3 cần cho production deployment. Giai đoạn 4 là product differentiation.
+**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **6/6** (100%) — bao gồm Service Layer, Server-side Search, Database Indexing, Storage Abstraction, Frontend State Refactor, React Router. Giai đoạn 3 cần cho production deployment. Giai đoạn 4 là product differentiation.
 
 ---
 
-> *Tài liệu này được cập nhật lần cuối: **25/02/2026**. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*
+> *Tài liệu này được cập nhật lần cuối: **27/02/2026**. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*
