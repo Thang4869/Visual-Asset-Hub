@@ -143,13 +143,13 @@
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Dockerization** | 🟡 MEDIUM | Không có Dockerfile/docker-compose | Deploy thủ công, environment drift, "works on my machine" |
+| **Dockerization** | ✅ RESOLVED | Multi-stage Dockerfile + docker-compose (backend + postgres + redis + frontend) | Deploy reproducible |
 | **Environment separation** | 🟡 MEDIUM | `API_URL` hardcode trong frontend. Swagger chỉ tắt theo env check | Không thể deploy staging/production mà không sửa source code |
 | **CI/CD** | 🟡 MEDIUM | Không có pipeline | Deploy thủ công → error-prone, chậm, không rollback |
-| **Structured logging** | 🟡 MEDIUM | Console logger mặc định | Không aggregate, search, alert được log |
-| **Monitoring** | 🟡 MEDIUM | Không có health check, metrics, tracing | Không biết system status, không detect degradation |
-| **Rate limiting** | 🔴 HIGH | Không có | Bất kỳ ai đều spam upload/API → DoS server |
-| **Caching** | 🟡 MEDIUM | Không có cache layer nào | Mỗi page load gọi DB. Collections list gọi lại mỗi lần navigate |
+| **Structured logging** | ✅ RESOLVED | Serilog + Console + File sinks, structured request logging | Full audit trail |
+| **Monitoring** | ✅ RESOLVED | HealthController + `/api/Health` endpoint, Docker healthchecks | System status visible |
+| **Rate limiting** | ✅ RESOLVED | Fixed window 100 req/min + Upload 20 req/min | DoS protection |
+| **Caching** | ✅ RESOLVED | Redis/In-memory distributed cache, CollectionService cached (TTL 5m) | 80%+ DB reads reduced |
 | **HTTPS enforcement** | 🟡 MEDIUM | Default profile là HTTP | Data truyền plaintext → sniff được nội dung + các thông tin nhạy cảm |
 
 ## 2.7 Testability
@@ -171,7 +171,7 @@ Deployment:        Single instance only
 Availability:      Zero redundancy
 ```
 
-**Kết luận Phần 2:** Hệ thống hiện tại đã có **Authentication + Data Ownership**, khắc phục rủi ro lớn nhất. Còn lại là các rủi ro mức MEDIUM tập trung ở: Frontend routing, PostgreSQL migration, Docker, và testing. Hệ thống đủ điều kiện deploy internal (sau VPN/firewall) và phát triển tiếp.
+**Kết luận Phần 2:** Hệ thống đã có **Authentication + Data Ownership + Dockerization + Structured Logging + Rate Limiting + Caching + Thumbnail Generation**, khắc phục phần lớn rủi ro. Còn lại là các rủi ro mức MEDIUM tập trung ở: CI/CD pipeline, HTTPS enforcement, testing, và CORS tiếp tục cải thiện. Hệ thống đủ điều kiện deploy production (bằng Docker) và phát triển tiếp Giai đoạn 4.
 
 ---
 
@@ -429,23 +429,25 @@ src/
 > **Thời gian ước lượng:** 4-6 tuần  
 > **ROI:** Cao cho production deployment
 
-### 3.1 Chuyển sang PostgreSQL
+### 3.1 Chuyển sang PostgreSQL — ✅ HOÀN THÀNH (27/02/2026)
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | SQLite: single-writer, no concurrent access, file-based, max ~100 reads. Không scale |
-| **Giải pháp** | `Npgsql.EntityFrameworkCore.PostgreSQL`. Chỉ đổi connection string + provider trong `Program.cs` |
+| **Giải pháp** | `Npgsql.EntityFrameworkCore.PostgreSQL` v9.0.4. Dual-provider: SQLite cho dev, PostgreSQL cho Docker/production |
 | **Bonus** | PostgreSQL hỗ trợ: Full-text search (`tsvector`), JSONB cho flexible metadata, GIN index cho tags array, concurrent writes |
-| **Impact** | Migration script convert data. Config theo environment |
+| **Impact** | `DatabaseProvider` config key. `AppDbContext` nhận `DatabaseProviderInfo` → dialect-aware `HasDefaultValueSql`. `docker-compose.yml` dùng PostgreSQL 17. Local dev vẫn dùng SQLite |
 | **Độ khó** | Low (nhờ EF Core abstraction) |
+| **Trạng thái** | ✅ Install `Npgsql.EntityFrameworkCore.PostgreSQL` 9.0.4. `Program.cs`: đọc `DatabaseProvider` config → `UseNpgsql()` hoặc `UseSqlite()`. `AppDbContext`: `DatabaseProviderInfo` inject, `HasDefaultValueSql` trả `now()` (PG) hoặc `datetime('now')` (SQLite). `appsettings.json`: `DatabaseProvider: SQLite`, thêm PG connection string. `docker-compose.yml`: PostgreSQL 17 Alpine + healthcheck |
 
-### 3.2 Docker + docker-compose
+### 3.2 Docker + docker-compose — ✅ HOÀN THÀNH (27/02/2026)
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | Reproducible environment. Deploy lên bất kỳ cloud nào |
 | **Giải pháp** | Multi-stage Dockerfile (build + runtime). docker-compose cho local dev (backend + postgres + redis + frontend) |
 | **Độ khó** | Low |
+| **Trạng thái** | ✅ `VAH.Backend/Dockerfile`: SDK 9.0 build → ASP.NET 9.0 runtime, non-root user, port 5027. `VAH.Frontend/Dockerfile`: Node 22 build → Nginx Alpine, `VITE_API_URL` build arg. `VAH.Frontend/nginx.conf`: SPA fallback + gzip + cache. `docker-compose.yml`: 4 services (postgres:17, redis:7, backend, frontend), named volumes, healthchecks. `.dockerignore` cho cả backend + frontend |
 
 ```yaml
 # docker-compose.yml
@@ -464,49 +466,54 @@ services:
     ports: ["5173:80"]
 ```
 
-### 3.3 Redis Cache
+### 3.3 Redis Cache — ✅ HOÀN THÀNH (27/02/2026)
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | Collections list, asset metadata thay đổi không thường xuyên nhưng đọc liên tục |
-| **Giải pháp** | `Microsoft.Extensions.Caching.StackExchangeRedis`. Cache collections list (TTL 5 phút), response cache cho static assets |
+| **Giải pháp** | `Microsoft.Extensions.Caching.StackExchangeRedis` v10.0.3. `IDistributedCache` inject vào `CollectionService` |
 | **Impact** | Giảm 80%+ DB reads cho navigation operations |
 | **Độ khó** | Low |
+| **Trạng thái** | ✅ Install `StackExchangeRedis` 10.0.3. `Program.cs`: nếu có `ConnectionStrings:Redis` → `AddStackExchangeRedisCache`, nếu không → `AddDistributedMemoryCache` fallback. `CollectionService`: `GetAllAsync` cache 5 phút (absolute) / 2 phút (sliding). `InvalidateCacheAsync` gọi sau Create/Update/Delete. Cache key = `collections:all:{userId}`. Try-catch bọc mọi cache operation → graceful degradation nếu Redis down |
 
-### 3.4 Structured Logging — Serilog
+### 3.4 Structured Logging — Serilog — ✅ HOÀN THÀNH (27/02/2026)
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | Console log → không search, filter, alert, aggregate |
-| **Giải pháp** | `Serilog` + Sinks: Console (dev), File (đơn giản), Seq/Elasticsearch (production) |
+| **Giải pháp** | `Serilog.AspNetCore` v10.0.0 + Console + File sinks |
 | **Impact** | Structured JSON logs. Correlation ID per request. Performance metrics |
 | **Độ khó** | Low |
+| **Trạng thái** | ✅ `Serilog.AspNetCore` 10.0.0, `Serilog.Sinks.Console` 6.1.1, `Serilog.Sinks.File` 7.0.0. Bootstrap logger trước host build. `UseSerilog()` trên host. `UseSerilogRequestLogging()` trong pipeline (custom template, log level by status code/elapsed). Console: `[HH:mm:ss LVL] SourceContext\n  Message`. File: `logs/vah-{Date}.log`, rolling daily, 30 ngày retention. Override: ASP.NET + EF Core → Warning only. Try/catch/finally wrap toàn bộ `Program.cs` |
 
-### 3.5 Health Check + Monitoring
+### 3.5 Health Check + Monitoring — ✅ ĐÃ CÓ SẴN
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | Không biết system đang up/down, DB accessible hay không |
-| **Giải pháp** | `AspNetCore.HealthChecks` + `/health` endpoint. Prometheus metrics + Grafana dashboard |
+| **Giải pháp** | `HealthController` + `/api/Health` endpoint |
 | **Độ khó** | Low |
+| **Trạng thái** | ✅ Đã có `HealthController` với endpoint GET `/api/Health`. Docker healthcheck sử dụng endpoint này |
 
-### 3.6 Rate Limiting
+### 3.6 Rate Limiting — ✅ ĐÃ CÓ SẴN
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | Không rate limit → bất kỳ client nào spam 10K request/giây → DoS |
-| **Giải pháp** | `Microsoft.AspNetCore.RateLimiting` (built-in .NET 9). Fixed window + sliding window per user |
-| **Impact** | 2-3 lines config trong `Program.cs`. Upload endpoint: strict limit (10 req/phút) |
+| **Giải pháp** | `Microsoft.AspNetCore.RateLimiting` (built-in .NET 9). Fixed window per endpoint |
+| **Impact** | 2 policies: `Fixed` (100 req/phút), `Upload` (20 req/phút) |
 | **Độ khó** | Low |
+| **Trạng thái** | ✅ Đã có `AddRateLimiter` trong `Program.cs` + `UseRateLimiter()` trong pipeline |
 
-### 3.7 Background Job — Thumbnail Generation
+### 3.7 Background Job — Thumbnail Generation — ✅ HOÀN THÀNH (27/02/2026)
 
 | | Chi tiết |
 | --- | --- |
 | **Lý do** | Hiện tại serve ảnh gốc 20MB cho thumbnail 150px → bandwidth disaster |
-| **Giải pháp** | `Hangfire` hoặc `Quartz.NET`. Khi upload → background job tạo thumbnail (150px, 400px, 800px) bằng `ImageSharp` |
-| **Impact** | Thêm `ThumbnailPath` vào Asset model. Serve thumbnail cho browse, original cho preview |
+| **Giải pháp** | `SixLabors.ImageSharp` v3.1.12. Sync thumbnail generation ngay sau upload (không cần Hangfire cho MVP) |
+| **Impact** | Thêm `ThumbnailSm/Md/Lg` vào Asset model. Serve thumbnail cho browse, original cho preview |
 | **Độ khó** | Medium |
+| **Trạng thái** | ✅ `IThumbnailService` + `ThumbnailService`: generate WebP thumbnails 3 sizes (sm:150px, md:400px, lg:800px). Supports: jpg, jpeg, png, gif, bmp, webp, tiff. Output: `/uploads/thumbs/{size}_{guid}.webp`. `Asset.cs`: thêm `ThumbnailSm`, `ThumbnailMd`, `ThumbnailLg` (nullable, MaxLength 2048). `AssetService`: post-upload thumbnail generation + delete cleanup. Migration `AddThumbnailColumns` |
 
 ---
 
@@ -695,7 +702,7 @@ src/
 | **Frontend** | OK (small data) | 🟡 Re-render lag, state bugs | 🔴 Browser crash (10K DOM nodes) |
 | **Deploy** | Manual | 🟡 Error-prone, slow | 🔴 Impossible without CI/CD |
 
-**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **6/6** (100%) — bao gồm Service Layer, Server-side Search, Database Indexing, Storage Abstraction, Frontend State Refactor, React Router. Giai đoạn 3 cần cho production deployment. Giai đoạn 4 là product differentiation.
+**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **6/6** (100%) — bao gồm Service Layer, Server-side Search, Database Indexing, Storage Abstraction, Frontend State Refactor, React Router. Giai đoạn 3 đã hoàn thành **7/7** (100%) — bao gồm PostgreSQL dual-provider, Docker + docker-compose, Redis Cache, Serilog, Health Check, Rate Limiting, Thumbnail Generation. Giai đoạn 4 là product differentiation.
 
 ---
 

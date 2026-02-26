@@ -1,0 +1,11 @@
+bin/
+obj/
+logs/
+wwwroot/uploads/
+*.db
+*.db-shm
+*.db-wal
+.vs/
+.vscode/
+Dockerfile
+.dockerignore

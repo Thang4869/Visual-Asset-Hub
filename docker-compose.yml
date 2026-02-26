@@ -1,0 +1,94 @@
+# ============================================================
+# VAH — Docker Compose (dev / production-preview)
+# ============================================================
+# Usage:
+#   docker compose up --build        (foreground)
+#   docker compose up --build -d     (detached)
+#   docker compose down -v           (stop & remove volumes)
+# ============================================================
+
+services:
+  # ---- PostgreSQL Database ----
+  postgres:
+    image: postgres:17-alpine
+    container_name: vah-postgres
+    environment:
+      POSTGRES_DB: vah
+      POSTGRES_USER: vah
+      POSTGRES_PASSWORD: vah_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vah -d vah"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Redis Cache ----
+  redis:
+    image: redis:7-alpine
+    container_name: vah-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- ASP.NET Core Backend ----
+  backend:
+    build:
+      context: ./VAH.Backend
+      dockerfile: Dockerfile
+    container_name: vah-backend
+    ports:
+      - "5027:5027"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5027
+      - DatabaseProvider=PostgreSQL
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=vah;Username=vah;Password=vah_secret
+      - ConnectionStrings__Redis=redis:6379
+    volumes:
+      - backend-uploads:/app/wwwroot/uploads
+      - backend-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5027/api/Health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---- React Frontend (Nginx) ----
+  frontend:
+    build:
+      context: ./VAH.Frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:5027/api
+    container_name: vah-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  backend-uploads:
+  backend-logs:

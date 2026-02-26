@@ -5,12 +5,36 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using Serilog.Events;
 using VAH.Backend.Data;
 using VAH.Backend.Middleware;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
 
+// ---- Bootstrap Serilog (early, before host build) ----
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}{NewLine}  {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        path: "logs/vah-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+try
+{
+Log.Information("Starting VAH Backend...");
+
 var builder = WebApplication.CreateBuilder(args);
+
+// ---- Use Serilog as the logging provider ----
+builder.Host.UseSerilog();
 
 // --- CORS ---
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -59,9 +83,25 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// --- Database ---
+// --- Database (dual provider: SQLite for dev, PostgreSQL for production) ---
+var dbProvider = builder.Configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseNpgsql(connectionString);
+    }
+    else
+    {
+        options.UseSqlite(connectionString);
+    }
+});
+
+// Expose provider name so AppDbContext can adapt SQL dialect
+builder.Services.AddSingleton(new DatabaseProviderInfo(dbProvider));
 
 // --- ASP.NET Identity ---
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -101,12 +141,30 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// --- Redis / Distributed Cache ---
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = "VAH:";
+    });
+    Log.Information("Redis distributed cache enabled");
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache(); // In-memory fallback
+    Log.Information("Using in-memory distributed cache (no Redis configured)");
+}
+
 // --- Application services ---
 builder.Services.AddSingleton(new FileUploadConfig());
 builder.Services.AddScoped<IStorageService, LocalStorageService>();
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IThumbnailService, ThumbnailService>();
 
 // ============================================================
 var app = builder.Build();
@@ -116,6 +174,17 @@ app.UseGlobalExceptionHandler();
 
 // --- CORS ---
 app.UseCors("Frontend");
+
+// --- Serilog HTTP request logging ---
+app.UseSerilogRequestLogging(opts =>
+{
+    opts.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.000}ms";
+    opts.GetLevel = (ctx, elapsed, ex) =>
+        ex != null ? LogEventLevel.Error
+        : ctx.Response.StatusCode >= 500 ? LogEventLevel.Error
+        : elapsed > 3000 ? LogEventLevel.Warning
+        : LogEventLevel.Information;
+});
 
 // --- Rate Limiting ---
 app.UseRateLimiter();
@@ -143,3 +212,19 @@ using (var scope = app.Services.CreateScope())
 
 app.Run();
 
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "VAH Backend terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
+/// <summary>Exposes the configured DB provider name so AppDbContext can adapt SQL dialect.</summary>
+public record DatabaseProviderInfo(string ProviderName)
+{
+    public bool IsPostgreSql => ProviderName.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase);
+    public bool IsSqlite => !IsPostgreSql;
+}

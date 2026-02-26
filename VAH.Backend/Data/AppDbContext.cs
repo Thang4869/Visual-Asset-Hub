@@ -6,7 +6,13 @@ namespace VAH.Backend.Data;
 
 public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly bool _isPostgreSql;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, DatabaseProviderInfo? dbInfo = null)
+        : base(options)
+    {
+        _isPostgreSql = dbInfo?.IsPostgreSql ?? false;
+    }
 
     public DbSet<Asset> Assets { get; set; }
     public DbSet<Collection> Collections { get; set; }
@@ -43,8 +49,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(a => a.UserId);
 
-            // Default values
-            entity.Property(a => a.CreatedAt).HasDefaultValueSql("datetime('now')");
+            // Default values (dialect-aware)
+            entity.Property(a => a.CreatedAt).HasDefaultValueSql(_isPostgreSql ? "now()" : "datetime('now')");
 
             // Property constraints
             entity.Property(a => a.FileName).HasMaxLength(500);
@@ -76,8 +82,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                   .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(c => c.UserId);
 
-            // Default values
-            entity.Property(c => c.CreatedAt).HasDefaultValueSql("datetime('now')");
+            // Default values (dialect-aware)
+            entity.Property(c => c.CreatedAt).HasDefaultValueSql(_isPostgreSql ? "now()" : "datetime('now')");
 
             // Property constraints
             entity.Property(c => c.Name).HasMaxLength(255);

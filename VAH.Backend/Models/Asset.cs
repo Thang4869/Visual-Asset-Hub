@@ -39,4 +39,18 @@ public class Asset
     /// Owner of this asset. Null for system/shared assets.
     /// </summary>
     public string? UserId { get; set; }
+
+    // --- Thumbnails (generated server-side for images) ---
+
+    /// <summary>Small thumbnail (150px max), WebP. Null if not an image or not yet generated.</summary>
+    [MaxLength(2048)]
+    public string? ThumbnailSm { get; set; }
+
+    /// <summary>Medium thumbnail (400px max), WebP.</summary>
+    [MaxLength(2048)]
+    public string? ThumbnailMd { get; set; }
+
+    /// <summary>Large thumbnail (800px max), WebP.</summary>
+    [MaxLength(2048)]
+    public string? ThumbnailLg { get; set; }
 }

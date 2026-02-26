@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using VAH.Backend.Data;
 using VAH.Backend.Models;
 
@@ -8,20 +10,71 @@ public class CollectionService : ICollectionService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<CollectionService> _logger;
+    private readonly IDistributedCache _cache;
 
-    public CollectionService(AppDbContext context, ILogger<CollectionService> logger)
+    private static readonly DistributedCacheEntryOptions CacheOptions = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5),
+        SlidingExpiration = TimeSpan.FromMinutes(2)
+    };
+
+    public CollectionService(AppDbContext context, ILogger<CollectionService> logger, IDistributedCache cache)
     {
         _context = context;
         _logger = logger;
+        _cache = cache;
+    }
+
+    private string CacheKey(string userId) => $"collections:all:{userId}";
+
+    /// <summary>Invalidate user's collection list cache after mutation.</summary>
+    private async Task InvalidateCacheAsync(string userId)
+    {
+        try
+        {
+            await _cache.RemoveAsync(CacheKey(userId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to invalidate cache for user {UserId}", userId);
+        }
     }
 
     public async Task<List<Collection>> GetAllAsync(string userId)
     {
+        // Try cache first
+        try
+        {
+            var cached = await _cache.GetStringAsync(CacheKey(userId));
+            if (cached != null)
+            {
+                _logger.LogDebug("Cache hit for collections list (user {UserId})", userId);
+                return JsonSerializer.Deserialize<List<Collection>>(cached) ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Cache read failed, falling back to DB");
+        }
+
         // Return system collections (UserId == null) + user's own collections
-        return await _context.Collections
+        var collections = await _context.Collections
             .Where(c => c.UserId == userId || c.UserId == null)
             .OrderBy(c => c.Order)
             .ToListAsync();
+
+        // Write to cache (fire-and-forget style with try-catch)
+        try
+        {
+            var json = JsonSerializer.Serialize(collections);
+            await _cache.SetStringAsync(CacheKey(userId), json, CacheOptions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Cache write failed");
+        }
+
+        return collections;
     }
 
     public async Task<Collection?> GetByIdAsync(int id, string userId)
@@ -71,6 +124,7 @@ public class CollectionService : ICollectionService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Collection created: {Name} (Id={Id}) by user {UserId}", collection.Name, collection.Id, userId);
+        await InvalidateCacheAsync(userId);
         return collection;
     }
 
@@ -92,6 +146,7 @@ public class CollectionService : ICollectionService
         existing.LayoutType = collection.LayoutType ?? existing.LayoutType;
 
         await _context.SaveChangesAsync();
+        await InvalidateCacheAsync(userId);
         return existing;
     }
 
@@ -116,6 +171,7 @@ public class CollectionService : ICollectionService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Collection deleted: {Name} (Id={Id}) by user {UserId}", collection.Name, id, userId);
+        await InvalidateCacheAsync(userId);
         return true;
     }
 }

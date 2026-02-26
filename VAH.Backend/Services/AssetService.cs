@@ -9,17 +9,20 @@ public class AssetService : IAssetService
     private readonly AppDbContext _context;
     private readonly IStorageService _storage;
     private readonly FileUploadConfig _uploadConfig;
+    private readonly IThumbnailService _thumbnailService;
     private readonly ILogger<AssetService> _logger;
 
     public AssetService(
         AppDbContext context,
         IStorageService storage,
         FileUploadConfig uploadConfig,
+        IThumbnailService thumbnailService,
         ILogger<AssetService> logger)
     {
         _context = context;
         _storage = storage;
         _uploadConfig = uploadConfig;
+        _thumbnailService = thumbnailService;
         _logger = logger;
     }
 
@@ -133,6 +136,30 @@ public class AssetService : IAssetService
         }
 
         await _context.SaveChangesAsync();
+
+        // Generate thumbnails for image assets (after SaveChanges so files are persisted)
+        foreach (var asset in createdAssets.Where(a => a.ContentType == "image"))
+        {
+            try
+            {
+                var thumbs = await _thumbnailService.GenerateThumbnailsAsync(asset.FilePath);
+                if (thumbs.Count > 0)
+                {
+                    asset.ThumbnailSm = thumbs.GetValueOrDefault("sm");
+                    asset.ThumbnailMd = thumbs.GetValueOrDefault("md");
+                    asset.ThumbnailLg = thumbs.GetValueOrDefault("lg");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Thumbnail generation failed for asset {AssetId}", asset.Id);
+            }
+        }
+
+        // Save thumbnail paths
+        if (createdAssets.Any(a => a.ThumbnailSm != null))
+            await _context.SaveChangesAsync();
+
         return createdAssets;
     }
 
@@ -287,6 +314,14 @@ public class AssetService : IAssetService
             asset.FilePath.StartsWith("/uploads/"))
         {
             await _storage.DeleteAsync(asset.FilePath);
+
+            // Also clean up thumbnails
+            if (!string.IsNullOrEmpty(asset.ThumbnailSm) && asset.ThumbnailSm != asset.FilePath)
+                await _storage.DeleteAsync(asset.ThumbnailSm);
+            if (!string.IsNullOrEmpty(asset.ThumbnailMd) && asset.ThumbnailMd != asset.FilePath)
+                await _storage.DeleteAsync(asset.ThumbnailMd);
+            if (!string.IsNullOrEmpty(asset.ThumbnailLg) && asset.ThumbnailLg != asset.FilePath)
+                await _storage.DeleteAsync(asset.ThumbnailLg);
         }
 
         // If deleting a folder, move children to parent folder (orphan prevention)
