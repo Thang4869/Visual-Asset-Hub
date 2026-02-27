@@ -90,6 +90,7 @@
 .file-item {
   min-height: 200px;
   padding: 10px;
+  position: relative;
 }
 
 /* List layout overrides */
@@ -293,4 +294,28 @@
   height: 300px;
   color: var(--text-secondary);
   font-size: 1rem;
+}
+
+/* Multi-select highlight */
+.browser-item.file-item.multi-selected {
+  border-color: var(--accent);
+  background-color: rgba(33, 150, 243, 0.15);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.browser-item.file-item.multi-selected::after {
+  content: '✓';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--accent);
+  color: #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
 }

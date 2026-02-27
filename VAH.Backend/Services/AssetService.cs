@@ -10,6 +10,7 @@ public class AssetService : IAssetService
     private readonly IStorageService _storage;
     private readonly FileUploadConfig _uploadConfig;
     private readonly IThumbnailService _thumbnailService;
+    private readonly INotificationService _notifier;
     private readonly ILogger<AssetService> _logger;
 
     public AssetService(
@@ -17,12 +18,14 @@ public class AssetService : IAssetService
         IStorageService storage,
         FileUploadConfig uploadConfig,
         IThumbnailService thumbnailService,
+        INotificationService notifier,
         ILogger<AssetService> logger)
     {
         _context = context;
         _storage = storage;
         _uploadConfig = uploadConfig;
         _thumbnailService = thumbnailService;
+        _notifier = notifier;
         _logger = logger;
     }
 
@@ -71,6 +74,7 @@ public class AssetService : IAssetService
         asset.UserId = userId;
         _context.Assets.Add(asset);
         await _context.SaveChangesAsync();
+        await _notifier.NotifyAsync(userId, "AssetCreated", new { asset.Id, asset.FileName });
         return asset;
     }
 
@@ -160,6 +164,7 @@ public class AssetService : IAssetService
         if (createdAssets.Any(a => a.ThumbnailSm != null))
             await _context.SaveChangesAsync();
 
+        await _notifier.NotifyAsync(userId, "AssetsUploaded", new { count = createdAssets.Count, collectionId });
         return createdAssets;
     }
 
@@ -339,6 +344,7 @@ public class AssetService : IAssetService
 
         _context.Assets.Remove(asset);
         await _context.SaveChangesAsync();
+        await _notifier.NotifyAsync(userId, "AssetDeleted", new { id });
         return true;
     }
 
@@ -371,5 +377,141 @@ public class AssetService : IAssetService
             .Where(a => a.GroupId == groupId && a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ToListAsync();
+    }
+
+    // ──── Bulk Operations ────
+
+    public async Task<int> BulkDeleteAsync(List<int> assetIds, string userId)
+    {
+        if (assetIds == null || assetIds.Count == 0)
+            throw new ArgumentException("Asset IDs are required.");
+
+        var assets = await _context.Assets
+            .Where(a => assetIds.Contains(a.Id) && a.UserId == userId)
+            .ToListAsync();
+
+        foreach (var asset in assets)
+        {
+            // Clean up physical files
+            if (!asset.IsFolder &&
+                asset.ContentType != "link" &&
+                asset.ContentType != "color" &&
+                asset.ContentType != "color-group" &&
+                !string.IsNullOrEmpty(asset.FilePath) &&
+                asset.FilePath.StartsWith("/uploads/"))
+            {
+                await _storage.DeleteAsync(asset.FilePath);
+                if (!string.IsNullOrEmpty(asset.ThumbnailSm)) await _storage.DeleteAsync(asset.ThumbnailSm);
+                if (!string.IsNullOrEmpty(asset.ThumbnailMd)) await _storage.DeleteAsync(asset.ThumbnailMd);
+                if (!string.IsNullOrEmpty(asset.ThumbnailLg)) await _storage.DeleteAsync(asset.ThumbnailLg);
+            }
+
+            // Orphan prevention for folders
+            if (asset.IsFolder)
+            {
+                var children = await _context.Assets
+                    .Where(a => a.ParentFolderId == asset.Id)
+                    .ToListAsync();
+                foreach (var child in children)
+                    child.ParentFolderId = asset.ParentFolderId;
+            }
+        }
+
+        _context.Assets.RemoveRange(assets);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Bulk deleted {Count} assets for user {UserId}", assets.Count, userId);
+        await _notifier.NotifyAsync(userId, "AssetsBulkDeleted", new { count = assets.Count, assetIds });
+        return assets.Count;
+    }
+
+    public async Task<int> BulkMoveAsync(BulkMoveDto dto, string userId)
+    {
+        if (dto.AssetIds == null || dto.AssetIds.Count == 0)
+            throw new ArgumentException("Asset IDs are required.");
+
+        var assets = await _context.Assets
+            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
+            .ToListAsync();
+
+        // Validate target collection exists if specified
+        if (dto.TargetCollectionId.HasValue)
+        {
+            var collExists = await _context.Collections
+                .AnyAsync(c => c.Id == dto.TargetCollectionId.Value && (c.UserId == userId || c.UserId == null));
+            if (!collExists)
+                throw new KeyNotFoundException($"Target collection {dto.TargetCollectionId.Value} not found.");
+        }
+
+        foreach (var asset in assets)
+        {
+            if (dto.TargetCollectionId.HasValue)
+                asset.CollectionId = dto.TargetCollectionId.Value;
+
+            if (dto.ClearParentFolder == true)
+                asset.ParentFolderId = null;
+            else if (dto.TargetFolderId.HasValue)
+                asset.ParentFolderId = dto.TargetFolderId.Value;
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Bulk moved {Count} assets for user {UserId}", assets.Count, userId);
+        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = assets.Count });
+        return assets.Count;
+    }
+
+    public async Task<int> BulkTagAsync(BulkTagDto dto, string userId)
+    {
+        if (dto.AssetIds == null || dto.AssetIds.Count == 0)
+            throw new ArgumentException("Asset IDs are required.");
+        if (dto.TagIds == null || dto.TagIds.Count == 0)
+            throw new ArgumentException("Tag IDs are required.");
+
+        // Verify all assets belong to user
+        var assets = await _context.Assets
+            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
+            .ToListAsync();
+
+        // Verify tags belong to user
+        var validTagIds = await _context.Tags
+            .Where(t => dto.TagIds.Contains(t.Id) && t.UserId == userId)
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        int count = 0;
+
+        foreach (var asset in assets)
+        {
+            foreach (var tagId in validTagIds)
+            {
+                if (dto.Remove)
+                {
+                    var junction = await _context.AssetTags
+                        .FirstOrDefaultAsync(at => at.AssetId == asset.Id && at.TagId == tagId);
+                    if (junction != null)
+                    {
+                        _context.AssetTags.Remove(junction);
+                        count++;
+                    }
+                }
+                else
+                {
+                    var exists = await _context.AssetTags
+                        .AnyAsync(at => at.AssetId == asset.Id && at.TagId == tagId);
+                    if (!exists)
+                    {
+                        _context.AssetTags.Add(new AssetTag { AssetId = asset.Id, TagId = tagId });
+                        count++;
+                    }
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Bulk tag operation ({Action}) on {Count} asset-tag pairs for user {UserId}",
+            dto.Remove ? "remove" : "add", count, userId);
+        return count;
     }
 }

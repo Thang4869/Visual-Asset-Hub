@@ -53,4 +53,7 @@ public class Asset
     /// <summary>Large thumbnail (800px max), WebP.</summary>
     [MaxLength(2048)]
     public string? ThumbnailLg { get; set; }
+
+    // --- Navigation properties ---
+    public ICollection<AssetTag> AssetTags { get; set; } = new List<AssetTag>();
 }

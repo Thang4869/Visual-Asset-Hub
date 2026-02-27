@@ -691,3 +691,171 @@
   font-weight: 500;
   color: var(--text-primary);
 }
+
+/* ===================== BULK ACTIONS BAR ===================== */
+
+.bulk-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: var(--accent-light);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  margin: 0 16px 8px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bulk-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+  background-color: #c62828;
+}
+
+.btn-small {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: all 0.2s;
+}
+
+.btn-small:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+/* ===================== TAGS ===================== */
+
+.details-tags-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.details-tags-section h4 {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.details-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-badge {
+  background-color: var(--accent-light);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+/* ===================== SMART COLLECTIONS ===================== */
+
+.smart-collections-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sidebar-section-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 12px 8px;
+  font-weight: 600;
+}
+
+.smart-collection-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.82rem;
+  border-radius: var(--radius);
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.smart-collection-item:hover {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.smart-collection-item.active {
+  background-color: var(--accent-light);
+  color: var(--accent);
+}
+
+.sc-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.sc-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-count {
+  font-size: 0.7rem;
+  background: var(--bg-card);
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.smart-collection-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.smart-collection-view .main-content {
+  flex: 1;
+  overflow-y: auto;
+}

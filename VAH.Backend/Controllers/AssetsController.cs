@@ -120,6 +120,32 @@ public class AssetsController : ControllerBase
         var assets = await _assetService.GetAssetsByGroupAsync(groupId, GetUserId());
         return Ok(assets);
     }
+
+    // ──── Bulk Operations ────
+
+    // POST: api/assets/bulk-delete
+    [HttpPost("bulk-delete")]
+    public async Task<ActionResult> BulkDelete([FromBody] BulkDeleteDto dto)
+    {
+        var count = await _assetService.BulkDeleteAsync(dto.AssetIds, GetUserId());
+        return Ok(new { deleted = count });
+    }
+
+    // POST: api/assets/bulk-move
+    [HttpPost("bulk-move")]
+    public async Task<ActionResult> BulkMove([FromBody] BulkMoveDto dto)
+    {
+        var count = await _assetService.BulkMoveAsync(dto, GetUserId());
+        return Ok(new { moved = count });
+    }
+
+    // POST: api/assets/bulk-tag
+    [HttpPost("bulk-tag")]
+    public async Task<ActionResult> BulkTag([FromBody] BulkTagDto dto)
+    {
+        var count = await _assetService.BulkTagAsync(dto, GetUserId());
+        return Ok(new { affected = count });
+    }
 }
 
 // DTO for position update

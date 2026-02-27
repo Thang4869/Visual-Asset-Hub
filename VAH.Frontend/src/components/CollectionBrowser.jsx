@@ -10,6 +10,7 @@ const CollectionBrowser = ({
   onMoveAsset,
   onSelectAsset,
   selectedAssetId,
+  selectedAssetIds = new Set(),
   onReorder,
   loading,
   searchTerm,
@@ -112,10 +113,10 @@ const CollectionBrowser = ({
             {filteredFiles.map((asset, index) => (
               <div
                 key={asset.id}
-                className={`browser-item file-item ${selectedAssetId === asset.id ? 'selected' : ''}`}
+                className={`browser-item file-item ${selectedAssetId === asset.id ? 'selected' : ''} ${selectedAssetIds.has(asset.id) ? 'multi-selected' : ''}`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, asset)}
-                onClick={() => onSelectAsset && onSelectAsset(asset.id)}
+                onClick={(e) => onSelectAsset && onSelectAsset(asset.id, e)}
               >
                 {asset.contentType === 'image' && (
                   <div className="file-preview">

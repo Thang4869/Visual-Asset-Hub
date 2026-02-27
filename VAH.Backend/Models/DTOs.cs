@@ -71,3 +71,59 @@ public class ReorderAssetsDto
     [Required]
     public List<int> AssetIds { get; set; } = new List<int>();
 }
+
+// ──── Tag DTOs ────
+
+public class CreateTagDto
+{
+    [Required, MaxLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(20)]
+    public string? Color { get; set; }
+}
+
+public class UpdateTagDto
+{
+    [MaxLength(100)]
+    public string? Name { get; set; }
+
+    [MaxLength(20)]
+    public string? Color { get; set; }
+}
+
+public class AssetTagsDto
+{
+    [Required]
+    public List<int> TagIds { get; set; } = new();
+}
+
+// ──── Bulk Operation DTOs ────
+
+public class BulkDeleteDto
+{
+    [Required]
+    public List<int> AssetIds { get; set; } = new();
+}
+
+public class BulkMoveDto
+{
+    [Required]
+    public List<int> AssetIds { get; set; } = new();
+
+    public int? TargetCollectionId { get; set; }
+    public int? TargetFolderId { get; set; }
+    public bool? ClearParentFolder { get; set; }
+}
+
+public class BulkTagDto
+{
+    [Required]
+    public List<int> AssetIds { get; set; } = new();
+
+    [Required]
+    public List<int> TagIds { get; set; } = new();
+
+    /// <summary>If true, removes these tags. If false (default), adds them.</summary>
+    public bool Remove { get; set; } = false;
+}

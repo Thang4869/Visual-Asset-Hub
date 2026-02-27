@@ -1,15 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './components/LoginPage';
 import useCollections from './hooks/useCollections';
 import useAssets from './hooks/useAssets';
+import useTags from './hooks/useTags';
+import useSignalR from './hooks/useSignalR';
+import useUndoRedo from './hooks/useUndoRedo';
 import { staticUrl } from './api/client';
+import * as smartCollectionsApi from './api/smartCollectionsApi';
 import CollectionTree from './components/CollectionTree';
 import AssetDisplayer from './components/AssetDisplayer';
 import UploadArea from './components/UploadArea';
 import CollectionBrowser from './components/CollectionBrowser';
 import ColorBoard from './components/ColorBoard';
+import ShareDialog from './components/ShareDialog';
 import './App.css';
 
 /** Main authenticated layout — renders for /, /collections/:id, /collections/:id/folder/:folderId */
@@ -57,6 +62,10 @@ function AppLayout() {
     selectedAssetId,
     setSelectedAssetId,
     selectedAsset,
+    selectedAssetIds,
+    toggleSelectAsset,
+    selectAllAssets,
+    clearSelection,
     handleUpload,
     handleCreateFolder,
     handleCreateLink,
@@ -65,7 +74,68 @@ function AppLayout() {
     handleMoveAsset,
     handleMoveSelected,
     handleReorderAssets,
+    handleBulkDelete,
+    handleBulkMove,
+    handleBulkTag,
   } = useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems });
+
+  // ------- tags -------
+  const { tags, createTag, deleteTag, getAssetTags, setAssetTags } = useTags();
+
+  // ------- smart collections -------
+  const [smartCollections, setSmartCollections] = useState([]);
+  const [activeSmartCollection, setActiveSmartCollection] = useState(null);
+  const [smartItems, setSmartItems] = useState([]);
+
+  const fetchSmartCollections = useCallback(async () => {
+    try {
+      const defs = await smartCollectionsApi.fetchSmartCollections();
+      setSmartCollections(defs);
+    } catch (e) { console.error('Smart collections error:', e); }
+  }, []);
+
+  useEffect(() => { if (isAuthenticated) fetchSmartCollections(); }, [isAuthenticated, fetchSmartCollections]);
+
+  const handleSelectSmartCollection = useCallback(async (sc) => {
+    setActiveSmartCollection(sc);
+    try {
+      const result = await smartCollectionsApi.fetchSmartCollectionItems(sc.id);
+      setSmartItems(result.items || []);
+    } catch (e) { console.error('Smart collection items error:', e); }
+  }, []);
+
+  // ------- real-time sync -------
+  const signalRHandlers = useMemo(() => ({
+    AssetsUploaded: () => refreshItems(),
+    AssetCreated: () => refreshItems(),
+    AssetDeleted: () => refreshItems(),
+    AssetsBulkDeleted: () => refreshItems(),
+    AssetsBulkMoved: () => refreshItems(),
+    CollectionCreated: () => refreshItems(),
+    CollectionUpdated: () => refreshItems(),
+    CollectionDeleted: () => refreshItems(),
+    TagsChanged: () => refreshItems(),
+  }), [refreshItems]);
+
+  useSignalR(signalRHandlers, isAuthenticated);
+
+  // ------- undo/redo -------
+  const { execute: executeCmd, undo, redo, canUndo, canRedo } = useUndoRedo();
+
+  // ------- share dialog -------
+  const [showShareDialog, setShowShareDialog] = useState(false);
+
+  // Keyboard shortcuts: Ctrl+Z / Ctrl+Shift+Z
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) { redo(); } else { undo(); }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   // ---- Auth gate (MUST be after all hooks) ----
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -171,6 +241,24 @@ function AppLayout() {
               onCreateCollection={handleCreateCollection}
               onDeleteCollection={handleDeleteCollection}
             />
+
+            {/* Smart Collections */}
+            {smartCollections.length > 0 && (
+              <div className="smart-collections-section">
+                <h4 className="sidebar-section-title">Bộ sưu tập thông minh</h4>
+                {smartCollections.map((sc) => (
+                  <button
+                    key={sc.id}
+                    className={`smart-collection-item ${activeSmartCollection?.id === sc.id ? 'active' : ''}`}
+                    onClick={() => { handleSelectCollection(null, []); handleSelectSmartCollection(sc); }}
+                  >
+                    <span className="sc-icon">{sc.icon}</span>
+                    <span className="sc-name">{sc.name}</span>
+                    <span className="sc-count">{sc.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
 
@@ -243,8 +331,14 @@ function AppLayout() {
                     )}
                     <button className="btn-secondary" onClick={handleMoveSelected}>
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                      Chia sẻ
+                      Di chuyển
                     </button>
+                    {selectedCollection?.userId && (
+                      <button className="btn-secondary" onClick={() => setShowShareDialog(true)}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                        Chia sẻ
+                      </button>
+                    )}
                   </div>
                   <div className="toolbar-actions-right">
                     <div className="view-switcher">
@@ -274,6 +368,26 @@ function AppLayout() {
                 </div>
               </div>
 
+              {/* Bulk Actions Bar (when multi-select) */}
+              {selectedAssetIds.size > 0 && (
+                <div className="bulk-actions-bar">
+                  <span className="bulk-count">{selectedAssetIds.size} item đã chọn</span>
+                  <button className="btn-secondary" onClick={selectAllAssets}>Chọn tất cả</button>
+                  <button className="btn-secondary" onClick={clearSelection}>Bỏ chọn</button>
+                  <button className="btn-danger" onClick={handleBulkDelete}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Xóa
+                  </button>
+                  <button className="btn-secondary" onClick={() => {
+                    const target = prompt('Nhập ID collection đích:');
+                    if (target) handleBulkMove(parseInt(target), null);
+                  }}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    Di chuyển
+                  </button>
+                </div>
+              )}
+
               {/* Content Area */}
               <div className="main-content">
                 {isColorCollection ? (
@@ -289,8 +403,9 @@ function AppLayout() {
                     onSelectCollection={navigateToCollection}
                     onSelectFolder={handleOpenFolder}
                     onMoveAsset={handleMoveAsset}
-                    onSelectAsset={setSelectedAssetId}
+                    onSelectAsset={toggleSelectAsset}
                     selectedAssetId={selectedAssetId}
+                    selectedAssetIds={selectedAssetIds}
                     loading={loading}
                     searchTerm={debouncedSearch}
                     layoutMode={layoutMode}
@@ -312,6 +427,35 @@ function AppLayout() {
                 <UploadArea onUpload={handleUpload} />
               </div>
             </>
+          ) : activeSmartCollection ? (
+            <div className="smart-collection-view">
+              <div className="main-toolbar">
+                <div className="toolbar-breadcrumbs">
+                  <button className="breadcrumb-item" onClick={() => { setActiveSmartCollection(null); setSmartItems([]); }}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Trang chủ
+                  </button>
+                  <span className="breadcrumb-separator">›</span>
+                  <span className="breadcrumb-item current">{activeSmartCollection.icon} {activeSmartCollection.name}</span>
+                </div>
+              </div>
+              <div className="main-content">
+                <CollectionBrowser
+                  assets={smartItems}
+                  subCollections={[]}
+                  onSelectCollection={() => {}}
+                  onSelectFolder={() => {}}
+                  onMoveAsset={() => {}}
+                  onSelectAsset={toggleSelectAsset}
+                  selectedAssetId={selectedAssetId}
+                  selectedAssetIds={selectedAssetIds}
+                  loading={false}
+                  searchTerm={debouncedSearch}
+                  layoutMode={layoutMode}
+                  onReorder={() => {}}
+                />
+              </div>
+            </div>
           ) : (
             <div className="home-view">
               <div className="home-header">
@@ -394,6 +538,30 @@ function AppLayout() {
                     {selectedAsset.isFolder ? '—' : '■'}
                   </span>
                 </div>
+
+                {/* Tags section */}
+                <div className="details-tags-section">
+                  <h4>Tags</h4>
+                  <div className="details-tags-list">
+                    {selectedAsset.tags && selectedAsset.tags.split(',').filter(Boolean).map((tag, i) => (
+                      <span key={i} className="tag-badge">{tag.trim()}</span>
+                    ))}
+                    {(!selectedAsset.tags || selectedAsset.tags.split(',').filter(Boolean).length === 0) && (
+                      <span className="details-info-value" style={{ opacity: 0.5 }}>Chưa có tag</span>
+                    )}
+                  </div>
+                  <button className="btn-small" onClick={async () => {
+                    const tagName = prompt('Nhập tên tag:');
+                    if (!tagName) return;
+                    try {
+                      const tag = await createTag(tagName);
+                      await setAssetTags(selectedAsset.id, [tag.id]);
+                      refreshItems();
+                    } catch (e) {
+                      console.error('Tag error:', e);
+                    }
+                  }}>+ Tag</button>
+                </div>
               </div>
             </div>
 
@@ -413,6 +581,15 @@ function AppLayout() {
           </aside>
         )}
       </div>
+
+      {/* Share Dialog */}
+      {showShareDialog && selectedCollection && (
+        <ShareDialog
+          collectionId={selectedCollection.id}
+          collectionName={selectedCollection.name}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </div>
   );
 }

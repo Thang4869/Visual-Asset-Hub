@@ -11,6 +11,8 @@ public class CollectionService : ICollectionService
     private readonly AppDbContext _context;
     private readonly ILogger<CollectionService> _logger;
     private readonly IDistributedCache _cache;
+    private readonly INotificationService _notifier;
+    private readonly IPermissionService _permissionService;
 
     private static readonly DistributedCacheEntryOptions CacheOptions = new()
     {
@@ -18,11 +20,13 @@ public class CollectionService : ICollectionService
         SlidingExpiration = TimeSpan.FromMinutes(2)
     };
 
-    public CollectionService(AppDbContext context, ILogger<CollectionService> logger, IDistributedCache cache)
+    public CollectionService(AppDbContext context, ILogger<CollectionService> logger, IDistributedCache cache, INotificationService notifier, IPermissionService permissionService)
     {
         _context = context;
         _logger = logger;
         _cache = cache;
+        _notifier = notifier;
+        _permissionService = permissionService;
     }
 
     private string CacheKey(string userId) => $"collections:all:{userId}";
@@ -57,11 +61,20 @@ public class CollectionService : ICollectionService
             _logger.LogWarning(ex, "Cache read failed, falling back to DB");
         }
 
-        // Return system collections (UserId == null) + user's own collections
+        // Return system collections (UserId == null) + user's own collections + shared collections
         var collections = await _context.Collections
             .Where(c => c.UserId == userId || c.UserId == null)
             .OrderBy(c => c.Order)
             .ToListAsync();
+
+        // Add shared collections
+        var sharedCollections = await _permissionService.GetSharedCollectionsAsync(userId);
+        var existingIds = collections.Select(c => c.Id).ToHashSet();
+        foreach (var sc in sharedCollections)
+        {
+            if (!existingIds.Contains(sc.Id))
+                collections.Add(sc);
+        }
 
         // Write to cache (fire-and-forget style with try-catch)
         try
@@ -79,19 +92,35 @@ public class CollectionService : ICollectionService
 
     public async Task<Collection?> GetByIdAsync(int id, string userId)
     {
-        return await _context.Collections
-            .FirstOrDefaultAsync(c => c.Id == id && (c.UserId == userId || c.UserId == null));
+        var collection = await _context.Collections
+            .FirstOrDefaultAsync(c => c.Id == id);
+        if (collection == null) return null;
+
+        // Allow access if: system collection, own collection, or has permission
+        if (collection.UserId == null || collection.UserId == userId)
+            return collection;
+
+        var hasAccess = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Viewer);
+        return hasAccess ? collection : null;
     }
 
     public async Task<CollectionWithItemsResult> GetWithItemsAsync(int id, int? folderId, string userId)
     {
-        var collection = await _context.Collections
-            .FirstOrDefaultAsync(c => c.Id == id && (c.UserId == userId || c.UserId == null))
+        var collection = await _context.Collections.FindAsync(id)
             ?? throw new KeyNotFoundException($"Collection {id} not found.");
 
-        // Only show user's own assets
+        // Check access: system, own, or shared
+        bool isOwnerOrSystem = collection.UserId == null || collection.UserId == userId;
+        if (!isOwnerOrSystem)
+        {
+            var hasAccess = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Viewer);
+            if (!hasAccess) throw new KeyNotFoundException($"Collection {id} not found.");
+        }
+
+        // For shared collections, show the owner's assets
+        var assetOwner = collection.UserId ?? userId;
         var items = await _context.Assets
-            .Where(a => a.CollectionId == id && a.ParentFolderId == folderId && a.UserId == userId)
+            .Where(a => a.CollectionId == id && a.ParentFolderId == folderId && a.UserId == assetOwner)
             .OrderBy(a => a.IsFolder ? 0 : 1)
             .ThenBy(a => a.SortOrder)
             .ThenBy(a => a.FileName)
@@ -125,6 +154,7 @@ public class CollectionService : ICollectionService
 
         _logger.LogInformation("Collection created: {Name} (Id={Id}) by user {UserId}", collection.Name, collection.Id, userId);
         await InvalidateCacheAsync(userId);
+        await _notifier.NotifyAsync(userId, "CollectionCreated", new { collection.Id, collection.Name });
         return collection;
     }
 
@@ -133,10 +163,16 @@ public class CollectionService : ICollectionService
         if (id != collection.Id)
             throw new ArgumentException("ID mismatch.");
 
-        // Only allow updating own collections (not system ones)
-        var existing = await _context.Collections
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId)
+        // Allow updating own collections or shared with editor/owner role
+        var existing = await _context.Collections.FindAsync(id)
             ?? throw new KeyNotFoundException($"Collection {id} not found.");
+
+        bool isOwner = existing.UserId == userId;
+        if (!isOwner)
+        {
+            var canWrite = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Editor);
+            if (!canWrite) throw new KeyNotFoundException($"Collection {id} not found.");
+        }
 
         existing.Name = collection.Name?.Trim() ?? existing.Name;
         existing.Description = collection.Description ?? existing.Description;
@@ -147,6 +183,7 @@ public class CollectionService : ICollectionService
 
         await _context.SaveChangesAsync();
         await InvalidateCacheAsync(userId);
+        await _notifier.NotifyAsync(userId, "CollectionUpdated", new { existing.Id, existing.Name });
         return existing;
     }
 
@@ -172,6 +209,7 @@ public class CollectionService : ICollectionService
 
         _logger.LogInformation("Collection deleted: {Name} (Id={Id}) by user {UserId}", collection.Name, id, userId);
         await InvalidateCacheAsync(userId);
+        await _notifier.NotifyAsync(userId, "CollectionDeleted", new { id });
         return true;
     }
 }

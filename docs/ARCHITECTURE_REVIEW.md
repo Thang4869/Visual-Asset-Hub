@@ -517,63 +517,56 @@ services:
 
 ---
 
-## Giai đoạn 4 — Nâng cấp sản phẩm
+## Giai đoạn 4 — Nâng cấp sản phẩm ✅ HOÀN THÀNH (6/6)
 
 > **Mục tiêu:** Feature-rich, SaaS-ready  
 > **Thời gian ước lượng:** 6-10 tuần  
 > **ROI:** Trung bình — business value cao nhưng đòi hỏi nền tảng GĐ1-3 vững
 
-### 4.1 Smart Collections — Auto-categorize
+### 4.1 Smart Collections — Auto-categorize ✅
 
-- Tự gom nhóm asset theo: metadata, upload date, content type, AI tags
-- **Công nghệ:** Background job scan + rule engine hoặc ML classification
-- **Độ khó:** High
+- ✅ `SmartCollectionService` + `ISmartCollectionService` — 8 built-in smart collections (recent 7d/30d, all images/links/colors, untagged, with thumbnails) + per-tag smart collections
+- ✅ `SmartCollectionsController` — GET definitions + GET items with dynamic query
+- ✅ Frontend: `smartCollectionsApi.js` + sidebar UI + smart collection view
+- **Công nghệ:** Dynamic LINQ queries based on rule definitions
 
-### 4.2 Tag System chuẩn hóa — Many-to-Many
+### 4.2 Tag System chuẩn hóa — Many-to-Many ✅
 
-- Thay `string Tags` (comma-separated) bằng bảng `Tags` + junction table `AssetTags`
-- PostgreSQL: dùng `string[]` + GIN index thay vì join table (đơn giản hơn)
-- **Giải pháp khuyến nghị cho PostgreSQL:**
+- ✅ `Tag` entity + `AssetTag` junction table with navigation properties
+- ✅ EF Core config: unique index on (NormalizedName, UserId), cascade delete
+- ✅ `TagService` — full CRUD + asset‐tag management + migration from comma-separated
+- ✅ `TagsController` — 9 endpoints (CRUD, asset tags, migration)
+- ✅ Frontend: `tagsApi.js` + `useTags` hook + tag display in details panel
 
-```csharp
-// Với PostgreSQL, dùng array type
-public string[] Tags { get; set; } = Array.Empty<string>();
+### 4.3 Bulk Operations ✅
 
-// Index
-modelBuilder.Entity<Asset>()
-    .HasIndex(a => a.Tags)
-    .HasMethod("gin");
-```
+- ✅ Backend: `POST /api/assets/bulk-delete`, `POST /api/assets/bulk-move`, `POST /api/assets/bulk-tag`
+- ✅ Frontend: Multi-select with Shift+click range select, Ctrl+click toggle
+- ✅ Bulk actions bar with select all, clear, delete, move buttons
+- ✅ Real-time sync notifications for bulk operations
 
-- **Độ khó:** Medium
+### 4.4 Undo/Redo ✅
 
-### 4.3 Bulk Operations
+- ✅ `useUndoRedo()` hook — command pattern with execute/undo/redo, maxHistory=50
+- ✅ Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Shift+Z (redo)
+- ✅ Stack-based action history
 
-- Multi-select → move, delete, tag, download ZIP
-- **Frontend:** Shift+click range select, Ctrl+click toggle
-- **Backend:** Batch endpoints: `POST /api/assets/bulk-delete`, `POST /api/assets/bulk-move`
-- **Độ khó:** Medium
+### 4.5 Real-time Sync — SignalR ✅
 
-### 4.4 Undo/Redo
+- ✅ `AssetHub` SignalR hub at `/hubs/assets` with JWT authentication
+- ✅ `NotificationService` — sends to user group `user:{userId}`
+- ✅ JWT query string token support for SignalR WebSocket connections
+- ✅ Frontend: `useSignalR` hook with auto-reconnect, subscribes to 10 event types
+- ✅ Notifications after all CRUD operations (assets, collections, tags, bulk)
 
-- Command pattern: mỗi action = command object với `execute()` + `undo()`
-- Stack-based undo (Ctrl+Z) / redo (Ctrl+Shift+Z)
-- **Frontend state:** `useUndoRedo()` hook với action stack
-- **Độ khó:** High
+### 4.6 Permission Model — Role-based Access Control (RBAC) ✅
 
-### 4.5 Real-time Sync — SignalR
-
-- Khi user A upload → user B thấy ngay không cần refresh
-- `Microsoft.AspNetCore.SignalR` hub cho collection changes
-- Frontend: subscribe via `@microsoft/signalr`
-- **Độ khó:** Medium
-
-### 4.6 Permission Model — Role-based Access Control (RBAC)
-
-- Roles: Owner, Editor, Viewer per Collection
-- Bảng `CollectionPermissions`: `UserId`, `CollectionId`, `Role`
-- **Mở rộng:** Organization entity cho team sharing
-- **Độ khó:** High
+- ✅ `CollectionPermission` entity — (UserId, CollectionId, Role, GrantedBy, GrantedAt)
+- ✅ `CollectionRoles` — Owner/Editor/Viewer with CanWrite/CanManage helpers
+- ✅ `PermissionService` — grant, update, revoke, check access, list, shared collections
+- ✅ `PermissionsController` — 6 endpoints (list, grant, update, revoke, my-role, shared)
+- ✅ `CollectionService` updated — shared collections in GetAll, permission checks in GetById/GetWithItems/Update
+- ✅ Frontend: `permissionsApi.js` + `ShareDialog` component with grant/update/revoke UI
 
 ---
 
@@ -702,8 +695,8 @@ src/
 | **Frontend** | OK (small data) | 🟡 Re-render lag, state bugs | 🔴 Browser crash (10K DOM nodes) |
 | **Deploy** | Manual | 🟡 Error-prone, slow | 🔴 Impossible without CI/CD |
 
-**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **6/6** (100%) — bao gồm Service Layer, Server-side Search, Database Indexing, Storage Abstraction, Frontend State Refactor, React Router. Giai đoạn 3 đã hoàn thành **7/7** (100%) — bao gồm PostgreSQL dual-provider, Docker + docker-compose, Redis Cache, Serilog, Health Check, Rate Limiting, Thumbnail Generation. Giai đoạn 4 là product differentiation.
+**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **6/6** (100%) — bao gồm Service Layer, Server-side Search, Database Indexing, Storage Abstraction, Frontend State Refactor, React Router. Giai đoạn 3 đã hoàn thành **7/7** (100%) — bao gồm PostgreSQL dual-provider, Docker + docker-compose, Redis Cache, Serilog, Health Check, Rate Limiting, Thumbnail Generation. Giai đoạn 4 đã hoàn thành **6/6** (100%) — bao gồm Smart Collections, Tag System (M2M), Bulk Operations, Undo/Redo, Real-time Sync (SignalR), Permission Model (RBAC).
 
 ---
 
-> *Tài liệu này được cập nhật lần cuối: **27/02/2026**. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*
+> *Tài liệu này được cập nhật lần cuối: **28/02/2026**. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*

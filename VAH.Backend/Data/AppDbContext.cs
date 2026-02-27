@@ -16,6 +16,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Asset> Assets { get; set; }
     public DbSet<Collection> Collections { get; set; }
+    public DbSet<Tag> Tags { get; set; }
+    public DbSet<AssetTag> AssetTags { get; set; }
+    public DbSet<CollectionPermission> CollectionPermissions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,6 +94,71 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(c => c.Color).HasMaxLength(20);
             entity.Property(c => c.Type).HasMaxLength(50);
             entity.Property(c => c.LayoutType).HasMaxLength(20);
+        });
+
+        // ── Tag table configuration ──
+        modelBuilder.Entity<Tag>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+
+            entity.HasOne<ApplicationUser>()
+                  .WithMany()
+                  .HasForeignKey(t => t.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(t => t.NormalizedName);
+            entity.HasIndex(t => t.UserId);
+            entity.HasIndex(t => new { t.NormalizedName, t.UserId })
+                  .HasDatabaseName("IX_Tags_NormalizedName_UserId")
+                  .IsUnique();
+
+            entity.Property(t => t.Name).HasMaxLength(100);
+            entity.Property(t => t.NormalizedName).HasMaxLength(100);
+            entity.Property(t => t.Color).HasMaxLength(20);
+            entity.Property(t => t.CreatedAt).HasDefaultValueSql(_isPostgreSql ? "now()" : "datetime('now')");
+        });
+
+        // ── AssetTag junction table ──
+        modelBuilder.Entity<AssetTag>(entity =>
+        {
+            entity.HasKey(at => new { at.AssetId, at.TagId });
+
+            entity.HasOne(at => at.Asset)
+                  .WithMany(a => a.AssetTags)
+                  .HasForeignKey(at => at.AssetId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(at => at.Tag)
+                  .WithMany(t => t.AssetTags)
+                  .HasForeignKey(at => at.TagId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(at => at.TagId);
+        });
+
+        // ── CollectionPermission table configuration ──
+        modelBuilder.Entity<CollectionPermission>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+
+            entity.HasOne<ApplicationUser>()
+                  .WithMany()
+                  .HasForeignKey(p => p.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Collection>()
+                  .WithMany()
+                  .HasForeignKey(p => p.CollectionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(p => new { p.UserId, p.CollectionId })
+                  .HasDatabaseName("IX_CollectionPermissions_User_Collection")
+                  .IsUnique();
+
+            entity.HasIndex(p => p.CollectionId);
+
+            entity.Property(p => p.Role).HasMaxLength(20);
+            entity.Property(p => p.GrantedAt).HasDefaultValueSql(_isPostgreSql ? "now()" : "datetime('now')");
         });
 
         // ── Seed default collections ──

@@ -47,3 +47,17 @@ export const deleteAsset = (id) =>
 /** Reorder assets */
 export const reorderAssets = (assetIds) =>
   apiClient.post(`${ENDPOINT}/reorder`, { assetIds });
+
+// ──── Bulk Operations ────
+
+/** Bulk delete assets */
+export const bulkDelete = (assetIds) =>
+  apiClient.post(`${ENDPOINT}/bulk-delete`, { assetIds }).then(r => r.data);
+
+/** Bulk move assets */
+export const bulkMove = (assetIds, targetCollectionId = null, targetFolderId = null, clearParentFolder = false) =>
+  apiClient.post(`${ENDPOINT}/bulk-move`, { assetIds, targetCollectionId, targetFolderId, clearParentFolder }).then(r => r.data);
+
+/** Bulk tag assets */
+export const bulkTag = (assetIds, tagIds, remove = false) =>
+  apiClient.post(`${ENDPOINT}/bulk-tag`, { assetIds, tagIds, remove }).then(r => r.data);

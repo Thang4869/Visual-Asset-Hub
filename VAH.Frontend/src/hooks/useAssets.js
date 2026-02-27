@@ -2,10 +2,11 @@ import { useState, useCallback } from 'react';
 import * as assetsApi from '../api/assetsApi';
 
 /**
- * Hook encapsulating asset-level operations.
+ * Hook encapsulating asset-level operations including multi-select & bulk ops.
  */
 export default function useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems }) {
   const [selectedAssetId, setSelectedAssetId] = useState(null);
+  const [selectedAssetIds, setSelectedAssetIds] = useState(new Set());
 
   // ------- Upload -------
   const handleUpload = useCallback(
@@ -169,10 +170,96 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     ? collectionItems.items.find((a) => a.id === selectedAssetId)
     : null;
 
+  // ------- Multi-select -------
+  const toggleSelectAsset = useCallback((assetId, event) => {
+    if (event?.ctrlKey || event?.metaKey) {
+      // Ctrl+click: toggle individual
+      setSelectedAssetIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(assetId)) next.delete(assetId);
+        else next.add(assetId);
+        return next;
+      });
+    } else if (event?.shiftKey && selectedAssetId) {
+      // Shift+click: range select
+      const items = collectionItems.items;
+      const startIdx = items.findIndex((a) => a.id === selectedAssetId);
+      const endIdx = items.findIndex((a) => a.id === assetId);
+      if (startIdx !== -1 && endIdx !== -1) {
+        const [lo, hi] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+        const range = items.slice(lo, hi + 1).map((a) => a.id);
+        setSelectedAssetIds((prev) => {
+          const next = new Set(prev);
+          range.forEach((id) => next.add(id));
+          return next;
+        });
+      }
+    } else {
+      // Normal click: single select
+      setSelectedAssetId(assetId);
+      setSelectedAssetIds(new Set());
+    }
+  }, [selectedAssetId, collectionItems]);
+
+  const selectAllAssets = useCallback(() => {
+    const ids = collectionItems.items.filter(a => !a.isFolder).map(a => a.id);
+    setSelectedAssetIds(new Set(ids));
+  }, [collectionItems]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedAssetIds(new Set());
+  }, []);
+
+  // ------- Bulk Operations -------
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedAssetIds);
+    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
+    if (!confirm(`Xóa ${ids.length} item?`)) return;
+    try {
+      await assetsApi.bulkDelete(ids);
+      setSelectedAssetIds(new Set());
+      setSelectedAssetId(null);
+      refreshItems();
+    } catch (err) {
+      console.error('Bulk delete error:', err);
+      alert('Lỗi khi xóa hàng loạt');
+    }
+  }, [selectedAssetIds, refreshItems]);
+
+  const handleBulkMove = useCallback(async (targetCollectionId, targetFolderId, clearParentFolder = false) => {
+    const ids = Array.from(selectedAssetIds);
+    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
+    try {
+      await assetsApi.bulkMove(ids, targetCollectionId, targetFolderId, clearParentFolder);
+      setSelectedAssetIds(new Set());
+      refreshItems();
+    } catch (err) {
+      console.error('Bulk move error:', err);
+      alert('Lỗi khi di chuyển hàng loạt');
+    }
+  }, [selectedAssetIds, refreshItems]);
+
+  const handleBulkTag = useCallback(async (tagIds, remove = false) => {
+    const ids = Array.from(selectedAssetIds);
+    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
+    try {
+      await assetsApi.bulkTag(ids, tagIds, remove);
+      refreshItems();
+    } catch (err) {
+      console.error('Bulk tag error:', err);
+      alert('Lỗi khi gán tag hàng loạt');
+    }
+  }, [selectedAssetIds, refreshItems]);
+
   return {
     selectedAssetId,
     setSelectedAssetId,
     selectedAsset,
+    selectedAssetIds,
+    setSelectedAssetIds,
+    toggleSelectAsset,
+    selectAllAssets,
+    clearSelection,
     handleUpload,
     handleCreateFolder,
     handleCreateLink,
@@ -181,5 +268,8 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     handleMoveAsset,
     handleMoveSelected,
     handleReorderAssets,
+    handleBulkDelete,
+    handleBulkMove,
+    handleBulkTag,
   };
 }

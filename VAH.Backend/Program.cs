@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using VAH.Backend.Data;
+using VAH.Backend.Hubs;
 using VAH.Backend.Middleware;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
@@ -46,7 +47,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -139,6 +141,21 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
         ClockSkew = TimeSpan.Zero
     };
+
+    // SignalR sends JWT via query string instead of header
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // --- Redis / Distributed Cache ---
@@ -165,6 +182,13 @@ builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IThumbnailService, ThumbnailService>();
+builder.Services.AddScoped<ITagService, TagService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ISmartCollectionService, SmartCollectionService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+// --- SignalR ---
+builder.Services.AddSignalR();
 
 // ============================================================
 var app = builder.Build();
@@ -202,6 +226,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<AssetHub>("/hubs/assets");
 
 // --- Initialize database (auto-migrate) ---
 using (var scope = app.Services.CreateScope())
