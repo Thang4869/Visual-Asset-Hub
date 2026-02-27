@@ -220,3 +220,31 @@ System.ArgumentException: Invalid URL format. Must be http or https.
 2026-02-27 16:49:00.665 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
 2026-02-27 16:49:00.671 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 55653.172ms
 2026-02-27 16:49:00.672 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 55637.425ms
+2026-02-27 23:56:52.469 +07:00 [INF] () Starting VAH Backend...
+2026-02-27 23:56:53.939 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-02-27 23:56:56.094 +07:00 [FTL] () VAH Backend terminated unexpectedly
+System.InvalidOperationException: An error was generated for warning 'Microsoft.EntityFrameworkCore.Migrations.PendingModelChangesWarning': The model for context 'AppDbContext' has pending changes. Add a new migration before updating the database. See https://aka.ms/efcore-docs-pending-changes. This exception can be suppressed or logged by passing event ID 'RelationalEventId.PendingModelChangesWarning' to the 'ConfigureWarnings' method in 'DbContext.OnConfiguring' or 'AddDbContext'.
+   at Microsoft.EntityFrameworkCore.Diagnostics.EventDefinition`1.Log[TLoggerCategory](IDiagnosticsLogger`1 logger, TParam arg)
+   at Microsoft.EntityFrameworkCore.Diagnostics.RelationalLoggerExtensions.PendingModelChangesWarning(IDiagnosticsLogger`1 diagnostics, Type contextType)
+   at Microsoft.EntityFrameworkCore.Migrations.Internal.Migrator.ValidateMigrations(Boolean useTransaction, String targetMigration)
+   at Microsoft.EntityFrameworkCore.Migrations.Internal.Migrator.Migrate(String targetMigration)
+   at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.Migrate(DatabaseFacade databaseFacade)
+   at Program.<Main>$(String[] args) in B:\1A\VAH.Backend\Program.cs:line 97
+2026-02-27 23:58:02.057 +07:00 [INF] () Starting VAH Backend...
+2026-02-27 23:58:02.258 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-02-27 23:58:02.330 +07:00 [FTL] () VAH Backend terminated unexpectedly
+Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.ThrowHostAborted()
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.OnNext(KeyValuePair`2 value)
+   at System.Diagnostics.DiagnosticListener.Write(String name, Object value)
+   at System.Diagnostics.DiagnosticSource.Write[T](String name, T value)
+   at Microsoft.Extensions.Hosting.HostBuilder.ResolveHost(IServiceProvider serviceProvider, DiagnosticListener diagnosticListener)
+   at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
+   at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
+   at Program.<Main>$(String[] args) in B:\1A\VAH.Backend\Program.cs:line 56
+2026-02-27 23:58:17.686 +07:00 [INF] () Starting VAH Backend...
+2026-02-27 23:58:17.915 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-02-27 23:58:19.316 +07:00 [INF] (Microsoft.Hosting.Lifetime) Now listening on: http://localhost:5027
+2026-02-27 23:58:19.322 +07:00 [INF] (Microsoft.Hosting.Lifetime) Application started. Press Ctrl+C to shut down.
+2026-02-27 23:58:19.324 +07:00 [INF] (Microsoft.Hosting.Lifetime) Hosting environment: Development
+2026-02-27 23:58:19.326 +07:00 [INF] (Microsoft.Hosting.Lifetime) Content root path: B:\1A\VAH.Backend

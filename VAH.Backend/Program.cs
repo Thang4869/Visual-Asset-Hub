@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
@@ -45,7 +47,12 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 // --- MVC / Swagger ---
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower));
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -95,6 +102,30 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+
+    // --- Fix existing assets with wrong ContentType discriminator ---
+    // Assets created before the factory fix had ContentType='file' for all subtypes.
+    // Fix based on collection type and asset characteristics.
+    db.Database.ExecuteSqlRaw(@"
+        UPDATE Assets SET ContentType = 'image'
+        WHERE ContentType = 'file' AND FilePath LIKE '/uploads/%'
+          AND IsFolder = 0 AND CollectionId IN (SELECT Id FROM Collections WHERE Type = 'image');
+
+        UPDATE Assets SET ContentType = 'link'
+        WHERE ContentType = 'file' AND FilePath LIKE 'http%'
+          AND IsFolder = 0;
+
+        UPDATE Assets SET ContentType = 'color'
+        WHERE ContentType = 'file' AND FilePath LIKE '#%'
+          AND IsFolder = 0 AND CollectionId IN (SELECT Id FROM Collections WHERE Type = 'color');
+
+        UPDATE Assets SET ContentType = 'color-group'
+        WHERE ContentType = 'file' AND FilePath = ''
+          AND IsFolder = 0 AND CollectionId IN (SELECT Id FROM Collections WHERE Type = 'color');
+
+        UPDATE Assets SET ContentType = 'folder'
+        WHERE ContentType = 'file' AND IsFolder = 1;
+    ");
 }
 
 app.Run();

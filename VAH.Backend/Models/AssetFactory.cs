@@ -3,6 +3,7 @@ namespace VAH.Backend.Models;
 /// <summary>
 /// Factory for creating the correct Asset subtype.
 /// Ensures each content type is instantiated as its proper TPH class.
+/// ContentType is set explicitly so the in-memory object matches the DB discriminator.
 /// </summary>
 public static class AssetFactory
 {
@@ -11,6 +12,7 @@ public static class AssetFactory
         FileName = fileName,
         FilePath = filePath,
         Tags = string.Empty,
+        ContentType = AssetContentType.Image,
         CollectionId = collectionId,
         ParentFolderId = parentFolderId,
         CreatedAt = DateTime.UtcNow,
@@ -22,6 +24,7 @@ public static class AssetFactory
         FileName = fileName,
         FilePath = filePath,
         Tags = string.Empty,
+        ContentType = AssetContentType.File,
         CollectionId = collectionId,
         ParentFolderId = parentFolderId,
         CreatedAt = DateTime.UtcNow,
@@ -33,6 +36,7 @@ public static class AssetFactory
         FileName = name,
         FilePath = string.Empty,
         Tags = string.Empty,
+        ContentType = AssetContentType.Folder,
         IsFolder = true,
         CollectionId = collectionId,
         ParentFolderId = parentFolderId,
@@ -46,6 +50,7 @@ public static class AssetFactory
         FileName = colorCode,
         FilePath = colorCode,
         Tags = colorName ?? colorCode,
+        ContentType = AssetContentType.Color,
         CollectionId = collectionId,
         GroupId = groupId,
         ParentFolderId = parentFolderId,
@@ -59,6 +64,7 @@ public static class AssetFactory
         FileName = groupName,
         FilePath = string.Empty,
         Tags = string.Empty,
+        ContentType = AssetContentType.ColorGroup,
         CollectionId = collectionId,
         ParentFolderId = parentFolderId,
         SortOrder = sortOrder,
@@ -71,6 +77,7 @@ public static class AssetFactory
         FileName = name,
         FilePath = url,
         Tags = string.Empty,
+        ContentType = AssetContentType.Link,
         CollectionId = collectionId,
         ParentFolderId = parentFolderId,
         SortOrder = 0,

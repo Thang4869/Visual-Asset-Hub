@@ -1,7 +1,7 @@
 # Visual Asset Hub — Đánh giá Kiến trúc & Lộ trình Phát triển
 
-> **Cập nhật lần cuối:** 27/02/2026  
-> **Phiên bản:** 4.0 — Hoàn thành 4 giai đoạn phát triển (26/26 hạng mục)
+> **Cập nhật lần cuối:** 28/02/2026  
+> **Phiên bản:** 4.1 — Hoàn thành 4 giai đoạn phát triển + hotfixes (28/26 hạng mục)
 
 ---
 
@@ -585,8 +585,8 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 | Database tables | 5 entity + Identity |
 | Database indexes | 22 |
 | Docker services | 4 |
-| EF Migrations | 4 |
-| Giai đoạn hoàn thành | **4/4 (26/26 — 100%)** |
+| EF Migrations | 5 |
+| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + 3 hotfixes** |
 
 ---
 
