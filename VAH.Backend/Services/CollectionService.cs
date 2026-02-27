@@ -167,19 +167,14 @@ public class CollectionService : ICollectionService
         var existing = await _context.Collections.FindAsync(id)
             ?? throw new KeyNotFoundException($"Collection {id} not found.");
 
-        bool isOwner = existing.UserId == userId;
+        bool isOwner = existing.IsOwnedBy(userId);
         if (!isOwner)
         {
             var canWrite = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Editor);
             if (!canWrite) throw new KeyNotFoundException($"Collection {id} not found.");
         }
 
-        existing.Name = collection.Name?.Trim() ?? existing.Name;
-        existing.Description = collection.Description ?? existing.Description;
-        existing.Color = collection.Color ?? existing.Color;
-        existing.Type = collection.Type;
-        existing.Order = collection.Order;
-        existing.LayoutType = collection.LayoutType;
+        existing.ApplyUpdate(collection);
 
         await _context.SaveChangesAsync();
         await InvalidateCacheAsync(userId);

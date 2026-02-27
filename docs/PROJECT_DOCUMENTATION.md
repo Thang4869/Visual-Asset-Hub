@@ -65,6 +65,14 @@
 | `IsFolder` | bool | `false` | Phân biệt thư mục và file |
 | `UserId` | string? | `null` | FK đến `AspNetUsers`. `null` = system asset |
 
+**TPH subtypes:** `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset` (trong `AssetTypes.cs`)
+
+**Navigation properties:** `Collection`, `ParentFolder`, `AssetTags`
+
+**Domain methods:** `UpdatePosition()`, `ApplyUpdate(dto)`, `SetThumbnails()`, `MoveToFolder()`, `MoveToCollection()`, `IsOwnedBy(userId)`
+
+**Virtual behavior:** `HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup`, `IsSystemAsset`
+
 #### `Models/Collection.cs` — Bộ sưu tập
 
 | Thuộc tính | Kiểu | Mặc định | Mô tả |
@@ -79,6 +87,12 @@
 | `Order` | int | `0` | Thứ tự sắp xếp |
 | `LayoutType` | `LayoutType` enum | `Grid` | `Grid`, `List`, `Canvas`. DB lưu string, EF Core value conversion. |
 | `UserId` | string? | `null` | FK đến `AspNetUsers`. `null` = system collection |
+
+**Navigation properties:** `Assets`, `Parent`, `Children`
+
+**Domain methods:** `IsOwnedBy(userId)`, `IsAccessibleBy(userId)`, `ApplyUpdate(source)`
+
+**Computed:** `IsSystemCollection`
 
 #### `Models/DTOs.cs` — 6 DTO
 
@@ -485,31 +499,41 @@ GET    /                      → List<Collection>
 │   ├── Program.cs                   # Entry point, cấu hình services
 │   ├── VAH.Backend.csproj           # Cấu hình dự án .NET
 │   ├── appsettings.json             # Cấu hình (connection string, logging)
-│   ├── Controllers/
-│   │   ├── BaseApiController.cs     # Abstract base controller (GetUserId())
-│   │   ├── AssetsController.cs      # REST API cho assets (12 endpoints)
-│   │   ├── CollectionsController.cs # REST API cho collections (5 endpoints)
-│   │   ├── SearchController.cs      # REST API tìm kiếm (thin delegate → SearchService)
-│   │   └── HealthController.cs      # Health check (1 endpoint)
+│   ├── Controllers/                 # 9 controllers, ~485 dòng tổng
+│   │   ├── BaseApiController.cs     # Abstract base controller (GetUserId()) — 18 dòng
+│   │   ├── AssetsController.cs      # REST API cho assets (12 endpoints) — 124 dòng
+│   │   ├── AuthController.cs        # Login/Register — 33 dòng
+│   │   ├── CollectionsController.cs # REST API cho collections (5 endpoints) — 51 dòng
+│   │   ├── HealthController.cs      # Health check (1 endpoint) — 50 dòng
+│   │   ├── PermissionsController.cs # Sharing permissions — 57 dòng
+│   │   ├── SearchController.cs      # Thin delegate → SearchService — 34 dòng
+│   │   ├── SmartCollectionsController.cs # Smart collections — 33 dòng
+│   │   └── TagsController.cs        # Tag CRUD — 85 dòng
 │   ├── Extensions/
-│   │   └── ServiceCollectionExtensions.cs  # DI registration extension methods
-│   ├── Services/
-│   │   ├── IAssetService.cs         # Interface
-│   │   ├── AssetService.cs          # Implementation (~480 dòng, dùng AssetFactory)
-│   │   ├── ICollectionService.cs    # Interface
-│   │   ├── CollectionService.cs     # Implementation (111 dòng)
-│   │   ├── ISearchService.cs        # Interface
-│   │   ├── SearchService.cs         # Search implementation (extracted from controller)
-│   │   ├── IStorageService.cs       # Interface
-│   │   └── LocalStorageService.cs   # Local file storage
-│   ├── Models/
-│   │   ├── Asset.cs                 # Base asset model (TPH base class)
-│   │   ├── AssetTypes.cs            # TPH subtypes: ImageAsset, LinkAsset, ColorAsset, ColorGroupAsset, FolderAsset
-│   │   ├── AssetFactory.cs          # Factory pattern cho tạo đúng subtype
-│   │   ├── Enums.cs                 # AssetContentType, CollectionType, LayoutType + EnumMappings
-│   │   ├── Collection.cs            # Model bộ sưu tập
-│   │   ├── DTOs.cs                  # Data Transfer Objects (incl. SearchResult, AssetPositionDto, etc.)
-│   │   └── Common.cs                # PagedResult, PaginationParams, FileUploadConfig
+│   │   └── ServiceCollectionExtensions.cs  # DI registration (6 methods) — 182 dòng
+│   ├── Services/                    # 22 files (11 interfaces + 11 implementations), ~1,674 dòng tổng
+│   │   ├── IAssetService.cs / AssetService.cs        # Asset CRUD — 369 dòng (dùng AssetFactory + domain methods)
+│   │   ├── IAuthService.cs / AuthService.cs          # Authentication — 90 dòng
+│   │   ├── ICollectionService.cs / CollectionService.cs  # Collection CRUD — 177 dòng
+│   │   ├── IPermissionService.cs / PermissionService.cs  # Permission management — 149 dòng
+│   │   ├── ISearchService.cs / SearchService.cs      # Search (extracted from controller) — 71 dòng
+│   │   ├── ISmartCollectionService.cs / SmartCollectionService.cs  # Smart queries — 178 dòng
+│   │   ├── ITagService.cs / TagService.cs            # Tag management — 224 dòng
+│   │   ├── IThumbnailService.cs / ThumbnailService.cs  # Thumbnail gen — 92 dòng
+│   │   ├── IStorageService.cs / LocalStorageService.cs  # File storage — 61 dòng
+│   │   └── INotificationService.cs / NotificationService.cs  # SignalR — 27 dòng
+│   ├── Models/                      # 11 files, ~703 dòng tổng
+│   │   ├── Asset.cs                 # TPH base class — 94 dòng (enums, virtual behavior, domain methods, nav props)
+│   │   ├── AssetTypes.cs            # TPH subtypes: ImageAsset, LinkAsset, ColorAsset, ColorGroupAsset, FolderAsset — 32 dòng
+│   │   ├── AssetFactory.cs          # Factory pattern — 6 static Create methods — 74 dòng
+│   │   ├── Enums.cs                 # AssetContentType, CollectionType, LayoutType + EnumMappings — 99 dòng
+│   │   ├── Collection.cs            # Collection model (domain methods, nav props) — 54 dòng
+│   │   ├── CollectionPermission.cs  # Computed (CanWrite, CanManage) + SetRole — 68 dòng
+│   │   ├── Tag.cs                   # Domain methods (SetName, UpdateFrom, IsOwnedBy) — 54 dòng
+│   │   ├── ApplicationUser.cs       # Identity user — 10 dòng
+│   │   ├── DTOs.cs                  # Data Transfer Objects — 140 dòng
+│   │   ├── AuthDTOs.cs              # Auth request/response DTOs — 26 dòng
+│   │   └── Common.cs                # PagedResult, PaginationParams, FileUploadConfig — 52 dòng
 │   ├── Data/
 │   │   └── AppDbContext.cs          # EF Core DbContext + Fluent API config
 │   ├── Middleware/
@@ -635,29 +659,62 @@ Auto-fetch on mount.
 
 ---
 
-## 9. Cấu hình
+### 9.6 THỐNG KÊ DỰ ÁN
 
-### 9.1 appsettings.json
+> **Cập nhật:** Sau Phase 1 refactor (8 tasks hoàn thành)
 
-```json
-{
-  "DatabaseProvider": "SQLite",
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=vah_database.db",
-    "PostgreSQL": "Host=localhost;Port=5432;Database=vah;...",
-    "Redis": ""
-  },
-  "Jwt": {
-    "SecretKey": "...(32+ chars)...",
-    "Issuer": "VAH.Backend",
-    "Audience": "VAH.Frontend",
-    "ExpirationHours": 24
-  },
-  "Cors": {
-    "AllowedOrigins": ["http://localhost:5173", "http://localhost:5174"]
-  }
-}
-```
+#### Quy mô code — Backend
+
+| Thành phần | Files | Dòng code (chính xác) |
+|------------|-------|----------------------|
+| Controllers | 9 | 485 |
+| Services (interfaces + impl) | 22 (11+11) | 1,674 |
+| Models / DTOs | 11 | 703 |
+| Extensions | 1 | 182 |
+| Data (AppDbContext) | 1 | 203 |
+| Middleware | 1 | 71 |
+| Hubs (SignalR) | 1 | 52 |
+| Program.cs | 1 | 97 |
+| **Tổng Backend** | **~47 files** | **~3,467** |
+
+#### Quy mô code — Frontend (chưa refactor)
+
+| Thành phần | Files | Dòng code (ước tính) |
+|------------|-------|---------------------|
+| Frontend Components | 9 (.jsx) | ~644 |
+| Frontend Hooks | 2 | ~364 |
+| Frontend API | 4 | ~115 |
+| Frontend App | 1 | ~395 |
+| Frontend Styles | 10+ (.css) | ~800+ |
+| **Tổng Frontend** | **~26+ files** | **~2,318+** |
+
+| | | |
+|---|---|---|
+| **TỔNG DỰ ÁN** | **~73+ files** | **~5,785+** |
+
+#### API Endpoints
+
+| Controller | Endpoints | Methods |
+|------------|-----------|---------|
+| Assets | 12 | GET(2), POST(6), PUT(2), DELETE(1), PATCH(1) |
+| Collections | 5 | GET(2), POST(1), PUT(1), DELETE(1) |
+| Auth | 2 | POST(2) |
+| Tags | 5 | GET(2), POST(1), PUT(1), DELETE(1) |
+| Permissions | 3 | GET(1), POST(1), DELETE(1) |
+| SmartCollections | 1 | POST(1) |
+| Search | 1 | GET(1) |
+| Health | 1 | GET(1) |
+
+#### Database
+
+| Bảng | Mô tả | FK |
+|------|-------|-----|
+| Assets | TPH (ContentType discriminator) → 6 subtypes | → Collections, → ParentFolder (self) |
+| Collections | Enum Type/LayoutType, nav props | → Parent (self-ref) |
+| Tags | Normalized name, color | → User |
+| AssetTags | Many-to-many junction | → Assets, → Tags |
+| CollectionPermissions | Role-based sharing | → Collections, → User |
+| AspNetUsers | ASP.NET Identity | — |
 
 ### 9.2 Docker Compose Environment
 
@@ -676,17 +733,17 @@ frontend:
 
 ---
 
-## 10. File Upload Configuration
+### 9.8 KẾT LUẬN
 
-| Setting | Value |
-|---------|-------|
-| Max file size | 50 MB |
-| Max files per request | 20 |
-| Kestrel body limit | 100 MB |
-| Allowed extensions | .jpg .jpeg .png .gif .bmp .webp .tiff .svg .ico .pdf .doc .docx .xls .xlsx .ppt .pptx .txt .csv .json .xml .zip .rar .mp4 .mp3 .wav .mov .avi |
-| Allowed MIME prefixes | image/, video/, audio/, application/pdf, application/msword, application/vnd.openxmlformats, application/vnd.ms-, text/, application/json, application/xml, application/zip, application/x-rar |
-| Thumbnail formats | jpg, jpeg, png, gif, bmp, webp, tiff |
-| Thumbnail sizes | sm: 150px, md: 400px, lg: 800px |
-| Thumbnail format | WebP, quality 80 |
-| Storage path | wwwroot/uploads/ |
-| Thumbnail path | wwwroot/uploads/thumbs/ |
+Dự án Visual Asset Hub đã trải qua **Phase 1 OOP Refactoring** hoàn chỉnh (8 tasks). Backend hiện có:
+- **TPH Inheritance** (Asset → 5 subtypes) với virtual behavior properties
+- **Factory Pattern** (AssetFactory) cho type-safe creation
+- **Rich Domain Model** (domain methods trên 4 entities)
+- **Type-safe Enums** với EF Core value conversions
+- **Navigation Properties** cho quan hệ parent-child
+- **Base Controller** giảm duplication
+- **Extension Methods** tổ chức DI registration (Program.cs: 255→97 dòng)
+
+**Phase 2 (Service Layer refactoring)** sẽ tách `AssetService` thành các service nhỏ hơn, áp dụng Strategy pattern cho Smart Collections, và extract reusable helpers.
+
+Frontend chưa được refactor — sẽ là Phase 3.

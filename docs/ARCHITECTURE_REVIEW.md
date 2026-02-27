@@ -141,6 +141,99 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 **Quan hệ giữa bảng:**
 
+# PHẦN 2 — PHÂN TÍCH THIẾU SÓT & RỦI RO
+
+## 2.1 Bảo mật (Security)
+
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả nếu không cải thiện |
+| --- | --- | --- | --- |
+| **Authentication** | ✅ RESOLVED | JWT Bearer + ASP.NET Identity. `[Authorize]` trên tất cả endpoints (trừ Auth, Health) | Đã khắc phục |
+| **Authorization** | ✅ RESOLVED | User-scoped data access. Mọi query filter theo UserId | Đã khắc phục |
+| **User isolation** | ✅ RESOLVED | `UserId` FK trên Asset + Collection. System collections (null) shared, user data isolated | Đã khắc phục |
+| **Data ownership** | ✅ RESOLVED | Service layer enforce `UserId == currentUser` trên mọi CRUD operation | Đã khắc phục |
+| **Input validation** | 🟡 MEDIUM | Chỉ có `[Required]` trên FileName/FilePath. DTO không validate | SQL injection risk thấp (EF Core parameterize), nhưng logic bugs cao. Có thể tạo asset với collectionId không tồn tại |
+| **File upload protection** | 🟡 MEDIUM | Không giới hạn size, type, số lượng file | Server bị DoS bằng upload file lớn. Upload `.exe`, `.php` shell |
+| **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` |
+| **CORS policy** | 🟡 MEDIUM | `AllowAnyOrigin + AllowAnyMethod + AllowAnyHeader` | CSRF attack surface mở hoàn toàn. Bất kỳ domain nào đều gọi được API |
+
+## 2.2 Kiến trúc Backend
+
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
+| --- | --- | --- | --- |
+| **Service layer** | ✅ RESOLVED | Interface-based DI, 11 services tách biệt. SearchService extracted từ controller. Domain methods trên entities | Clean separation |
+| **Repository pattern** | 🟡 MEDIUM | Service layer gọi `_context` trực tiếp (không qua Repository) | Coupling với EF Core, nhưng acceptable cho project size này |
+| **Domain separation** | ✅ IMPROVED | Models có domain behavior, Enums tách riêng, DTOs gom vào Models/DTOs.cs | Rich Domain Model thay vì Anemic |
+| **Exception handling** | ✅ RESOLVED | Global ExceptionHandlingMiddleware (RFC 7807) | Structured error responses |
+| **Logging strategy** | ✅ RESOLVED | Serilog structured logging (Console + File sinks) | Full audit trail |
+| **Pagination** | ✅ RESOLVED | `PagedResult<T>` + `PaginationParams` | Scalable data access |
+| **Query optimization** | 🟡 MEDIUM | Indexes đã khai báo, nhưng N+1 risk vẫn có ở một số services | Cần review Include strategies |
+| **Migration strategy** | ✅ RESOLVED | `Database.Migrate()` + EF Core Migrations | Schema version controlled |
+
+## 2.3 Database & Dữ liệu
+
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
+| --- | --- | --- | --- |
+| **Schema versioning** | ✅ RESOLVED | EF Core Migrations (5 migrations). Auto-migrate on startup | Schema version controlled |
+| **Indexing** | ✅ RESOLVED | Composite indexes, FK indexes, UserId indexes đã khai báo trong AppDbContext | Optimized query performance |
+| **Full-text search** | ✅ RESOLVED | Server-side search via SearchService (LIKE queries, paginated) | Search qua API, có pagination |
+| **Tags system** | ✅ RESOLVED | Proper many-to-many (Tags table + AssetTags junction) với Tag entity, domain methods | Normalized, query-friendly |
+| **Concurrency** | 🟡 MEDIUM | Không optimistic concurrency (no `RowVersion/ConcurrencyToken`) | 2 user sửa cùng asset → last write wins → data corruption âm thầm |
+| **FK constraints** | ✅ RESOLVED | Full FK constraints + navigation properties trong OnModelCreating. DeleteBehavior.Restrict cho self-ref | Referential integrity enforced |
+| **SQLite limitations** | 🔴 HIGH (khi scale) | Single-writer lock, file-based, max recommend ~100 concurrent reads | Không hỗ trợ multi-server. Write contention khi >5 concurrent users |
+
+## 2.4 Storage & Mở rộng
+
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
+| --- | --- | --- | --- |
+| **File storage abstraction** | ✅ RESOLVED | `IStorageService` / `LocalStorageService`. Swap sang S3/Azure chỉ cần implement interface | Clean abstraction |
+| **CDN** | 🟡 MEDIUM | Không có | Mọi request file đi qua backend server → bandwidth bottleneck |
+| **Cloud storage readiness** | ✅ IMPROVED | IStorageService interface sẵn sàng cho cloud implementation | Chỉ cần thêm AzureBlobStorageService / S3StorageService |
+| **Horizontal scaling** | 🔴 HIGH | SQLite file + local wwwroot | Không thể chạy 2+ instance. Sticky session bắt buộc → single point of failure |
+| **Thumbnail/preview** | ✅ RESOLVED | ThumbnailService sinh thumbnail + medium preview cho images | Bandwidth optimized |
+| **Cleanup/orphan files** | ✅ RESOLVED | `asset.RequiresFileCleanup` virtual property, IStorageService.DeleteFile() gọi khi delete asset | No orphan files |
+
+## 2.5 Frontend Architecture
+
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
+| --- | --- | --- | --- |
+| **State management** | 🟡 MEDIUM | 11 `useState` trong `App.jsx`. Tất cả logic + state ở root component | Props drilling qua 3+ levels. Re-render toàn bộ tree khi bất kỳ state nào thay đổi. 650+ lines trong 1 file |
+| **API abstraction** | 🟡 MEDIUM | `axios.get/post/put/delete` gọi trực tiếp trong handler functions | Duplicate error handling. Hardcode `API_URL`. Không interceptor cho auth token |
+| **Data fetching** | 🟡 MEDIUM | Manual `useEffect` + `useState` pattern | Không cache, dedup, background refetch, stale-while-revalidate. Re-fetch toàn bộ khi navigate |
+| **Routing** | 🟡 MEDIUM | Không có router — single page state-driven | URL không reflect trạng thái UI. Không shareable link. Browser back/forward broken |
+| **Code splitting** | 🟢 LOW | Không cần thiết hiện tại (8 components nhỏ) | Sẽ thành vấn đề khi bundle >500KB |
+| **Error boundary** | 🟡 MEDIUM | Không có React Error Boundary | JS error trong child component → white screen toàn app |
+| **Loading/empty states** | 🟢 LOW | `loading` boolean nhưng chưa có skeleton UI | UX không mượt nhưng không phải risk kỹ thuật |
+
+## 2.6 DevOps & Production Readiness
+
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
+| --- | --- | --- | --- |
+| **Dockerization** | ✅ RESOLVED | Multi-stage Dockerfile + docker-compose (backend + postgres + redis + frontend) | Deploy reproducible |
+| **Environment separation** | 🟡 MEDIUM | `API_URL` hardcode trong frontend. Swagger chỉ tắt theo env check | Không thể deploy staging/production mà không sửa source code |
+| **CI/CD** | 🟡 MEDIUM | Không có pipeline | Deploy thủ công → error-prone, chậm, không rollback |
+| **Structured logging** | ✅ RESOLVED | Serilog + Console + File sinks, structured request logging | Full audit trail |
+| **Monitoring** | ✅ RESOLVED | HealthController + `/api/Health` endpoint, Docker healthchecks | System status visible |
+| **Rate limiting** | ✅ RESOLVED | Fixed window 100 req/min + Upload 20 req/min | DoS protection |
+| **Caching** | ✅ RESOLVED | Redis/In-memory distributed cache, CollectionService cached (TTL 5m) | 80%+ DB reads reduced |
+| **HTTPS enforcement** | 🟡 MEDIUM | Default profile là HTTP | Data truyền plaintext → sniff được nội dung + các thông tin nhạy cảm |
+
+## 2.7 Testability
+
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
+| --- | --- | --- | --- |
+| **Unit test** | 🟡 MEDIUM | Không có test project nào | Refactor = đánh cược. Regression bugs vào production |
+| **Integration test** | 🟡 MEDIUM | Không có | API contract thay đổi không ai biết |
+| **E2E test** | 🟢 LOW | Không có | Regression trên UI flow chỉ phát hiện bằng manual testing |
+| **API contract testing** | 🟡 MEDIUM | Chỉ có Swagger cho dev | Frontend/Backend out of sync → runtime errors |
+
+## 2.8 Đánh giá khả năng Scale hiện tại
+
+```text
+Concurrent Users:  ~1-3 (SQLite write lock, no auth)
+Data Volume:       ~1,000 assets (no pagination, no index)
+File Storage:      ~5-10GB (local disk, no cleanup)
+Deployment:        Single instance only
+Availability:      Zero redundancy
 ```
 AspNetUsers ──┬──< Assets (UserId FK, Cascade)
               ├──< Collections (UserId FK, Cascade)

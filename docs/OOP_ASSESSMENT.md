@@ -1,8 +1,9 @@
 # Bản Đánh Giá OOP - Visual Asset Hub (VAH)
 
 > **Ngày tạo:** 2026-02-27  
+> **Cập nhật lần cuối:** 2026-02-27  
 > **Mục đích:** Đánh giá mức độ áp dụng OOP trong toàn bộ dự án, làm cơ sở cho quá trình refactor.  
-> **Trạng thái:** 🔴 Đang tiến hành
+> **Trạng thái:** 🟡 Phase 1 hoàn tất (8/8 tasks) — chuẩn bị Phase 2
 
 ---
 
@@ -17,30 +18,32 @@
 
 ## I. BACKEND (C# / .NET)
 
-### 1. Models — Anemic Domain Models 🟡
+### 1. Models — Refactored ✅
+
+> **Phase 1 hoàn tất:** Tất cả models đã được refactor: TPH inheritance, enums, domain behavior, navigation properties.
 
 | File | Trạng thái | Vấn đề |
 |------|-----------|--------|
 | `Models/Asset.cs` | � Refactored | **[Task #3]** `ContentType` đã chuyển sang enum `AssetContentType`. **[Task #6]** TPH inheritance: `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`. Virtual behavior: `HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup`. |
-| `Models/Collection.cs` | 🟡 Anemic | Chỉ có properties, không có domain logic. |
-| `Models/Tag.cs` + `AssetTag.cs` | 🟡 Anemic | Chỉ có properties. |
+| `Models/Collection.cs` | � Refactored | **[Task #3]** Enums. **[Task #7]** Domain methods: `IsOwnedBy()`, `IsAccessibleBy()`, `ApplyUpdate()`. **[Task #8]** Navigation: `Assets`, `Parent`, `Children`. |
+| `Models/Tag.cs` + `AssetTag.cs` | � Refactored | **[Task #7]** Domain methods: `SetName()` (auto-normalize), `UpdateFrom()`, `IsOwnedBy()`. |
 | `Models/ApplicationUser.cs` | 🟡 Anemic | Kế thừa `IdentityUser` (OOP ✅), nhưng không mở rộng behavior nào. |
-| `Models/CollectionPermission.cs` | 🟡 Anemic | Chỉ có properties. `CollectionRoles` static class có logic nhưng tách rời khỏi entity. |
+| `Models/CollectionPermission.cs` | � Refactored | **[Task #7]** Domain methods: `CanWrite`, `CanManage` (computed properties), `SetRole()` (validation). |
 | `Models/Common.cs` | 🟢 OK | `PagedResult<T>` dùng generics tốt. `PaginationParams` có encapsulation (MaxPageSize). `FileUploadConfig` là config object hợp lý. |
 | `Models/DTOs.cs` | 🟢 OK | DTO đúng chức năng — chỉ mang data, không cần behavior. |
 | `Models/AuthDTOs.cs` | 🟢 OK | DTO thuần túy, phù hợp. |
 
 **Vấn đề chính:**
 - [x] **~~Asset là God Object~~**: ✅ **[Task #6]** Đã refactor thành TPH hierarchy (`ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`) + `AssetFactory` + virtual behavior properties.
-- [ ] **Anemic Domain Model**: Tất cả các model đều là "data bag" — không có domain method nào. Toàn bộ business logic nằm ở Service layer. Thiếu encapsulation.
+- [x] **~~Anemic Domain Model~~**: ✅ **[Task #7]** Đã thêm domain behavior cho `Asset` (`UpdatePosition`, `ApplyUpdate`, `SetThumbnails`, `MoveToFolder`, `MoveToCollection`), `Collection` (`IsOwnedBy`, `ApplyUpdate`, `IsAccessibleBy`), `Tag` (`SetName`, `UpdateFrom`), `CollectionPermission` (`CanWrite`, `CanManage`, `SetRole`).
 - [x] **~~String-typed fields~~**: ✅ **[Task #3]** Đã chuyển `ContentType`, `Type`, `LayoutType` sang enums (`AssetContentType`, `CollectionType`, `LayoutType`) + EF Core value conversions.
-- [ ] **Thiếu navigation properties đầy đủ**: `Asset` không có navigation đến `Collection`, `ApplicationUser`. `Collection` thiếu navigation đến children, assets.
+- [x] **~~Thiếu navigation properties~~**: ✅ **[Task #8]** Đã thêm: `Asset` → `Collection`, `ParentFolder`. `Collection` → `Assets`, `Parent`, `Children`. EF Core configured với proper FK relationships.
 
 ### 2. Services — Chấp nhận được nhưng cần cải thiện 🟡
 
 | File | Trạng thái | Vấn đề |
 |------|-----------|--------|
-| `IAssetService` / `AssetService` | 🟡 Cần cải thiện | Interface + implementation tốt (DI, abstraction). Nhưng class quá lớn (518 dòng), vi phạm SRP — xử lý upload, CRUD, folder, color, link, bulk ops trong 1 class. |
+| `IAssetService` / `AssetService` | 🟡 Cần cải thiện | Interface + impl tốt. **[Task #6,#7]** Dùng `AssetFactory` + domain methods. Nhưng vẫn lớn (~370 dòng), cần tách thêm (Phase 2). |
 | `IAuthService` / `AuthService` | 🟢 Tốt | Đúng abstraction, đúng SRP. Dùng DI tốt. |
 | `ICollectionService` / `CollectionService` | 🟢 Tốt | DI, caching (IDistributedCache), delegation tốt. |
 | `IStorageService` / `LocalStorageService` | 🟢 Tốt | **Tốt nhất project** — abstraction rõ ràng, dễ thay bằng S3/Azure implementation. Đúng OCP. |
@@ -59,8 +62,8 @@
 - [ ] **AssetService quá lớn (~480 dòng)**: Nên tách thành các service chuyên biệt: `FileUploadService`, `FolderService`, `ColorService`, `LinkService`, `BulkOperationService`.
 - [x] **~~Duplicate cleanup logic~~**: ✅ **[Task #6]** Cleanup logic giờ dùng `asset.RequiresFileCleanup` (virtual property) thay vì duplicate if/else chain trong cả `DeleteAssetAsync` và `BulkDeleteAsync`.
 - [ ] **SmartCollectionService hard-coded**: Các smart collection definitions được hard-code trong method. Nên dùng Strategy/Registry pattern.
-- [ ] **CollectionWithItemsResult** (trong `ICollectionService.cs`): DTO nên ở Models, không ở interface file.
-- [ ] **SmartCollectionDefinition** (trong `ISmartCollectionService.cs`): Model nên ở Models folder.
+- [ ] **CollectionWithItemsResult** (trong `ICollectionService.cs`): Đã có trong `Models/DTOs.cs` nhưng interface vẫn còn reference.
+- [ ] **SmartCollectionDefinition** (trong `ISmartCollectionService.cs`): Đã có trong `Models/DTOs.cs` nhưng interface vẫn còn reference.
 
 ### 3. Controllers — Đạt tiêu chuẩn 🟢
 
@@ -72,14 +75,14 @@
 | `TagsController` | 🟢 Tốt | Clean, RESTful. |
 | `PermissionsController` | 🟢 Tốt | Clean. |
 | `SmartCollectionsController` | 🟢 Tốt | Clean, thin. |
-| `SearchController` | 🔴 Vấn đề | **Có business logic trực tiếp trong controller** — query DB, filter, paginate. Thiếu `ISearchService`. Vi phạm SRP. |
+| `SearchController` | � Refactored | **[Task #4]** Business logic đã move vào `SearchService`. Controller giờ chỉ delegate 1 dòng. |
 | `HealthController` | 🟡 Chấp nhận | Logic health check đơn giản, có thể chấp nhận trong controller. |
 
-**Vấn đề cần refactor:**
-- [ ] **SearchController chứa business logic**: Toàn bộ search logic (119 dòng) nằm trong controller thay vì service. Cần tạo `ISearchService` / `SearchService`.
-- [ ] **`AssetPositionDto` định nghĩa trong controller file**: Nên move về Models/DTOs.cs.
-- [ ] **`SearchResult` class định nghĩa trong controller file**: Nên move về Models.
-- [ ] **Duplicate `GetUserId()` helper**: Copy-paste ở 5 controllers. Nên tạo base controller class.
+**Vấn đề đã giải quyết:**
+- [x] **~~SearchController chứa business logic~~**: ✅ **[Task #4]** Đã tạo `ISearchService` / `SearchService`. Controller giờ chỉ delegate.
+- [x] **~~`AssetPositionDto` định nghĩa trong controller~~**: ✅ **[Task #1]** Đã move về `Models/DTOs.cs`.
+- [x] **~~`SearchResult` class định nghĩa trong controller~~**: ✅ **[Task #1]** Đã move về `Models/DTOs.cs`.
+- [x] **~~Duplicate `GetUserId()` helper~~**: ✅ **[Task #2]** Đã tạo `BaseApiController`. 8 controllers kế thừa.
 
 ### 4. Middleware & Hubs — Tốt 🟢
 
@@ -95,11 +98,11 @@
 |------|-----------|---------|
 | `AppDbContext` | 🟢 Tốt | Kế thừa `IdentityDbContext<ApplicationUser>`, Fluent API config tốt, dual-provider support qua `DatabaseProviderInfo`. |
 
-### 6. Program.cs — Procedural 🟡
+### 6. Program.cs — Refactored ✅
 
-- **Trạng thái:** Procedural configuration (255 dòng, top-level statements).  
-- **Ghi chú:** Đây là chuẩn .NET minimal hosting — không cần OOP hóa, nhưng có thể tổ chức tốt hơn bằng extension methods (ví dụ: `builder.Services.AddApplicationServices()`, `builder.Services.AddAuthenticationConfig()`).
-- [ ] **Nên tạo ServiceCollectionExtensions** để gom DI registration.
+- **Trạng thái:** **[Task #5]** Đã tạo `ServiceCollectionExtensions` với 6 extension methods. Program.cs giảm từ 255 dòng xuống 97 dòng.
+- **Extension methods:** `AddCorsPolicy()`, `AddRateLimitingPolicies()`, `AddDatabase()`, `AddIdentityAndAuth()`, `AddCachingServices()`, `AddApplicationServices()`
+- [x] ~~**Nên tạo ServiceCollectionExtensions**~~: ✅ Hoàn tất.
 
 ---
 
@@ -169,19 +172,19 @@
 
 | Nguyên tắc | Backend | Frontend | Ghi chú |
 |------------|---------|----------|---------|
-| **Encapsulation** | 🟡 Trung bình | 🔴 Yếu | BE: Models expose hết, FE: Dùng plain objects |
+| **Encapsulation** | � Tốt | 🔴 Yếu | BE: Domain methods, private/virtual behavior, factory pattern. FE: Dùng plain objects |
 | **Abstraction** | 🟢 Tốt | 🔴 Yếu | BE: Interface-based DI, FE: Không có abstraction layer |
-| **Inheritance** | 🟡 Hạn chế | 🔴 Không dùng | BE: Chỉ ApplicationUser extends IdentityUser, Asset nên có hierarchy |
-| **Polymorphism** | 🟡 Hạn chế | 🔴 Không dùng | BE: IStorageService tốt, nhưng Asset dùng if/switch thay vì polymorphism |
+| **Inheritance** | 🟢 Tốt | 🔴 Không dùng | BE: TPH hierarchy (Asset→5 subtypes), BaseApiController. FE: N/A |
+| **Polymorphism** | 🟢 Tốt | 🔴 Không dùng | BE: IStorageService, virtual behavior (HasPhysicalFile, CanHaveThumbnails, RequiresFileCleanup) |
 
 ### SOLID Principles
 
 | Nguyên tắc | Backend | Frontend |
 |------------|---------|----------|
-| **S** - Single Responsibility | 🟡 | 🔴 (App.jsx, useAssets.js, useCollections.js) |
-| **O** - Open/Closed | 🟡 | 🔴 |
+| **S** - Single Responsibility | � | 🔴 (App.jsx, useAssets.js, useCollections.js) |
+| **O** - Open/Closed | 🟢 | 🔴 |
 | **L** - Liskov Substitution | 🟢 | N/A |
-| **I** - Interface Segregation | 🟡 (IAssetService quá lớn) | 🔴 |
+| **I** - Interface Segregation | 🟡 (IAssetService vẫn lớn) | 🔴 |
 | **D** - Dependency Inversion | 🟢 | 🔴 (direct import, no DI) |
 
 ### Design Patterns Đã Dùng
@@ -193,18 +196,25 @@
 | Strategy (IStorageService) | Backend Storage | 🟢 |
 | Command Pattern | Frontend useUndoRedo | 🟢 |
 | Observer (SignalR) | Backend/Frontend real-time | 🟢 |
-| Middleware Pipeline | Backend ExceptionHandling | 🟢 |
-
-### Design Patterns Nên Áp Dụng
-
-| Pattern | Nơi nên dùng | Lý do |
-|---------|-------------|-------|
-| **Type Hierarchy / Inheritance** | Asset → ImageAsset, LinkAsset, ColorAsset, FolderAsset | Thay thế if/switch trên ContentType |
-| **Factory Pattern** | Asset creation | Tạo đúng subtype dựa trên input |
+| Factory Pattern | Backend AssetFactory | 🟢 |
+| Type Hierarchy / TPH | Backend Asset → 5 subtypes | 🟢 |
+| Extension Methods | Backend ServiceCollectionExtensions | 🟢 |
 | **Strategy Pattern** | SmartCollection filters | Thay thế switch statement cứng |
 | **Facade Pattern** | Frontend API layer | Gom các loose functions thành class |
 | **Service Layer (FE)** | Frontend business logic | Tách logic khỏi hooks/components |
 | **Value Object** | ContentType, Role, LayoutType | Thay string bằng type-safe objects |
+
+### Design Patterns Đã Áp Dụng (sau refactor)
+
+| Pattern | Nơi dùng | Task |
+|---------|----------|------|
+| **TPH Inheritance** | `Asset` → `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset` | Task #6 |
+| **Factory Pattern** | `AssetFactory` — 6 static creation methods | Task #6 |
+| **Template Method** (virtual) | `HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup` virtual properties | Task #6 |
+| **Value Objects** (Enums) | `AssetContentType`, `CollectionType`, `LayoutType` + EF Core value conversions | Task #3 |
+| **Extension Methods** | `ServiceCollectionExtensions` — 6 methods tổ chức DI | Task #5 |
+| **Base Controller** | `BaseApiController` — shared `GetUserId()` | Task #2 |
+| **Rich Domain Model** | Domain methods trên Asset, Collection, Tag, CollectionPermission | Task #7 |
 
 ---
 
@@ -265,8 +275,8 @@
 | 2.3 | SearchService | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `ISearchService` + `SearchService`. SearchController giờ chỉ delegate. |
 | 2.6 | ServiceCollectionExtensions | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `Extensions/ServiceCollectionExtensions.cs` — 5 extension methods. Program.cs 255→116 lines. |
 | 1.1 | Asset inheritance hierarchy | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | TPH: `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`. `AssetFactory` + virtual behavior properties. |
-| 1.3 | Domain behavior cho models | ⬜ Chưa bắt đầu | | | |
-| 1.4 | Navigation properties | ⬜ Chưa bắt đầu | | | |
+| 1.3 | Domain behavior cho models | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | Asset: 6 domain methods. Collection: 3 methods. Tag: 3 methods. CollectionPermission: 2 computed + 1 method. Services updated to use domain methods. |
+| 1.4 | Navigation properties | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | Asset→Collection, ParentFolder. Collection→Assets, Parent, Children. EF Core configured. |
 | 2.1 | Tách AssetService | ⬜ Chưa bắt đầu | | | |
 | 2.2 | Extract reusable helpers | ⬜ Chưa bắt đầu | | | |
 | 2.4 | Strategy pattern SmartCollection | ⬜ Chưa bắt đầu | | | |

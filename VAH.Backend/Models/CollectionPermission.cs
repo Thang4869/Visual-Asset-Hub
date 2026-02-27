@@ -26,6 +26,22 @@ public class CollectionPermission
     public string? GrantedBy { get; set; }
 
     public DateTime GrantedAt { get; set; }
+
+    // ── Domain behavior methods ──
+
+    /// <summary>Whether this permission allows write operations.</summary>
+    public bool CanWrite => CollectionRoles.CanWrite(Role);
+
+    /// <summary>Whether this permission allows managing other permissions.</summary>
+    public bool CanManage => CollectionRoles.CanManage(Role);
+
+    /// <summary>Validate and set role. Throws if invalid.</summary>
+    public void SetRole(string role)
+    {
+        if (!CollectionRoles.All.Contains(role))
+            throw new ArgumentException($"Invalid role: {role}. Must be one of: {string.Join(", ", CollectionRoles.All)}");
+        Role = role;
+    }
 }
 
 /// <summary>Available roles for collection permissions.</summary>

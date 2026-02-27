@@ -31,6 +31,27 @@ public class Tag
     // Navigation
     [JsonIgnore]
     public ICollection<AssetTag> AssetTags { get; set; } = new List<AssetTag>();
+
+    // ── Domain behavior methods ──
+
+    /// <summary>Set name and auto-compute normalized form.</summary>
+    public void SetName(string name)
+    {
+        Name = name.Trim();
+        NormalizedName = name.Trim().ToLowerInvariant();
+    }
+
+    /// <summary>Apply partial update from DTO.</summary>
+    public void UpdateFrom(UpdateTagDto dto)
+    {
+        if (!string.IsNullOrWhiteSpace(dto.Name))
+            SetName(dto.Name);
+        if (dto.Color != null)
+            Color = dto.Color;
+    }
+
+    /// <summary>Check if this tag is owned by a specific user.</summary>
+    public bool IsOwnedBy(string userId) => UserId == userId;
 }
 
 /// <summary>

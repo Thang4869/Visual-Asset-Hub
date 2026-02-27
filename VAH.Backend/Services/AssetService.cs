@@ -139,9 +139,10 @@ public class AssetService : IAssetService
                 var thumbs = await _thumbnailService.GenerateThumbnailsAsync(asset.FilePath);
                 if (thumbs.Count > 0)
                 {
-                    asset.ThumbnailSm = thumbs.GetValueOrDefault("sm");
-                    asset.ThumbnailMd = thumbs.GetValueOrDefault("md");
-                    asset.ThumbnailLg = thumbs.GetValueOrDefault("lg");
+                    asset.SetThumbnails(
+                        thumbs.GetValueOrDefault("sm"),
+                        thumbs.GetValueOrDefault("md"),
+                        thumbs.GetValueOrDefault("lg"));
                 }
             }
             catch (Exception ex)
@@ -164,8 +165,7 @@ public class AssetService : IAssetService
             .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             ?? throw new KeyNotFoundException("Asset not found.");
 
-        asset.PositionX = positionX;
-        asset.PositionY = positionY;
+        asset.UpdatePosition(positionX, positionY);
         await _context.SaveChangesAsync();
 
         return asset;
@@ -237,16 +237,7 @@ public class AssetService : IAssetService
             .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             ?? throw new KeyNotFoundException("Asset not found.");
 
-        if (!string.IsNullOrEmpty(dto.FileName))
-            asset.FileName = dto.FileName.Trim();
-        if (dto.SortOrder.HasValue)
-            asset.SortOrder = dto.SortOrder.Value;
-        if (dto.GroupId.HasValue)
-            asset.GroupId = dto.GroupId.Value;
-        if (dto.ParentFolderId.HasValue)
-            asset.ParentFolderId = dto.ParentFolderId.Value;
-        if (dto.ClearParentFolder == true)
-            asset.ParentFolderId = null;
+        asset.ApplyUpdate(dto);
 
         await _context.SaveChangesAsync();
         return asset;
@@ -280,7 +271,7 @@ public class AssetService : IAssetService
 
             foreach (var child in children)
             {
-                child.ParentFolderId = asset.ParentFolderId; // Move to grandparent
+                child.MoveToFolder(asset.ParentFolderId); // Move to grandparent
             }
         }
 
@@ -350,7 +341,7 @@ public class AssetService : IAssetService
                     .Where(a => a.ParentFolderId == asset.Id)
                     .ToListAsync();
                 foreach (var child in children)
-                    child.ParentFolderId = asset.ParentFolderId;
+                    child.MoveToFolder(asset.ParentFolderId);
             }
         }
 
@@ -383,12 +374,12 @@ public class AssetService : IAssetService
         foreach (var asset in assets)
         {
             if (dto.TargetCollectionId.HasValue)
-                asset.CollectionId = dto.TargetCollectionId.Value;
+                asset.MoveToCollection(dto.TargetCollectionId.Value);
 
             if (dto.ClearParentFolder == true)
-                asset.ParentFolderId = null;
+                asset.MoveToFolder(null);
             else if (dto.TargetFolderId.HasValue)
-                asset.ParentFolderId = dto.TargetFolderId.Value;
+                asset.MoveToFolder(dto.TargetFolderId.Value);
         }
 
         await _context.SaveChangesAsync();
