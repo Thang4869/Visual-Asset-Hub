@@ -8,8 +8,7 @@ namespace VAH.Backend.Controllers;
 /// Health check endpoint for monitoring and load balancer readiness.
 /// </summary>
 [Route("api/[controller]")]
-[ApiController]
-public class HealthController : ControllerBase
+public class HealthController : BaseApiController
 {
     private readonly AppDbContext _context;
     private readonly IWebHostEnvironment _env;

@@ -24,13 +24,11 @@ public class Collection
     [MaxLength(20)]
     public string Color { get; set; } = "#007bff";
 
-    [MaxLength(50)]
-    public string Type { get; set; } = "default";
+    public CollectionType Type { get; set; } = CollectionType.Default;
 
     public int Order { get; set; } = 0;
 
-    [MaxLength(20)]
-    public string LayoutType { get; set; } = "grid";
+    public LayoutType LayoutType { get; set; } = LayoutType.Grid;
 
     /// <summary>
     /// Owner of this collection. Null for system/shared collections.

@@ -47,7 +47,7 @@ public class SmartCollectionService : ISmartCollectionService
 
         // 3. All images
         var imageCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == "image");
+            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Image);
         definitions.Add(new SmartCollectionDefinition
         {
             Id = "all-images",
@@ -60,7 +60,7 @@ public class SmartCollectionService : ISmartCollectionService
 
         // 4. All links
         var linkCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == "link");
+            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Link);
         definitions.Add(new SmartCollectionDefinition
         {
             Id = "all-links",
@@ -73,7 +73,7 @@ public class SmartCollectionService : ISmartCollectionService
 
         // 5. All colors
         var colorCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == "color");
+            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Color);
         definitions.Add(new SmartCollectionDefinition
         {
             Id = "all-colors",
@@ -100,7 +100,7 @@ public class SmartCollectionService : ISmartCollectionService
 
         // 7. Large files (files that have thumbnails — images)
         var largeCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == "image" && a.ThumbnailLg != null);
+            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Image && a.ThumbnailLg != null);
         definitions.Add(new SmartCollectionDefinition
         {
             Id = "with-thumbnails",
@@ -151,11 +151,11 @@ public class SmartCollectionService : ISmartCollectionService
         {
             "recent-7d" => query.Where(a => a.CreatedAt >= DateTime.UtcNow.AddDays(-7)),
             "recent-30d" => query.Where(a => a.CreatedAt >= DateTime.UtcNow.AddDays(-30)),
-            "all-images" => query.Where(a => a.ContentType == "image"),
-            "all-links" => query.Where(a => a.ContentType == "link"),
-            "all-colors" => query.Where(a => a.ContentType == "color"),
+            "all-images" => query.Where(a => a.ContentType == AssetContentType.Image),
+            "all-links" => query.Where(a => a.ContentType == AssetContentType.Link),
+            "all-colors" => query.Where(a => a.ContentType == AssetContentType.Color),
             "untagged" => query.Where(a => !_context.AssetTags.Any(at => at.AssetId == a.Id)),
-            "with-thumbnails" => query.Where(a => a.ContentType == "image" && a.ThumbnailLg != null),
+            "with-thumbnails" => query.Where(a => a.ContentType == AssetContentType.Image && a.ThumbnailLg != null),
             _ when smartCollectionId.StartsWith("tag-") => ApplyTagFilter(query, smartCollectionId),
             _ => query
         };

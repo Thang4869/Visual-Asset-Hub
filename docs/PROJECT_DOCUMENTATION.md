@@ -4,16 +4,97 @@
 
 ---
 
-## 1. Tổng quan
+## 2. Backend — `VAH.Backend/`
 
-| Thành phần | Công nghệ | Port | Mô tả |
-|------------|-----------|------|-------|
-| Backend | ASP.NET Core 9.0 | 5027 | REST API + SignalR Hub |
-| Frontend | React 19 + Vite 7 | 5173 (dev) / 3000 (Docker) | SPA dark theme |
-| DB (Dev) | SQLite | embedded | File: `vah_database.db` |
-| DB (Prod) | PostgreSQL 17 | 5432 | Docker volume |
-| Cache | Redis 7 | 6379 | Collection list cache |
-| Reverse Proxy | Nginx | 80 | Frontend serving (Docker) |
+### 2.1 Cấu hình dự án (`VAH.Backend.csproj`)
+
+- **Target:** .NET 9.0 (`net9.0`), Nullable enabled, ImplicitUsings enabled
+- **NuGet packages:**
+  - `Microsoft.EntityFrameworkCore.Design` 9.*
+  - `Microsoft.EntityFrameworkCore.Sqlite` 9.*
+  - `Swashbuckle.AspNetCore` 10.1.4 (Swagger)
+
+### 2.2 Cấu hình ứng dụng (`appsettings.json`)
+
+- Chuỗi kết nối: `Data Source=vah_database.db` (SQLite file trong thư mục gốc dự án)
+- Logging: Default=Information, AspNetCore=Warning
+
+### 2.3 Launch Settings (`Properties/launchSettings.json`)
+
+- Profile `http`: `http://localhost:5027`, `ASPNETCORE_ENVIRONMENT=Development`
+- Profile `https`: `https://localhost:7042` + `http://localhost:5027`
+
+### 2.4 Entry Point (`Program.cs`)
+
+- **Dịch vụ đã đăng ký:** Tổ chức qua `ServiceCollectionExtensions` extension methods:
+  - `AddCorsPolicy()` — CORS (config-driven origins)
+  - `AddRateLimitingPolicies()` — Rate Limiting (Fixed + Upload)
+  - `AddDatabase()` — EF Core với SQLite/PostgreSQL dual-provider
+  - `AddIdentityAndAuth()` — ASP.NET Identity + JWT Bearer Authentication
+  - `AddCachingServices()` — Redis / In-memory distributed cache
+  - `AddApplicationServices()` — Asset, Collection, Search, Storage, Auth, Tag, Thumbnail, Notification, SmartCollection, Permission services
+  - Controllers, Swagger, SignalR
+- **Logic khởi động:**
+  - `Database.Migrate()` — tự động apply migrations khi khởi động
+  - **Seed 3 collection mặc định** (trong migration) nếu chưa có:
+    1. `Images` (type=`image`, color=`#007bff`, order=1)
+    2. `Links` (type=`link`, color=`#28a745`, order=2)
+    3. `Colors` (type=`color`, color=`#ffc107`, order=3)
+- **Middleware pipeline:** GlobalExceptionHandler → CORS → RateLimiter → StaticFiles → Swagger (dev only) → Authentication → Authorization → MapControllers
+
+---
+
+### 2.5 Mô hình dữ liệu (Data Models)
+
+#### `Models/Asset.cs` — Tài nguyên
+
+| Thuộc tính | Kiểu | Mặc định | Mô tả |
+|------------|------|----------|-------|
+| `Id` | int | tự tăng | Khóa chính |
+| `FileName` | string (Required) | `""` | Tên file gốc |
+| `FilePath` | string (Required) | `""` | Đường dẫn tương đối (VD: `/uploads/guid.ext`) hoặc mã màu hoặc URL |
+| `Tags` | string | `""` | Tags phân cách bằng dấu phẩy |
+| `CreatedAt` | DateTime | `UtcNow` | Thời gian tạo |
+| `PositionX` | double | `0` | Tọa độ X trên canvas kéo thả |
+| `PositionY` | double | `0` | Tọa độ Y trên canvas kéo thả |
+| `CollectionId` | int | `1` | FK đến Collection |
+| `ContentType` | `AssetContentType` enum | `File` | `Image`, `Link`, `Color`, `Folder`, `ColorGroup`. DB lưu string, EF Core value conversion. TPH discriminator. |
+| `GroupId` | int? | `null` | Dùng cho nhóm màu |
+| `ParentFolderId` | int? | `null` | FK đến thư mục cha (hỗ trợ thư mục lồng nhau) |
+| `SortOrder` | int | `0` | Thứ tự hiển thị |
+| `IsFolder` | bool | `false` | Phân biệt thư mục và file |
+| `UserId` | string? | `null` | FK đến `AspNetUsers`. `null` = system asset |
+
+#### `Models/Collection.cs` — Bộ sưu tập
+
+| Thuộc tính | Kiểu | Mặc định | Mô tả |
+|------------|------|----------|-------|
+| `Id` | int | tự tăng | Khóa chính |
+| `Name` | string (Required) | `""` | Tên bộ sưu tập |
+| `Description` | string | `""` | Mô tả |
+| `ParentId` | int? | `null` | Collection cha (hỗ trợ cây phân cấp) |
+| `CreatedAt` | DateTime | `UtcNow` | Thời gian tạo |
+| `Color` | string | `"#007bff"` | Màu hiển thị trên UI |
+| `Type` | `CollectionType` enum | `Default` | `Default`, `Image`, `Link`, `Color`. DB lưu string, EF Core value conversion. |
+| `Order` | int | `0` | Thứ tự sắp xếp |
+| `LayoutType` | `LayoutType` enum | `Grid` | `Grid`, `List`, `Canvas`. DB lưu string, EF Core value conversion. |
+| `UserId` | string? | `null` | FK đến `AspNetUsers`. `null` = system collection |
+
+#### `Models/DTOs.cs` — 6 DTO
+
+| DTO | Trường | Mục đích |
+|-----|--------|----------|
+| `CreateFolderDto` | FolderName, CollectionId, ParentFolderId? | Tạo thư mục mới |
+| `CreateColorDto` | ColorCode, ColorName?, CollectionId, GroupId?, SortOrder?, ParentFolderId? | Tạo mẫu màu |
+| `UpdateAssetDto` | FileName?, SortOrder?, GroupId?, ParentFolderId?, ClearParentFolder? | Cập nhật một phần asset |
+| `CreateLinkDto` | Name, Url, CollectionId, ParentFolderId? | Tạo liên kết/bookmark |
+| `CreateColorGroupDto` | GroupName, CollectionId, ParentFolderId?, SortOrder? | Tạo nhóm màu |
+| `ReorderAssetsDto` | AssetIds (List\<int\>) | Sắp xếp lại hàng loạt |
+
+### 2.6 Database Context (`Data/AppDbContext.cs`)
+
+- Kế thừa `IdentityDbContext<ApplicationUser>` (ASP.NET Identity)
+- **DbSets:** `Assets`, `Collections` (Identity tables được quản lý bởi base class)
 
 ---
 
@@ -390,8 +471,83 @@ GET    /                      → List<Collection>
 ```
 [No Auth] api/Health
 
-GET    /                      → {status, timestamp, checks: {database, storage}, info}
-                                → 200 (healthy) / 503 (unhealthy)
+## 8. Cấu trúc thư mục dự án
+```text
+1A/
+├── VAH.sln                          # Solution file
+├── README.md                        # Hướng dẫn cài đặt & sử dụng
+├── docs/                            # Tài liệu dự án
+│   ├── PROJECT_DOCUMENTATION.md     # Tài liệu này
+│   ├── ARCHITECTURE_REVIEW.md       # Đánh giá kiến trúc & roadmap
+│   └── IMPLEMENTATION_GUIDE.md      # Hướng dẫn triển khai canvas
+│
+├── VAH.Backend/                     # ASP.NET Core Web API
+│   ├── Program.cs                   # Entry point, cấu hình services
+│   ├── VAH.Backend.csproj           # Cấu hình dự án .NET
+│   ├── appsettings.json             # Cấu hình (connection string, logging)
+│   ├── Controllers/
+│   │   ├── BaseApiController.cs     # Abstract base controller (GetUserId())
+│   │   ├── AssetsController.cs      # REST API cho assets (12 endpoints)
+│   │   ├── CollectionsController.cs # REST API cho collections (5 endpoints)
+│   │   ├── SearchController.cs      # REST API tìm kiếm (thin delegate → SearchService)
+│   │   └── HealthController.cs      # Health check (1 endpoint)
+│   ├── Extensions/
+│   │   └── ServiceCollectionExtensions.cs  # DI registration extension methods
+│   ├── Services/
+│   │   ├── IAssetService.cs         # Interface
+│   │   ├── AssetService.cs          # Implementation (~480 dòng, dùng AssetFactory)
+│   │   ├── ICollectionService.cs    # Interface
+│   │   ├── CollectionService.cs     # Implementation (111 dòng)
+│   │   ├── ISearchService.cs        # Interface
+│   │   ├── SearchService.cs         # Search implementation (extracted from controller)
+│   │   ├── IStorageService.cs       # Interface
+│   │   └── LocalStorageService.cs   # Local file storage
+│   ├── Models/
+│   │   ├── Asset.cs                 # Base asset model (TPH base class)
+│   │   ├── AssetTypes.cs            # TPH subtypes: ImageAsset, LinkAsset, ColorAsset, ColorGroupAsset, FolderAsset
+│   │   ├── AssetFactory.cs          # Factory pattern cho tạo đúng subtype
+│   │   ├── Enums.cs                 # AssetContentType, CollectionType, LayoutType + EnumMappings
+│   │   ├── Collection.cs            # Model bộ sưu tập
+│   │   ├── DTOs.cs                  # Data Transfer Objects (incl. SearchResult, AssetPositionDto, etc.)
+│   │   └── Common.cs                # PagedResult, PaginationParams, FileUploadConfig
+│   ├── Data/
+│   │   └── AppDbContext.cs          # EF Core DbContext + Fluent API config
+│   ├── Middleware/
+│   │   └── ExceptionHandlingMiddleware.cs  # Global exception handler (RFC 7807)
+│   ├── Migrations/                  # EF Core migration files
+│   │   ├── *_InitialCreate.cs       # Initial schema migration
+│   │   └── AppDbContextModelSnapshot.cs
+│   ├── Properties/
+│   │   └── launchSettings.json      # Cấu hình chạy
+│   └── wwwroot/uploads/             # Thư mục lưu file upload
+│
+└── VAH.Frontend/                    # React + Vite SPA
+    ├── package.json                 # Dependencies & scripts
+    ├── vite.config.js               # Vite configuration
+    ├── index.html                   # HTML entry point
+    └── src/
+        ├── main.jsx                 # React entry point
+        ├── App.jsx                  # Component chính (state, routing, layout)
+        ├── App.css                  # Design system & layout styles
+        ├── index.css                # Global reset & base styles
+        ├── api/
+        │   ├── client.js            # Axios instance + interceptors
+        │   ├── assetsApi.js         # API functions cho assets
+        │   ├── collectionsApi.js     # API functions cho collections
+        │   └── searchApi.js          # API function cho search
+        ├── hooks/
+        │   ├── useCollections.js     # Collections state + CRUD
+        │   └── useAssets.js          # Assets state + CRUD
+        └── components/
+            ├── CollectionTree.jsx/css     # Cây thư mục sidebar
+            ├── CollectionBrowser.jsx/css  # Trình duyệt file chính
+            ├── AssetDisplayer.jsx/css     # Gallery / Canvas view
+            ├── AssetGrid.jsx/css          # Lưới thumbnail cơ bản
+            ├── SearchBar.jsx/css          # Thanh tìm kiếm (phụ)
+            ├── UploadArea.jsx/css         # Vùng upload kéo thả
+            ├── ColorBoard.jsx/css         # Bảng quản lý màu
+            ├── DraggableAssetCanvas.jsx/css # Canvas kéo thả tự do
+            └── ErrorBoundary.jsx          # Error boundary component
 ```
 
 ---

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VAH.Backend.Models;
@@ -6,10 +5,9 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-[ApiController]
 [Route("api/collections/{collectionId}/permissions")]
 [Authorize]
-public class PermissionsController : ControllerBase
+public class PermissionsController : BaseApiController
 {
     private readonly IPermissionService _permissionService;
 
@@ -18,13 +16,11 @@ public class PermissionsController : ControllerBase
         _permissionService = permissionService;
     }
 
-    private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
     /// <summary>List all permissions for a collection.</summary>
     [HttpGet]
     public async Task<IActionResult> List(int collectionId)
     {
-        var permissions = await _permissionService.ListAsync(collectionId, UserId);
+        var permissions = await _permissionService.ListAsync(collectionId, GetUserId());
         return Ok(permissions);
     }
 
@@ -32,7 +28,7 @@ public class PermissionsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Grant(int collectionId, [FromBody] GrantPermissionDto dto)
     {
-        var permission = await _permissionService.GrantAsync(collectionId, dto, UserId);
+        var permission = await _permissionService.GrantAsync(collectionId, dto, GetUserId());
         return Ok(permission);
     }
 
@@ -40,7 +36,7 @@ public class PermissionsController : ControllerBase
     [HttpPut("{permissionId}")]
     public async Task<IActionResult> Update(int collectionId, int permissionId, [FromBody] UpdatePermissionDto dto)
     {
-        var permission = await _permissionService.UpdateAsync(permissionId, dto, UserId);
+        var permission = await _permissionService.UpdateAsync(permissionId, dto, GetUserId());
         return Ok(permission);
     }
 
@@ -48,7 +44,7 @@ public class PermissionsController : ControllerBase
     [HttpDelete("{permissionId}")]
     public async Task<IActionResult> Revoke(int collectionId, int permissionId)
     {
-        await _permissionService.RevokeAsync(permissionId, UserId);
+        await _permissionService.RevokeAsync(permissionId, GetUserId());
         return NoContent();
     }
 
@@ -56,7 +52,7 @@ public class PermissionsController : ControllerBase
     [HttpGet("my-role")]
     public async Task<IActionResult> GetMyRole(int collectionId)
     {
-        var role = await _permissionService.GetRoleAsync(collectionId, UserId);
+        var role = await _permissionService.GetRoleAsync(collectionId, GetUserId());
         return Ok(new { role });
     }
 
@@ -64,7 +60,7 @@ public class PermissionsController : ControllerBase
     [HttpGet("/api/shared-collections")]
     public async Task<IActionResult> GetSharedCollections()
     {
-        var collections = await _permissionService.GetSharedCollectionsAsync(UserId);
+        var collections = await _permissionService.GetSharedCollectionsAsync(GetUserId());
         return Ok(collections);
     }
 }

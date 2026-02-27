@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VAH.Backend.Models;
@@ -10,9 +9,8 @@ namespace VAH.Backend.Controllers;
 /// Smart (auto-categorized) collections — virtual collections computed from rules.
 /// </summary>
 [Route("api/[controller]")]
-[ApiController]
 [Authorize]
-public class SmartCollectionsController : ControllerBase
+public class SmartCollectionsController : BaseApiController
 {
     private readonly ISmartCollectionService _smartService;
 
@@ -20,10 +18,6 @@ public class SmartCollectionsController : ControllerBase
     {
         _smartService = smartService;
     }
-
-    private string GetUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? throw new UnauthorizedAccessException("User identity not found.");
 
     // GET: api/smart-collections
     [HttpGet]

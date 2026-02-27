@@ -29,6 +29,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(a => a.Id);
 
+            // TPH inheritance — use existing ContentType column as discriminator
+            entity.HasDiscriminator(a => a.ContentType)
+                  .HasValue<Asset>(AssetContentType.File)
+                  .HasValue<ImageAsset>(AssetContentType.Image)
+                  .HasValue<LinkAsset>(AssetContentType.Link)
+                  .HasValue<ColorAsset>(AssetContentType.Color)
+                  .HasValue<ColorGroupAsset>(AssetContentType.ColorGroup)
+                  .HasValue<FolderAsset>(AssetContentType.Folder);
+
+            // Ignore virtual behavior properties (not mapped to DB)
+            entity.Ignore(a => a.HasPhysicalFile);
+            entity.Ignore(a => a.CanHaveThumbnails);
+            entity.Ignore(a => a.RequiresFileCleanup);
+
             // FK: Asset → Collection
             entity.HasOne<Collection>()
                   .WithMany()
@@ -59,7 +73,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(a => a.FileName).HasMaxLength(500);
             entity.Property(a => a.FilePath).HasMaxLength(2048);
             entity.Property(a => a.Tags).HasMaxLength(2000);
-            entity.Property(a => a.ContentType).HasMaxLength(50);
+
+            // Enum → string conversion (backward compat with existing DB)
+            entity.Property(a => a.ContentType)
+                  .HasMaxLength(50)
+                  .HasConversion(
+                      v => v.ToDbString(),
+                      v => v.ToAssetContentType());
         });
 
         // ── Collection table configuration ──
@@ -92,8 +112,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(c => c.Name).HasMaxLength(255);
             entity.Property(c => c.Description).HasMaxLength(2000);
             entity.Property(c => c.Color).HasMaxLength(20);
-            entity.Property(c => c.Type).HasMaxLength(50);
-            entity.Property(c => c.LayoutType).HasMaxLength(20);
+
+            // Enum → string conversions (backward compat with existing DB)
+            entity.Property(c => c.Type)
+                  .HasMaxLength(50)
+                  .HasConversion(
+                      v => v.ToDbString(),
+                      v => v.ToCollectionType());
+            entity.Property(c => c.LayoutType)
+                  .HasMaxLength(20)
+                  .HasConversion(
+                      v => v.ToDbString(),
+                      v => v.ToLayoutType());
         });
 
         // ── Tag table configuration ──
@@ -168,7 +198,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 Id = 1,
                 Name = "Images",
                 Description = "Lưu trữ hình ảnh",
-                Type = "image",
+                Type = CollectionType.Image,
                 Color = "#007bff",
                 Order = 1,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -178,7 +208,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 Id = 2,
                 Name = "Links",
                 Description = "Lưu trữ đường dẫn",
-                Type = "link",
+                Type = CollectionType.Link,
                 Color = "#28a745",
                 Order = 2,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
@@ -188,7 +218,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 Id = 3,
                 Name = "Colors",
                 Description = "Lưu trữ màu sắc",
-                Type = "color",
+                Type = CollectionType.Color,
                 Color = "#ffc107",
                 Order = 3,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
