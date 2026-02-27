@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VAH.Backend.Models;
@@ -7,9 +6,8 @@ using VAH.Backend.Services;
 namespace VAH.Backend.Controllers;
 
 [Route("api/[controller]")]
-[ApiController]
 [Authorize]
-public class AssetsController : ControllerBase
+public class AssetsController : BaseApiController
 {
     private readonly IAssetService _assetService;
 
@@ -17,10 +15,6 @@ public class AssetsController : ControllerBase
     {
         _assetService = assetService;
     }
-
-    private string GetUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? throw new UnauthorizedAccessException("User identity not found.");
 
     // GET: api/assets?page=1&pageSize=50&sortBy=createdAt&sortOrder=desc
     [HttpGet]
@@ -146,11 +140,4 @@ public class AssetsController : ControllerBase
         var count = await _assetService.BulkTagAsync(dto, GetUserId());
         return Ok(new { affected = count });
     }
-}
-
-// DTO for position update
-public class AssetPositionDto
-{
-    public double PositionX { get; set; }
-    public double PositionY { get; set; }
 }

@@ -14,16 +14,3 @@ public interface ISmartCollectionService
     /// <summary>Get items matching a smart collection's criteria.</summary>
     Task<PagedResult<Asset>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId);
 }
-
-/// <summary>
-/// Describes a smart (dynamic) collection.
-/// </summary>
-public class SmartCollectionDefinition
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Icon { get; set; } = "📁";
-    public string Color { get; set; } = "#2196F3";
-    public int Count { get; set; }
-}

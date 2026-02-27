@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VAH.Backend.Models;
@@ -7,9 +6,8 @@ using VAH.Backend.Services;
 namespace VAH.Backend.Controllers;
 
 [Route("api/[controller]")]
-[ApiController]
 [Authorize]
-public class CollectionsController : ControllerBase
+public class CollectionsController : BaseApiController
 {
     private readonly ICollectionService _collectionService;
 
@@ -17,10 +15,6 @@ public class CollectionsController : ControllerBase
     {
         _collectionService = collectionService;
     }
-
-    private string GetUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? throw new UnauthorizedAccessException("User identity not found.");
 
     // GET: api/collections
     [HttpGet]

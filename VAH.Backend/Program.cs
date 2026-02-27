@@ -1,17 +1,10 @@
-using System.Text;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using VAH.Backend.Data;
+using VAH.Backend.Extensions;
 using VAH.Backend.Hubs;
 using VAH.Backend.Middleware;
-using VAH.Backend.Models;
-using VAH.Backend.Services;
 
 // ---- Bootstrap Serilog (early, before host build) ----
 Log.Logger = new LoggerConfiguration()
@@ -37,42 +30,13 @@ var builder = WebApplication.CreateBuilder(args);
 // ---- Use Serilog as the logging provider ----
 builder.Host.UseSerilog();
 
-// --- CORS ---
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173", "http://localhost:5174" };
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("Frontend", policy =>
-    {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
-    });
-});
-
-// --- Rate Limiting ---
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    options.AddFixedWindowLimiter("Fixed", opt =>
-    {
-        opt.PermitLimit = 100;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 10;
-    });
-
-    options.AddFixedWindowLimiter("Upload", opt =>
-    {
-        opt.PermitLimit = 20;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 5;
-    });
-});
+// --- Infrastructure services (grouped via extension methods) ---
+builder.Services.AddCorsPolicy(builder.Configuration);
+builder.Services.AddRateLimitingPolicies();
+builder.Services.AddDatabase(builder.Configuration);
+builder.Services.AddIdentityAndAuth(builder.Configuration);
+builder.Services.AddCachingServices(builder.Configuration);
+builder.Services.AddApplicationServices();
 
 // --- Kestrel limits ---
 builder.WebHost.ConfigureKestrel(options =>
@@ -84,108 +48,6 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// --- Database (dual provider: SQLite for dev, PostgreSQL for production) ---
-var dbProvider = builder.Configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
-    {
-        options.UseNpgsql(connectionString);
-    }
-    else
-    {
-        options.UseSqlite(connectionString);
-    }
-});
-
-// Expose provider name so AppDbContext can adapt SQL dialect
-builder.Services.AddSingleton(new DatabaseProviderInfo(dbProvider));
-
-// --- ASP.NET Identity ---
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 6;
-    options.User.RequireUniqueEmail = true;
-})
-.AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
-
-// --- JWT Authentication ---
-var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSettings["SecretKey"]
-    ?? throw new InvalidOperationException("JWT SecretKey is not configured in appsettings.json.");
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ClockSkew = TimeSpan.Zero
-    };
-
-    // SignalR sends JWT via query string instead of header
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            var accessToken = context.Request.Query["access_token"];
-            var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-            {
-                context.Token = accessToken;
-            }
-            return Task.CompletedTask;
-        }
-    };
-});
-
-// --- Redis / Distributed Cache ---
-var redisConnection = builder.Configuration.GetConnectionString("Redis");
-if (!string.IsNullOrWhiteSpace(redisConnection))
-{
-    builder.Services.AddStackExchangeRedisCache(options =>
-    {
-        options.Configuration = redisConnection;
-        options.InstanceName = "VAH:";
-    });
-    Log.Information("Redis distributed cache enabled");
-}
-else
-{
-    builder.Services.AddDistributedMemoryCache(); // In-memory fallback
-    Log.Information("Using in-memory distributed cache (no Redis configured)");
-}
-
-// --- Application services ---
-builder.Services.AddSingleton(new FileUploadConfig());
-builder.Services.AddScoped<IStorageService, LocalStorageService>();
-builder.Services.AddScoped<IAssetService, AssetService>();
-builder.Services.AddScoped<ICollectionService, CollectionService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IThumbnailService, ThumbnailService>();
-builder.Services.AddScoped<ITagService, TagService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<ISmartCollectionService, SmartCollectionService>();
-builder.Services.AddScoped<IPermissionService, PermissionService>();
 
 // --- SignalR ---
 builder.Services.AddSignalR();

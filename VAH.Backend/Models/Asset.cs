@@ -3,8 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace VAH.Backend.Models;
 
 /// <summary>
-/// Represents a digital asset in the system.
-/// Can be: image, link, color, folder, or color-group.
+/// Base class for all digital assets in the system (TPH base).
+/// Default discriminator value: File. Subtypes: ImageAsset, LinkAsset,
+/// ColorAsset, ColorGroupAsset, FolderAsset.
 /// </summary>
 public class Asset
 {
@@ -27,8 +28,7 @@ public class Asset
 
     public int CollectionId { get; set; } = 1;
 
-    [MaxLength(50)]
-    public string ContentType { get; set; } = "image";
+    public AssetContentType ContentType { get; set; } = AssetContentType.File;
 
     public int? GroupId { get; set; } = null;
     public int? ParentFolderId { get; set; } = null;
@@ -56,4 +56,16 @@ public class Asset
 
     // --- Navigation properties ---
     public ICollection<AssetTag> AssetTags { get; set; } = new List<AssetTag>();
+
+    // ── Virtual behavior properties (overridden by TPH subtypes) ──
+
+    /// <summary>Whether this asset type has a physical file stored on disk.</summary>
+    public virtual bool HasPhysicalFile => true;
+
+    /// <summary>Whether thumbnails can/should be generated for this asset type.</summary>
+    public virtual bool CanHaveThumbnails => false;
+
+    /// <summary>Whether physical file cleanup is needed on delete.</summary>
+    public virtual bool RequiresFileCleanup =>
+        HasPhysicalFile && !string.IsNullOrEmpty(FilePath) && FilePath.StartsWith("/uploads/");
 }

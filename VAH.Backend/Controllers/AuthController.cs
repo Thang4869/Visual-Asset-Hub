@@ -5,10 +5,9 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("Fixed")]
-public class AuthController : ControllerBase
+public class AuthController : BaseApiController
 {
     private readonly IAuthService _authService;
 

@@ -177,9 +177,9 @@ public class CollectionService : ICollectionService
         existing.Name = collection.Name?.Trim() ?? existing.Name;
         existing.Description = collection.Description ?? existing.Description;
         existing.Color = collection.Color ?? existing.Color;
-        existing.Type = collection.Type ?? existing.Type;
+        existing.Type = collection.Type;
         existing.Order = collection.Order;
-        existing.LayoutType = collection.LayoutType ?? existing.LayoutType;
+        existing.LayoutType = collection.LayoutType;
 
         await _context.SaveChangesAsync();
         await InvalidateCacheAsync(userId);

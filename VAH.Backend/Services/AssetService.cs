@@ -120,20 +120,10 @@ public class AssetService : IAssetService
             await using var stream = file.OpenReadStream();
             var filePath = await _storage.UploadAsync(stream, file.FileName, file.ContentType ?? "application/octet-stream");
 
-            // Determine content type
-            var contentType = file.ContentType?.StartsWith("image") == true ? "image" : "file";
-
-            var asset = new Asset
-            {
-                FileName = file.FileName,
-                FilePath = filePath,
-                Tags = string.Empty,
-                CreatedAt = DateTime.UtcNow,
-                CollectionId = collectionId,
-                ContentType = contentType,
-                ParentFolderId = folderId,
-                UserId = userId
-            };
+            // Create correct subtype based on MIME type
+            var asset = file.ContentType?.StartsWith("image") == true
+                ? (Asset)AssetFactory.CreateImage(file.FileName, filePath, collectionId, userId, folderId)
+                : AssetFactory.CreateFile(file.FileName, filePath, collectionId, userId, folderId);
 
             _context.Assets.Add(asset);
             createdAssets.Add(asset);
@@ -142,7 +132,7 @@ public class AssetService : IAssetService
         await _context.SaveChangesAsync();
 
         // Generate thumbnails for image assets (after SaveChanges so files are persisted)
-        foreach (var asset in createdAssets.Where(a => a.ContentType == "image"))
+        foreach (var asset in createdAssets.Where(a => a.CanHaveThumbnails))
         {
             try
             {
@@ -186,19 +176,7 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.FolderName))
             throw new ArgumentException("Folder name is required.");
 
-        var folder = new Asset
-        {
-            FileName = dto.FolderName.Trim(),
-            FilePath = string.Empty,
-            Tags = string.Empty,
-            ContentType = "folder",
-            IsFolder = true,
-            CollectionId = dto.CollectionId,
-            ParentFolderId = dto.ParentFolderId,
-            SortOrder = 0,
-            CreatedAt = DateTime.UtcNow,
-            UserId = userId
-        };
+        var folder = AssetFactory.CreateFolder(dto.FolderName.Trim(), dto.CollectionId, userId, dto.ParentFolderId);
 
         _context.Assets.Add(folder);
         await _context.SaveChangesAsync();
@@ -210,19 +188,9 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.ColorCode))
             throw new ArgumentException("Color code is required.");
 
-        var color = new Asset
-        {
-            FileName = dto.ColorCode.Trim(),
-            FilePath = dto.ColorCode.Trim(),
-            Tags = dto.ColorName ?? dto.ColorCode.Trim(),
-            ContentType = "color",
-            CollectionId = dto.CollectionId,
-            GroupId = dto.GroupId,
-            ParentFolderId = dto.ParentFolderId,
-            SortOrder = dto.SortOrder ?? 0,
-            CreatedAt = DateTime.UtcNow,
-            UserId = userId
-        };
+        var color = AssetFactory.CreateColor(
+            dto.ColorCode.Trim(), dto.CollectionId, userId,
+            dto.ColorName, dto.GroupId, dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(color);
         await _context.SaveChangesAsync();
@@ -234,19 +202,9 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.GroupName))
             throw new ArgumentException("Group name is required.");
 
-        var group = new Asset
-        {
-            FileName = dto.GroupName.Trim(),
-            FilePath = string.Empty,
-            Tags = string.Empty,
-            ContentType = "color-group",
-            IsFolder = false,
-            CollectionId = dto.CollectionId,
-            ParentFolderId = dto.ParentFolderId,
-            SortOrder = dto.SortOrder ?? 0,
-            CreatedAt = DateTime.UtcNow,
-            UserId = userId
-        };
+        var group = AssetFactory.CreateColorGroup(
+            dto.GroupName.Trim(), dto.CollectionId, userId,
+            dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(group);
         await _context.SaveChangesAsync();
@@ -265,18 +223,8 @@ public class AssetService : IAssetService
             (uri.Scheme != "http" && uri.Scheme != "https"))
             throw new ArgumentException("Invalid URL format. Must be http or https.");
 
-        var link = new Asset
-        {
-            FileName = dto.Name.Trim(),
-            FilePath = dto.Url.Trim(),
-            Tags = string.Empty,
-            ContentType = "link",
-            CollectionId = dto.CollectionId,
-            ParentFolderId = dto.ParentFolderId,
-            SortOrder = 0,
-            CreatedAt = DateTime.UtcNow,
-            UserId = userId
-        };
+        var link = AssetFactory.CreateLink(
+            dto.Name.Trim(), dto.Url.Trim(), dto.CollectionId, userId, dto.ParentFolderId);
 
         _context.Assets.Add(link);
         await _context.SaveChangesAsync();
@@ -310,17 +258,11 @@ public class AssetService : IAssetService
             .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             ?? throw new KeyNotFoundException("Asset not found.");
 
-        // Clean up physical file if it's an uploaded file (not a folder, link, or color)
-        if (!asset.IsFolder &&
-            asset.ContentType != "link" &&
-            asset.ContentType != "color" &&
-            asset.ContentType != "color-group" &&
-            !string.IsNullOrEmpty(asset.FilePath) &&
-            asset.FilePath.StartsWith("/uploads/"))
+        // Clean up physical file and thumbnails if applicable
+        if (asset.RequiresFileCleanup)
         {
             await _storage.DeleteAsync(asset.FilePath);
 
-            // Also clean up thumbnails
             if (!string.IsNullOrEmpty(asset.ThumbnailSm) && asset.ThumbnailSm != asset.FilePath)
                 await _storage.DeleteAsync(asset.ThumbnailSm);
             if (!string.IsNullOrEmpty(asset.ThumbnailMd) && asset.ThumbnailMd != asset.FilePath)
@@ -392,13 +334,8 @@ public class AssetService : IAssetService
 
         foreach (var asset in assets)
         {
-            // Clean up physical files
-            if (!asset.IsFolder &&
-                asset.ContentType != "link" &&
-                asset.ContentType != "color" &&
-                asset.ContentType != "color-group" &&
-                !string.IsNullOrEmpty(asset.FilePath) &&
-                asset.FilePath.StartsWith("/uploads/"))
+            // Clean up physical files and thumbnails if applicable
+            if (asset.RequiresFileCleanup)
             {
                 await _storage.DeleteAsync(asset.FilePath);
                 if (!string.IsNullOrEmpty(asset.ThumbnailSm)) await _storage.DeleteAsync(asset.ThumbnailSm);

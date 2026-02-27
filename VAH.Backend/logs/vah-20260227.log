@@ -33,3 +33,190 @@ Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
    at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
    at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
    at Program.<Main>$(String[] args) in B:\1A\VAH.Backend\Program.cs:line 194
+2026-02-27 16:41:35.703 +07:00 [INF] () Starting VAH Backend...
+2026-02-27 16:41:36.069 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-02-27 16:41:37.947 +07:00 [INF] (Microsoft.Hosting.Lifetime) Now listening on: http://localhost:5027
+2026-02-27 16:41:37.958 +07:00 [INF] (Microsoft.Hosting.Lifetime) Application started. Press Ctrl+C to shut down.
+2026-02-27 16:41:37.963 +07:00 [INF] (Microsoft.Hosting.Lifetime) Hosting environment: Development
+2026-02-27 16:41:37.966 +07:00 [INF] (Microsoft.Hosting.Lifetime) Content root path: B:\1A\VAH.Backend
+2026-02-27 16:41:52.596 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET / responded 404 in 2777.589ms
+2026-02-27 16:42:01.782 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.html responded 304 in 130.524ms
+2026-02-27 16:42:01.848 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.js responded 304 in 2.226ms
+2026-02-27 16:42:01.870 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.css responded 304 in 23.405ms
+2026-02-27 16:42:01.874 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui-bundle.js responded 304 in 26.524ms
+2026-02-27 16:42:01.870 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui-standalone-preset.js responded 304 in 24.063ms
+2026-02-27 16:42:01.870 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui.css responded 304 in 23.670ms
+2026-02-27 16:42:03.111 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/v1/swagger.json responded 200 in 659.560ms
+2026-02-27 16:43:29.688 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 146.759ms
+2026-02-27 16:43:29.688 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 146.759ms
+2026-02-27 16:43:29.734 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=Vfat61meWmp2BdGTZWycdA)
+2026-02-27 16:43:29.743 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=P3OE0I17kuIUzNq1rBQEbw)
+2026-02-27 16:43:30.061 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 520.737ms
+2026-02-27 16:43:30.075 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 12.523ms
+2026-02-27 16:43:30.108 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 563.526ms
+2026-02-27 16:43:30.120 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 8.325ms
+2026-02-27 16:43:30.129 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 588.339ms
+2026-02-27 16:43:30.145 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 14.919ms
+2026-02-27 16:44:25.859 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 246.407ms
+2026-02-27 16:44:25.916 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/1cd36e4c-a137-46bd-aebb-3c1c92d83c1f.jpg responded 304 in 23.522ms
+2026-02-27 16:44:28.992 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 22.968ms
+2026-02-27 16:44:33.685 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 6.410ms
+2026-02-27 16:44:34.314 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 7.757ms
+2026-02-27 16:44:35.041 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 4.312ms
+2026-02-27 16:44:43.019 +07:00 [ERR] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-link responded 500 in 62.078ms
+System.ArgumentException: Invalid URL format. Must be http or https.
+   at VAH.Backend.Services.AssetService.CreateLinkAsync(CreateLinkDto dto, String userId) in B:\1A\VAH.Backend\Services\AssetService.cs:line 266
+   at VAH.Backend.Controllers.AssetsController.CreateLink(CreateLinkDto dto) in B:\1A\VAH.Backend\Controllers\AssetsController.cs:line 88
+   at lambda_method317(Closure, Object)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.AwaitableObjectResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-02-27 16:44:43.146 +07:00 [ERR] (VAH.Backend.Middleware.ExceptionHandlingMiddleware) Unhandled exception for POST /api/Assets/create-link
+System.ArgumentException: Invalid URL format. Must be http or https.
+   at VAH.Backend.Services.AssetService.CreateLinkAsync(CreateLinkDto dto, String userId) in B:\1A\VAH.Backend\Services\AssetService.cs:line 266
+   at VAH.Backend.Controllers.AssetsController.CreateLink(CreateLinkDto dto) in B:\1A\VAH.Backend\Controllers\AssetsController.cs:line 88
+   at lambda_method317(Closure, Object)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.AwaitableObjectResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at VAH.Backend.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in B:\1A\VAH.Backend\Middleware\ExceptionHandlingMiddleware.cs:line 30
+2026-02-27 16:45:01.581 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-link responded 200 in 230.607ms
+2026-02-27 16:45:01.598 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 4.411ms
+2026-02-27 16:45:16.129 +07:00 [INF] (VAH.Backend.Services.LocalStorageService) File uploaded: NguyenVanThangHUFLIT.jpg → f9cfe617-2881-4de9-9dad-fc2293731de0.jpg (736005 bytes)
+2026-02-27 16:45:18.058 +07:00 [INF] (VAH.Backend.Services.ThumbnailService) Thumbnails generated for /uploads/f9cfe617-2881-4de9-9dad-fc2293731de0.jpg: sm, md, lg
+2026-02-27 16:45:18.090 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/upload responded 200 in 2059.808ms
+2026-02-27 16:45:18.107 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 8.303ms
+2026-02-27 16:45:18.139 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 19.731ms
+2026-02-27 16:45:18.154 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 13.301ms
+2026-02-27 16:45:18.185 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/f9cfe617-2881-4de9-9dad-fc2293731de0.jpg responded 200 in 41.483ms
+2026-02-27 16:45:47.318 +07:00 [INF] (VAH.Backend.Services.TagService) Tag created: A (Id=1) by user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-27 16:45:47.379 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Tags responded 201 in 128.883ms
+2026-02-27 16:45:47.641 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP PUT /api/Tags/asset/7 responded 200 in 228.454ms
+2026-02-27 16:45:47.658 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 3.295ms
+2026-02-27 16:45:51.676 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 9.603ms
+2026-02-27 16:45:52.309 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 12.095ms
+2026-02-27 16:45:52.920 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 15.809ms
+2026-02-27 16:45:52.960 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/2823d434-5af8-41c4-b156-9ae9136222fe.jpg responded 304 in 0.324ms
+2026-02-27 16:45:52.960 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/777b9fca-b7d3-4d85-a970-36a5d5f43444.jpg responded 304 in 0.817ms
+2026-02-27 16:45:56.447 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 26.375ms
+2026-02-27 16:46:16.773 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-color responded 200 in 20.352ms
+2026-02-27 16:46:16.788 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 2.901ms
+2026-02-27 16:46:31.105 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-color responded 200 in 23.985ms
+2026-02-27 16:46:31.128 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 7.169ms
+2026-02-27 16:46:40.228 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-color responded 200 in 7.318ms
+2026-02-27 16:46:40.246 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.587ms
+2026-02-27 16:46:48.389 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-color responded 200 in 19.783ms
+2026-02-27 16:46:48.408 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.200ms
+2026-02-27 16:46:54.694 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-color responded 200 in 18.992ms
+2026-02-27 16:46:54.739 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 23.362ms
+2026-02-27 16:47:01.551 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-color-group responded 200 in 30.428ms
+2026-02-27 16:47:01.584 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 19.345ms
+2026-02-27 16:47:24.467 +07:00 [INF] (VAH.Backend.Services.LocalStorageService) File uploaded: tải xuống.jpg → be3e5d2f-1633-4e44-a17a-e07e094b22e8.jpg (14077 bytes)
+2026-02-27 16:47:24.750 +07:00 [INF] (VAH.Backend.Services.ThumbnailService) Thumbnails generated for /uploads/be3e5d2f-1633-4e44-a17a-e07e094b22e8.jpg: sm, md, lg
+2026-02-27 16:47:24.760 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/upload responded 200 in 309.731ms
+2026-02-27 16:47:24.794 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 11.330ms
+2026-02-27 16:47:24.821 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 19.108ms
+2026-02-27 16:47:24.834 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 11.339ms
+2026-02-27 16:47:35.876 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/be3e5d2f-1633-4e44-a17a-e07e094b22e8.jpg responded 200 in 2.897ms
+2026-02-27 16:47:35.881 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 5.389ms
+2026-02-27 16:47:35.931 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/f9cfe617-2881-4de9-9dad-fc2293731de0.jpg responded 304 in 0.360ms
+2026-02-27 16:47:36.401 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 7.004ms
+2026-02-27 16:47:53.034 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/be3e5d2f-1633-4e44-a17a-e07e094b22e8.jpg responded 304 in 1.251ms
+2026-02-27 16:47:53.045 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 8.207ms
+2026-02-27 16:47:53.096 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/f9cfe617-2881-4de9-9dad-fc2293731de0.jpg responded 304 in 0.450ms
+2026-02-27 16:47:53.554 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 5.974ms
+2026-02-27 16:47:54.012 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 5.137ms
+2026-02-27 16:47:55.048 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 9.450ms
+2026-02-27 16:47:55.502 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 8.649ms
+2026-02-27 16:47:55.870 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 4.933ms
+2026-02-27 16:47:56.323 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 10.836ms
+2026-02-27 16:47:57.371 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 7.107ms
+2026-02-27 16:47:57.872 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 5.694ms
+2026-02-27 16:48:04.176 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-27 16:48:04.176 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-27 16:48:04.179 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 274482.929ms
+2026-02-27 16:48:04.179 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 274444.802ms
+2026-02-27 16:48:04.972 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 5.948ms
+2026-02-27 16:48:04.973 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 2.140ms
+2026-02-27 16:48:04.992 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 8.191ms
+2026-02-27 16:48:05.007 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 3.366ms
+2026-02-27 16:48:05.012 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 8.706ms
+2026-02-27 16:48:05.036 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=PHiwDYsUGmicb8iq3S2JtQ)
+2026-02-27 16:48:05.029 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 2.445ms
+2026-02-27 16:48:05.027 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 17.759ms
+2026-02-27 16:48:05.049 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 20.344ms
+2026-02-27 16:48:05.081 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=UNvS9AxlX4y9sP3qE4SdkA)
+2026-02-27 16:48:05.109 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 6.023ms
+2026-02-27 16:48:36.776 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP PUT /api/Assets/3 responded 200 in 54.283ms
+2026-02-27 16:48:36.815 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 11.090ms
+2026-02-27 16:48:42.572 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 4.056ms
+2026-02-27 16:48:42.667 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/f9cfe617-2881-4de9-9dad-fc2293731de0.jpg responded 304 in 0.291ms
+2026-02-27 16:48:51.556 +07:00 [ERR] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/create-link responded 500 in 9.269ms
+System.ArgumentException: Invalid URL format. Must be http or https.
+   at VAH.Backend.Services.AssetService.CreateLinkAsync(CreateLinkDto dto, String userId) in B:\1A\VAH.Backend\Services\AssetService.cs:line 266
+   at VAH.Backend.Controllers.AssetsController.CreateLink(CreateLinkDto dto) in B:\1A\VAH.Backend\Controllers\AssetsController.cs:line 88
+   at lambda_method317(Closure, Object)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.AwaitableObjectResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-02-27 16:48:51.573 +07:00 [ERR] (VAH.Backend.Middleware.ExceptionHandlingMiddleware) Unhandled exception for POST /api/Assets/create-link
+System.ArgumentException: Invalid URL format. Must be http or https.
+   at VAH.Backend.Services.AssetService.CreateLinkAsync(CreateLinkDto dto, String userId) in B:\1A\VAH.Backend\Services\AssetService.cs:line 266
+   at VAH.Backend.Controllers.AssetsController.CreateLink(CreateLinkDto dto) in B:\1A\VAH.Backend\Controllers\AssetsController.cs:line 88
+   at lambda_method317(Closure, Object)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.AwaitableObjectResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at VAH.Backend.Middleware.ExceptionHandlingMiddleware.InvokeAsync(HttpContext context) in B:\1A\VAH.Backend\Middleware\ExceptionHandlingMiddleware.cs:line 30
+2026-02-27 16:49:00.665 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-27 16:49:00.665 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-27 16:49:00.671 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 55653.172ms
+2026-02-27 16:49:00.672 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 55637.425ms
