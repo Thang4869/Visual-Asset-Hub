@@ -21,5 +21,6 @@ public interface IAssetService
     // Bulk operations
     Task<int> BulkDeleteAsync(List<int> assetIds, string userId);
     Task<int> BulkMoveAsync(BulkMoveDto dto, string userId);
+    Task<int> BulkMoveGroupAsync(BulkMoveGroupDto dto, string userId);
     Task<int> BulkTagAsync(BulkTagDto dto, string userId);
 }

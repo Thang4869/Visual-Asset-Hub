@@ -1,6 +1,6 @@
 # Visual Asset Hub — Báo cáo Thay đổi & Sửa lỗi
 
-> **Cập nhật lần cuối:** 28/02/2026 — Session #2
+> **Cập nhật lần cuối:** 28/02/2026 — Session #3
 
 ---
 
@@ -527,3 +527,169 @@ Toolbar hiển thị nút "Tải xuống" (Download) nhưng chức năng thực 
 | `VAH.Frontend/src/components/ColorBoard.jsx` | Bỏ nút ✕, thêm Ctrl+click multi-select |
 | `VAH.Frontend/src/components/ColorBoard.css` | Bỏ delete btn styles, thêm `.multi-selected` |
 | `VAH.Frontend/src/App.jsx` | Bỏ `onDeleteAsset` props, thêm `onSelectAsset`/`selectedAssetIds` cho ColorBoard, sửa label "Liên kết mới" |
+
+---
+
+## Session #3 — Cải tiến ColorBoard (28/02/2026)
+
+### Tổng quan vấn đề
+User báo 3 vấn đề:
+1. Khi có nhiều màu trong group → các item tràn ra ngoài cột (đã sửa session trước, overflow CSS)
+2. Không có cách copy mã màu — con trỏ luôn là nắm tay (grab) khi hover
+3. Drag-drop chỉ di chuyển 1 màu, không di chuyển nhiều màu cùng lúc
+4. Không chọn được vị trí chèn khi kéo thả (chỉ append cuối group)
+
+---
+
+### Fix 7: Click-to-copy mã màu (Frontend)
+
+**File:** `VAH.Frontend/src/components/ColorBoard.jsx`
+
+**Trước:** Toàn bộ color item có `cursor: grab`, click vào mã màu không làm gì.  
+**Sau:**
+- Color item có `cursor: default` bình thường
+- Thêm drag handle icon `⠿` riêng biệt ở bên trái, chỉ phần đó có `cursor: grab`
+- `.color-code` span có `cursor: pointer` → click gọi `navigator.clipboard.writeText()`
+- Sau khi copy hiện `✓ Copied!` bằng màu xanh lá trong 1.5 giây
+
+```jsx
+<span className="color-drag-handle" title="Drag to reorder">⠿</span>
+<span className="color-swatch" style={{ backgroundColor: color.filePath }} />
+<span
+  className={`color-code ${copiedId === color.filePath ? 'copied' : ''}`}
+  onClick={(e) => handleCopyCode(e, color.filePath)}
+  title="Click to copy"
+>
+  {copiedId === color.filePath ? '✓ Copied!' : color.filePath}
+</span>
+```
+
+**CSS mới** (`ColorBoard.css`):
+```css
+.color-drag-handle {
+  cursor: grab;
+  color: #666;
+  font-size: 0.9rem;
+  user-select: none;
+}
+.color-code {
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.color-code:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.color-code.copied {
+  color: #4caf50;
+  font-weight: 600;
+}
+```
+
+---
+
+### Fix 8: Drag-drop với vị trí chèn chính xác (Frontend + Backend)
+
+**Vấn đề:** Trước đây khi kéo màu sang group khác, luôn append ở cuối. Không thể sắp xếp lại thứ tự trong cùng group hoặc chèn vào giữa.
+
+**Frontend — `ColorBoard.jsx`:**
+- `calcDropTarget()`: Khi drag over group, duyệt tất cả `.color-item` elements, so sánh `e.clientY` với midpoint → xác định `insertBeforeId`
+- Hiện **drop indicator line** (gạch xanh ngang + chấm tròn đầu dòng) ở vị trí sẽ chèn
+- `dropTarget` state: `{ groupId, insertBeforeId, position }`
+
+```jsx
+const calcDropTarget = (e, groupId, groupColors) => {
+  const items = e.currentTarget.querySelectorAll('.color-item');
+  let insertBeforeId = null;
+  for (const item of items) {
+    const rect = item.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (e.clientY < midY) {
+      insertBeforeId = parseInt(item.dataset.colorId, 10);
+      break;
+    }
+  }
+  setDropTarget({ groupId, insertBeforeId });
+};
+```
+
+**CSS mới** (`ColorBoard.css`):
+```css
+.drop-indicator {
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  box-shadow: 0 0 4px var(--accent);
+}
+.drop-indicator::before {
+  content: '';
+  position: absolute;
+  left: -4px; top: -3px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+```
+
+**Backend — Endpoint mới:**
+- `POST /api/assets/bulk-move-group`
+- DTO mới `BulkMoveGroupDto`: `AssetIds`, `TargetGroupId`, `InsertBeforeId`
+- `BulkMoveGroupAsync()` trong `AssetService.cs`:
+  1. Set `GroupId` cho tất cả asset di chuyển
+  2. Lấy danh sách existing colors trong target group (trừ moved ones)
+  3. Nếu `InsertBeforeId` != null → chèn moved assets trước vị trí đó
+  4. Nếu null → append cuối
+  5. Gán `SortOrder` = index cho toàn bộ final order
+
+---
+
+### Fix 9: Multi-select drag — di chuyển nhiều màu cùng lúc (Frontend)
+
+**Vấn đề:** Ctrl+click cho chọn nhiều màu, nhưng khi kéo chỉ di chuyển 1 màu.
+
+**Fix — `ColorBoard.jsx`:**
+- `handleDragStart()`: Nếu item đang kéo nằm trong `selectedAssetIds` → thu thập tất cả selected color IDs
+- Truyền array IDs qua `e.dataTransfer.setData('application/json', JSON.stringify(ids))`
+- Custom drag image: hiện badge `"N colors"` khi kéo nhiều item
+- `handleDrop()`: Parse array IDs → gọi `onMoveColorsToGroup(ids, targetGroupId, insertBeforeId)`
+
+```jsx
+const handleDragStart = (e, colorId) => {
+  let ids;
+  if (selectedAssetIds.has(colorId) && selectedAssetIds.size > 1) {
+    ids = Array.from(selectedAssetIds).filter(id => colors.some(c => c.id === id));
+  } else {
+    ids = [colorId];
+  }
+  setDragItemIds(ids);
+  e.dataTransfer.setData('application/json', JSON.stringify(ids));
+  // Custom badge for multi-drag
+  if (ids.length > 1) { /* create temporary DOM badge */ }
+};
+```
+
+**Hook — `useAssets.js`:**
+- Đổi `handleMoveColorToGroup` → `handleMoveColorsToGroup`
+- Gọi `assetsApi.bulkMoveGroup(colorIds, targetGroupId, insertBeforeId)`
+- Clear selection sau khi move thành công
+
+**API — `assetsApi.js`:**
+```js
+export const bulkMoveGroup = (assetIds, targetGroupId = null, insertBeforeId = null) =>
+  apiClient.post(`${ENDPOINT}/bulk-move-group`, { assetIds, targetGroupId, insertBeforeId });
+```
+
+---
+
+### Tóm tắt files đã chỉnh sửa (Session #3)
+
+| File | Thay đổi |
+|------|----------|
+| `VAH.Backend/Models/DTOs.cs` | Thêm `BulkMoveGroupDto` (AssetIds, TargetGroupId, InsertBeforeId) |
+| `VAH.Backend/Services/IAssetService.cs` | Thêm `BulkMoveGroupAsync` interface |
+| `VAH.Backend/Services/AssetService.cs` | Implement `BulkMoveGroupAsync` — move + reorder in one transaction |
+| `VAH.Backend/Controllers/AssetsController.cs` | Thêm endpoint `POST /api/assets/bulk-move-group` |
+| `VAH.Frontend/src/api/assetsApi.js` | Thêm `bulkMoveGroup()` API function |
+| `VAH.Frontend/src/hooks/useAssets.js` | Đổi `handleMoveColorToGroup` → `handleMoveColorsToGroup` (multi-select + insertBefore) |
+| `VAH.Frontend/src/App.jsx` | Wire `onMoveColorsToGroup` prop cho ColorBoard |
+| `VAH.Frontend/src/components/ColorBoard.jsx` | Click-to-copy, drag handle riêng, drop indicator, multi-select drag |
+| `VAH.Frontend/src/components/ColorBoard.css` | Styles: drag handle, color-code hover/copied, drop indicator line |

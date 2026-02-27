@@ -58,6 +58,10 @@ export const bulkDelete = (assetIds) =>
 export const bulkMove = (assetIds, targetCollectionId = null, targetFolderId = null, clearParentFolder = false) =>
   apiClient.post(`${ENDPOINT}/bulk-move`, { assetIds, targetCollectionId, targetFolderId, clearParentFolder }).then(r => r.data);
 
+/** Bulk move colors to a group with positional insert */
+export const bulkMoveGroup = (assetIds, targetGroupId = null, insertBeforeId = null) =>
+  apiClient.post(`${ENDPOINT}/bulk-move-group`, { assetIds, targetGroupId, insertBeforeId }).then(r => r.data);
+
 /** Bulk tag assets */
 export const bulkTag = (assetIds, tagIds, remove = false) =>
   apiClient.post(`${ENDPOINT}/bulk-tag`, { assetIds, tagIds, remove }).then(r => r.data);

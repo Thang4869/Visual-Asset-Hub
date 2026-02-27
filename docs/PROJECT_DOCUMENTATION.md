@@ -652,7 +652,7 @@ Auto-fetch on mount.
 | `AssetDisplayer` | assets, subCollections, viewMode, onSelectCollection, loading | Gallery + canvas mode |
 | `AssetGrid` | assets | Simple card grid |
 | `UploadArea` | onUpload | react-dropzone file drop zone |
-| `ColorBoard` | items, onCreateColor, onCreateGroup | Color palette manager, group columns |
+| `ColorBoard` | items, onCreateColor, onCreateGroup, onSelectAsset, onMoveColorsToGroup, selectedAssetIds | Color palette manager: group columns, click-to-copy code, drag-drop reorder with positional insert, multi-select drag |
 | `SearchBar` | onSearch | Search input |
 | `ShareDialog` | collectionId, collectionName, onClose | RBAC sharing modal: grant/update/revoke by email |
 | `DraggableAssetCanvas` | (internal) | Canvas drag-and-drop cho images |

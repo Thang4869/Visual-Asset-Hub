@@ -103,6 +103,22 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     [selectedCollection, currentFolderId, refreshItems],
   );
 
+  // ------- Move color(s) to group with position -------
+  const handleMoveColorsToGroup = useCallback(
+    async (colorIds, targetGroupId, insertBeforeId = null) => {
+      if (!colorIds || colorIds.length === 0) return;
+      try {
+        await assetsApi.bulkMoveGroup(colorIds, targetGroupId, insertBeforeId);
+        setSelectedAssetIds(new Set());
+        refreshItems();
+      } catch (err) {
+        console.error('Error moving colors to group:', err);
+        alert('Lỗi khi di chuyển màu');
+      }
+    },
+    [refreshItems],
+  );
+
   // ------- Delete single asset -------
   const handleDeleteAsset = useCallback(
     async (assetId) => {
@@ -286,6 +302,7 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     handleMoveAsset,
     handleMoveSelected,
     handleReorderAssets,
+    handleMoveColorsToGroup,
     handleBulkDelete,
     handleBulkMove,
     handleBulkTag,

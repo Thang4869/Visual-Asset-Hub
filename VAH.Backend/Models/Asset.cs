@@ -94,7 +94,9 @@ public class Asset
             FileName = dto.FileName.Trim();
         if (dto.SortOrder.HasValue)
             SortOrder = dto.SortOrder.Value;
-        if (dto.GroupId.HasValue)
+        if (dto.ClearGroup == true)
+            GroupId = null;
+        else if (dto.GroupId.HasValue)
             GroupId = dto.GroupId.Value;
         if (dto.ParentFolderId.HasValue)
             ParentFolderId = dto.ParentFolderId.Value;
