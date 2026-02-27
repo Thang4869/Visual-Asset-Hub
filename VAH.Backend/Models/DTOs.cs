@@ -38,6 +38,7 @@ public class UpdateAssetDto
     public int? GroupId { get; set; }
     public int? ParentFolderId { get; set; }
     public bool? ClearParentFolder { get; set; }
+    public bool? ClearGroup { get; set; }
 }
 
 public class CreateLinkDto
@@ -114,6 +115,18 @@ public class BulkMoveDto
     public int? TargetCollectionId { get; set; }
     public int? TargetFolderId { get; set; }
     public bool? ClearParentFolder { get; set; }
+}
+
+public class BulkMoveGroupDto
+{
+    [Required]
+    public List<int> AssetIds { get; set; } = new();
+
+    /// <summary>Target group ID. Null means "Ungrouped".</summary>
+    public int? TargetGroupId { get; set; }
+
+    /// <summary>Insert before this asset ID within the group. Null = append at end.</summary>
+    public int? InsertBeforeId { get; set; }
 }
 
 public class BulkTagDto

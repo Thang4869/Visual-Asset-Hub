@@ -133,6 +133,14 @@ public class AssetsController : BaseApiController
         return Ok(new { moved = count });
     }
 
+    // POST: api/assets/bulk-move-group
+    [HttpPost("bulk-move-group")]
+    public async Task<ActionResult> BulkMoveGroup([FromBody] BulkMoveGroupDto dto)
+    {
+        var count = await _assetService.BulkMoveGroupAsync(dto, GetUserId());
+        return Ok(new { moved = count });
+    }
+
     // POST: api/assets/bulk-tag
     [HttpPost("bulk-tag")]
     public async Task<ActionResult> BulkTag([FromBody] BulkTagDto dto)

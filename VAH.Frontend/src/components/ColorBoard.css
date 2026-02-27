@@ -61,11 +61,12 @@
 }
 
 .color-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   overflow-y: auto;
   padding-right: 0.5rem;
+  align-items: flex-start;
 }
 
 .color-group-column {
@@ -74,7 +75,16 @@
   background-color: rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  min-height: 220px;
+  min-height: 120px;
+  max-height: 420px;
+  width: 220px;
+  flex-shrink: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.color-group-column.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), inset 0 0 12px rgba(33, 150, 243, 0.15);
 }
 
 .group-header {
@@ -100,6 +110,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .color-item {
@@ -110,11 +123,37 @@
   border-radius: 6px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, opacity 0.15s;
+  flex-shrink: 0;
+  cursor: default;
+  position: relative;
+}
+
+.color-item.dragging {
+  opacity: 0.3;
 }
 
 .color-item:hover {
   border-color: rgba(33, 150, 243, 0.3);
+}
+
+.color-drag-handle {
+  cursor: grab;
+  color: #666;
+  font-size: 0.9rem;
+  -webkit-user-select: none;
+  user-select: none;
+  line-height: 1;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.color-drag-handle:hover {
+  color: var(--text-primary);
+}
+
+.color-item:active .color-drag-handle {
+  cursor: grabbing;
 }
 
 .color-swatch {
@@ -122,11 +161,49 @@
   height: 20px;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
 }
 
 .color-code {
   font-family: monospace;
   font-size: 0.85rem;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: background-color 0.15s, color 0.15s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.color-code:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.color-code.copied {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+/* Drop indicator line */
+.drop-indicator {
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin: -1px 0;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px var(--accent);
+}
+
+.drop-indicator::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .group-empty {

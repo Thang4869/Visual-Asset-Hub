@@ -394,6 +394,71 @@ public class AssetService : IAssetService
         return assets.Count;
     }
 
+    public async Task<int> BulkMoveGroupAsync(BulkMoveGroupDto dto, string userId)
+    {
+        if (dto.AssetIds == null || dto.AssetIds.Count == 0)
+            throw new ArgumentException("Asset IDs are required.");
+
+        // Fetch the colors being moved
+        var movedAssets = await _context.Assets
+            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
+            .ToListAsync();
+
+        if (movedAssets.Count == 0) return 0;
+
+        // Set group for each moved asset
+        foreach (var asset in movedAssets)
+        {
+            asset.GroupId = dto.TargetGroupId;
+        }
+
+        // Get all existing colors in the target group (including newly moved ones after save)
+        var targetGroupId = dto.TargetGroupId;
+        var existingInGroup = await _context.Assets
+            .Where(a => a.GroupId == targetGroupId && a.UserId == userId
+                        && a.ContentType == AssetContentType.Color
+                        && !dto.AssetIds.Contains(a.Id))
+            .OrderBy(a => a.SortOrder)
+            .ToListAsync();
+
+        // Build final ordered list
+        List<Asset> finalOrder;
+        if (dto.InsertBeforeId.HasValue)
+        {
+            finalOrder = new List<Asset>();
+            bool inserted = false;
+            foreach (var existing in existingInGroup)
+            {
+                if (existing.Id == dto.InsertBeforeId.Value && !inserted)
+                {
+                    finalOrder.AddRange(movedAssets);
+                    inserted = true;
+                }
+                finalOrder.Add(existing);
+            }
+            if (!inserted)
+                finalOrder.AddRange(movedAssets); // append at end if insertBefore not found
+        }
+        else
+        {
+            finalOrder = new List<Asset>(existingInGroup);
+            finalOrder.AddRange(movedAssets);
+        }
+
+        // Assign sort orders
+        for (int i = 0; i < finalOrder.Count; i++)
+        {
+            finalOrder[i].SortOrder = i;
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Bulk moved {Count} colors to group {GroupId} for user {UserId}",
+            movedAssets.Count, dto.TargetGroupId, userId);
+        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = movedAssets.Count });
+        return movedAssets.Count;
+    }
+
     public async Task<int> BulkTagAsync(BulkTagDto dto, string userId)
     {
         if (dto.AssetIds == null || dto.AssetIds.Count == 0)

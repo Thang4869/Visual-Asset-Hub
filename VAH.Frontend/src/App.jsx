@@ -74,6 +74,7 @@ function AppLayout() {
     handleMoveAsset,
     handleMoveSelected,
     handleReorderAssets,
+    handleMoveColorsToGroup,
     handleBulkDelete,
     handleBulkMove,
     handleBulkTag,
@@ -397,6 +398,7 @@ function AppLayout() {
                     onCreateColor={handleCreateColor}
                     onCreateGroup={handleCreateColorGroup}
                     onSelectAsset={toggleSelectAsset}
+                    onMoveColorsToGroup={handleMoveColorsToGroup}
                     selectedAssetIds={selectedAssetIds}
                   />
                 ) : viewMode === 'browser' ? (
