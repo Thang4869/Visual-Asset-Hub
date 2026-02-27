@@ -1,6 +1,6 @@
 # Visual Asset Hub (VAH) — Tài liệu Kỹ thuật Chi tiết
 
-> **Cập nhật:** 27/02/2026 — Phản ánh đầy đủ trạng thái hiện tại của dự án
+> **Cập nhật:** 28/02/2026 — Phản ánh đầy đủ trạng thái hiện tại của dự án
 
 ---
 
@@ -33,7 +33,7 @@
   - `AddIdentityAndAuth()` — ASP.NET Identity + JWT Bearer Authentication
   - `AddCachingServices()` — Redis / In-memory distributed cache
   - `AddApplicationServices()` — Asset, Collection, Search, Storage, Auth, Tag, Thumbnail, Notification, SmartCollection, Permission services
-  - Controllers, Swagger, SignalR
+  - Controllers + `JsonStringEnumConverter(KebabCaseLower)`, Swagger, SignalR
 - **Logic khởi động:**
   - `Database.Migrate()` — tự động apply migrations khi khởi động
   - **Seed 3 collection mặc định** (trong migration) nếu chưa có:
@@ -272,7 +272,7 @@
 | `UploadFilesAsync(files, collectionId, folderId, userId)` | `List<Asset>` | Validate size/ext/MIME, thumbnail gen |
 | `UpdatePositionAsync(id, x, y, userId)` | `Asset` | Canvas position |
 | `CreateFolderAsync(dto, userId)` | `Asset` | |
-| `CreateColorAsync(dto, userId)` | `Asset` | |
+| `CreateColorAsync(dto, userId)` | `Asset` | Auto-prepend `#` cho hex codes |
 | `CreateColorGroupAsync(dto, userId)` | `Asset` | |
 | `CreateLinkAsync(dto, userId)` | `Asset` | URL validation (http/https) |
 | `UpdateAssetAsync(id, dto, userId)` | `Asset` | Partial update |

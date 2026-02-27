@@ -121,9 +121,15 @@ const CollectionBrowser = ({
                 {asset.contentType === 'image' && (
                   <div className="file-preview">
                     <img
-                      src={staticUrl(asset.filePath)}
+                      src={staticUrl(asset.thumbnailMd || asset.thumbnailSm || asset.filePath)}
                       alt={asset.fileName}
+                      loading="lazy"
                       onError={(e) => {
+                        // If thumbnail fails, try original file
+                        if (asset.thumbnailMd && e.target.src !== staticUrl(asset.filePath)) {
+                          e.target.src = staticUrl(asset.filePath);
+                          return;
+                        }
                         e.target.style.display = 'none';
                         e.target.nextElementSibling.style.display = 'flex';
                       }}
@@ -132,12 +138,33 @@ const CollectionBrowser = ({
                   </div>
                 )}
                 {asset.contentType === 'link' && (
-                  <div className="file-icon link-icon">🔗</div>
+                  <a
+                    className="file-icon link-icon"
+                    href={asset.filePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title={asset.filePath}
+                  >
+                    🔗
+                  </a>
                 )}
                 {asset.contentType === 'color' && (
                   <div className="file-color" style={{ backgroundColor: asset.filePath }}></div>
                 )}
                 <div className="item-name">{asset.fileName}</div>
+                {asset.contentType === 'link' && asset.filePath && (
+                  <a
+                    className="item-link-url"
+                    href={asset.filePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title={asset.filePath}
+                  >
+                    {asset.filePath}
+                  </a>
+                )}
                 <div className="item-meta">
                   <span className="item-date">{formatDate(asset.createdAt)}</span>
                 </div>

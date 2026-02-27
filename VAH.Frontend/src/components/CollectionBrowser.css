@@ -207,6 +207,32 @@
 
 .file-icon.link-icon {
   background: linear-gradient(135deg, rgba(33,150,243,0.08), rgba(33,150,243,0.2));
+  text-decoration: none;
+  color: inherit;
+}
+
+.file-icon.link-icon:hover {
+  background: linear-gradient(135deg, rgba(33,150,243,0.15), rgba(33,150,243,0.3));
+}
+
+/* Link URL below item name */
+.item-link-url {
+  font-size: 0.72rem;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+  margin-bottom: 2px;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.item-link-url:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 /* Color swatch */
@@ -319,3 +345,5 @@
   font-size: 0.7rem;
   font-weight: bold;
 }
+
+

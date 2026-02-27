@@ -133,3 +133,33 @@
   color: #777;
   font-size: 0.85rem;
 }
+
+/* Multi-select highlight */
+.color-group-column.multi-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.color-item.multi-selected {
+  border-color: var(--accent);
+  background-color: rgba(33, 150, 243, 0.2);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.color-item.multi-selected::after {
+  content: '✓';
+  background: var(--accent);
+  color: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: bold;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+

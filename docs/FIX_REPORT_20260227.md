@@ -1,6 +1,6 @@
 # Visual Asset Hub — Báo cáo Thay đổi & Sửa lỗi
 
-> **Cập nhật lần cuối:** 27/02/2026
+> **Cập nhật lần cuối:** 28/02/2026 — Session #2
 
 ---
 
@@ -248,3 +248,282 @@
 ### Tag Duplicate
 **Vấn đề:** Cùng tag tạo nhiều bản  
 **Fix:** Normalize (lowercase + trim) + unique index per user
+### Pending Model Changes — Migration SyncModelChanges
+**Vấn đề:** EF Core phát hiện model có thay đổi chưa được ghi vào migration → ứng dụng crash khi khởi động với lỗi `PendingModelChangesWarning`.  
+**Nguyên nhân:** Cột `ParentFolderId` trong bảng `Assets` đã tồn tại nhưng thiếu **Foreign Key constraint** trỏ về chính bảng `Assets` (self-referencing FK). Model code đã khai báo relationship nhưng migration trước đó chưa tạo FK tương ứng.  
+**Fix:** Tạo migration `20260227165804_SyncModelChanges` bổ sung:
+```
+FK_Assets_Assets_ParentFolderId (onDelete: Restrict)
+```
+Đây là self-referencing foreign key cho phép asset có cấu trúc thư mục cha-con (folder hierarchy).
+
+### JSON Enum Serialization — Sửa lỗi hiển thị Colors/Images/Links
+**Vấn đề:** Backend trả enum `CollectionType` và `AssetContentType` dưới dạng **số nguyên** (0, 1, 2, 3). Frontend so sánh bằng **string** (`'color'`, `'image'`, `'color-group'`). Kết quả:
+- ColorBoard không bao giờ render (Colors collection)
+- Ảnh không hiển thị preview trong CollectionBrowser
+- Color swatch không render trong grid view
+- Sidebar icons (🖼️🔗🎨📁) không hiển thị  
+**Fix:** Thêm `JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)` vào `Program.cs` → `AddControllers().AddJsonOptions(...)`. Giờ enum serialize thành lowercase kebab-case strings khớp frontend:  
+`CollectionType.Color` → `"color"`, `AssetContentType.ColorGroup` → `"color-group"`
+
+### Color Code Auto-Prepend `#`
+**Vấn đề:** User nhập `6367FF` → lưu thiếu `#` → CSS `backgroundColor` không nhận diện → swatch hiển thị trống.  
+**Fix:**
+- Backend (`AssetService.CreateColorAsync`): Auto-prepend `#` nếu input match regex `^[0-9A-Fa-f]{3,8}$`
+- Frontend (`ColorBoard.jsx`): Cùng logic auto-prepend trước khi gửi API
+
+### Thêm chức năng Xóa từng item
+**Vấn đề:** Không có UI để xóa thư mục con, màu sắc, nhóm màu, link, hay tệp riêng lẻ.  
+**Fix:** Thêm nút xóa (✕) hiện khi hover cho tất cả các loại item:
+- `useAssets.js`: Thêm `handleDeleteAsset()` — gọi `DELETE /api/assets/{id}` với confirm dialog
+- `CollectionBrowser.jsx`: Nút ✕ trên mỗi thư mục con và tệp tin (folder, image, link, color)
+- `ColorBoard.jsx`: Nút ✕ trên mỗi nhóm màu và từng mẫu màu
+- `App.jsx`: Wire `onDeleteAsset={handleDeleteAsset}` cho cả CollectionBrowser và ColorBoard
+- CSS: Nút đỏ tròn, opacity 0 → 1 khi hover parent element
+
+**⚠️ GHI CHÚ:** User yêu cầu bỏ nút đỏ ✕, thay bằng Ctrl+click multi-select → thanh bulk delete. Xem mục tiếp theo.
+
+---
+
+## Session #2 — Sửa lỗi toàn diện (28/02/2026)
+
+### Tổng quan vấn đề
+User báo 4 lỗi chính:
+1. Hình ảnh tải lên nhưng không hiển thị preview
+2. Không tạo được group cho màu sắc
+3. Link chỉ hiển thị icon 🔗, không có tên và URL clickable
+4. Không xóa được màu bằng Ctrl+click
+
+### Nguyên nhân gốc: `AssetFactory` không set `ContentType`
+
+**Phát hiện:** Đây là bug nghiêm trọng nhất, ảnh hưởng đến **tất cả chức năng**.
+
+Lớp `Asset` có property `ContentType` với giá trị mặc định `AssetContentType.File`. EF Core TPH dùng `ContentType` làm discriminator — khi **đọc** từ DB, EF Core tự gán đúng giá trị. Nhưng khi **tạo mới**, `AssetFactory` tạo đúng subtype (`LinkAsset`, `ImageAsset`, v.v.) mà **không set `ContentType`**.
+
+**Hệ quả:**
+- API response trả `contentType: "file"` cho tất cả asset mới tạo
+- Frontend check `asset.contentType === 'image'` → `false` → không render `<img>`
+- `asset.contentType === 'color-group'` → `false` → ColorBoard filter trả rỗng
+- `asset.contentType === 'link'` → `false` → Link không hiển thị đúng
+- `asset.contentType === 'color'` → `false` → Color swatch không render
+
+**Minh chứng bằng API test:**
+```
+POST /api/assets/create-link → contentType: "file"   (sai, phải là "link")
+POST /api/assets/create-color-group → contentType: "file"   (sai, phải là "color-group")
+```
+
+---
+
+### Fix 1: Set `ContentType` trong `AssetFactory` (Backend)
+
+**File:** `VAH.Backend/Models/AssetFactory.cs`
+
+Thêm `ContentType = AssetContentType.X` vào **tất cả 6 factory methods**:
+
+| Method | ContentType được set |
+|--------|---------------------|
+| `CreateImage()` | `AssetContentType.Image` |
+| `CreateFile()` | `AssetContentType.File` |
+| `CreateFolder()` | `AssetContentType.Folder` |
+| `CreateColor()` | `AssetContentType.Color` |
+| `CreateColorGroup()` | `AssetContentType.ColorGroup` |
+| `CreateLink()` | `AssetContentType.Link` |
+
+**Kết quả sau fix:**
+```
+POST /api/assets/create-link → contentType: "link"   ✅
+POST /api/assets/create-color-group → contentType: "color-group"   ✅
+```
+
+---
+
+### Fix 2: Sửa dữ liệu cũ trong DB (Backend Startup)
+
+**File:** `VAH.Backend/Program.cs`
+
+Các asset tạo trước fix đều có `ContentType = 'file'` trong DB. Thêm SQL sửa dữ liệu chạy khi khởi động (sau migrate):
+
+```sql
+-- Image: file trong wwwroot/uploads, thuộc collection type=image
+UPDATE Assets SET ContentType = 'image'
+WHERE ContentType = 'file' AND FilePath LIKE '/uploads/%'
+  AND IsFolder = 0 AND CollectionId IN (SELECT Id FROM Collections WHERE Type = 'image');
+
+-- Link: filePath là URL
+UPDATE Assets SET ContentType = 'link'
+WHERE ContentType = 'file' AND FilePath LIKE 'http%' AND IsFolder = 0;
+
+-- Color: filePath là hex code, thuộc collection type=color
+UPDATE Assets SET ContentType = 'color'
+WHERE ContentType = 'file' AND FilePath LIKE '#%'
+  AND IsFolder = 0 AND CollectionId IN (SELECT Id FROM Collections WHERE Type = 'color');
+
+-- Color Group: filePath rỗng, thuộc collection type=color
+UPDATE Assets SET ContentType = 'color-group'
+WHERE ContentType = 'file' AND FilePath = ''
+  AND IsFolder = 0 AND CollectionId IN (SELECT Id FROM Collections WHERE Type = 'color');
+
+-- Folder: IsFolder = true
+UPDATE Assets SET ContentType = 'folder'
+WHERE ContentType = 'file' AND IsFolder = 1;
+```
+
+---
+
+### Fix 3: Hiển thị ảnh với Thumbnail Fallback (Frontend)
+
+**File:** `VAH.Frontend/src/components/CollectionBrowser.jsx`
+
+**Trước:** `<img src={staticUrl(asset.filePath)}>`  
+**Sau:**
+```jsx
+<img
+  src={staticUrl(asset.thumbnailMd || asset.thumbnailSm || asset.filePath)}
+  alt={asset.fileName}
+  loading="lazy"
+  onError={(e) => {
+    // Nếu thumbnail lỗi → thử file gốc
+    if (asset.thumbnailMd && e.target.src !== staticUrl(asset.filePath)) {
+      e.target.src = staticUrl(asset.filePath);
+      return;
+    }
+    e.target.style.display = 'none';
+    e.target.nextElementSibling.style.display = 'flex';
+  }}
+/>
+```
+
+**Cải thiện:**
+- Dùng `thumbnailMd` (400px WebP) → nhẹ hơn file gốc (JPEG/BMP)
+- Fallback chain: `thumbnailMd` → `thumbnailSm` → `filePath` gốc
+- `loading="lazy"` → tải ảnh khi scroll vào viewport
+- `onError` graceful: nếu thumbnail lỗi, thử file gốc; nếu vẫn lỗi, hiện icon 📄
+
+---
+
+### Fix 4: Link hiển thị tên + URL clickable (Frontend)
+
+**File:** `VAH.Frontend/src/components/CollectionBrowser.jsx`
+
+**Trước:** Link chỉ hiện icon 🔗, click card chỉ select.  
+**Sau:**
+- Icon 🔗 là `<a>` tag clickable → mở link trong tab mới
+- Hiển thị URL dưới tên file, cũng clickable
+- `e.stopPropagation()` để click link không trigger select
+
+```jsx
+{asset.contentType === 'link' && (
+  <a className="file-icon link-icon"
+     href={asset.filePath} target="_blank" rel="noopener noreferrer"
+     onClick={(e) => e.stopPropagation()}>
+    🔗
+  </a>
+)}
+<div className="item-name">{asset.fileName}</div>
+{asset.contentType === 'link' && asset.filePath && (
+  <a className="item-link-url"
+     href={asset.filePath} target="_blank" rel="noopener noreferrer"
+     onClick={(e) => e.stopPropagation()}>
+    {asset.filePath}
+  </a>
+)}
+```
+
+**CSS mới** (`CollectionBrowser.css`):
+```css
+.item-link-url {
+  font-size: 0.72rem;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  opacity: 0.8;
+}
+.item-link-url:hover { opacity: 1; text-decoration: underline; }
+```
+
+---
+
+### Fix 5: Bỏ nút đỏ ✕, thêm Ctrl+click cho ColorBoard (Frontend)
+
+**Yêu cầu user:** Không muốn nút xóa riêng lẻ (nút đỏ ✕). Muốn dùng Ctrl+click multi-select → thanh bulk "Xóa" ở phía trên.
+
+**Xóa bỏ:**
+- `CollectionBrowser.jsx`: Bỏ prop `onDeleteAsset`, bỏ tất cả `<button className="item-delete-btn">✕</button>`
+- `ColorBoard.jsx`: Bỏ prop `onDeleteAsset`, bỏ tất cả `<button className="group-delete-btn">✕</button>` và `<button className="color-delete-btn">✕</button>`
+- `App.jsx`: Bỏ `onDeleteAsset={handleDeleteAsset}` khỏi cả 2 component
+- `CollectionBrowser.css`: Xóa `.item-delete-btn` styles
+- `ColorBoard.css`: Xóa `.group-delete-btn`, `.color-delete-btn` styles
+
+**Thêm mới — Ctrl+click multi-select cho ColorBoard:**
+
+`ColorBoard.jsx`:
+```jsx
+// Props mới
+const ColorBoard = ({ items, onCreateColor, onCreateGroup,
+                      onSelectAsset, selectedAssetIds = new Set() }) => {
+  // ...
+  // Color item có multi-select
+  <div className={`color-item ${selectedAssetIds.has(color.id) ? 'multi-selected' : ''}`}
+       onClick={(e) => onSelectAsset && onSelectAsset(color.id, e)}>
+  // Group header có multi-select
+  <div className="group-header"
+       onClick={(e) => group.id !== null && onSelectAsset(group.id, e)}>
+```
+
+`App.jsx`:
+```jsx
+<ColorBoard
+  items={collectionItems.items}
+  onCreateColor={handleCreateColor}
+  onCreateGroup={handleCreateColorGroup}
+  onSelectAsset={toggleSelectAsset}         // MỚI
+  selectedAssetIds={selectedAssetIds}        // MỚI
+/>
+```
+
+`ColorBoard.css` — styles multi-select:
+```css
+.color-group-column.multi-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.color-item.multi-selected {
+  border-color: var(--accent);
+  background-color: rgba(33, 150, 243, 0.2);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.color-item.multi-selected::after {
+  content: '✓'; /* Checkmark badge */
+}
+```
+
+**Cách dùng:** Ctrl+click chọn nhiều màu/nhóm → thanh bulk actions hiện → bấm "Xóa" để xóa hàng loạt.
+
+---
+
+### Fix 6: Sửa label nút "Tải xuống" → "Liên kết mới" (Frontend)
+
+**File:** `VAH.Frontend/src/App.jsx`
+
+Toolbar hiển thị nút "Tải xuống" (Download) nhưng chức năng thực tế là tạo link mới. Sửa label và icon cho đúng ngữ nghĩa:
+
+**Trước:** `🔗 Tải xuống` (icon download)  
+**Sau:** `🔗 Liên kết mới` (icon link chain)
+
+---
+
+### Tóm tắt files đã chỉnh sửa
+
+| File | Thay đổi |
+|------|----------|
+| `VAH.Backend/Models/AssetFactory.cs` | Set `ContentType` cho tất cả 6 factory methods |
+| `VAH.Backend/Program.cs` | Thêm SQL fix dữ liệu cũ khi startup |
+| `VAH.Frontend/src/components/CollectionBrowser.jsx` | Bỏ nút ✕, thumbnail fallback, link URL clickable |
+| `VAH.Frontend/src/components/CollectionBrowser.css` | Bỏ `.item-delete-btn`, thêm `.item-link-url` |
+| `VAH.Frontend/src/components/ColorBoard.jsx` | Bỏ nút ✕, thêm Ctrl+click multi-select |
+| `VAH.Frontend/src/components/ColorBoard.css` | Bỏ delete btn styles, thêm `.multi-selected` |
+| `VAH.Frontend/src/App.jsx` | Bỏ `onDeleteAsset` props, thêm `onSelectAsset`/`selectedAssetIds` cho ColorBoard, sửa label "Liên kết mới" |

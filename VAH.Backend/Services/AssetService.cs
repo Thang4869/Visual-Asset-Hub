@@ -188,8 +188,13 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.ColorCode))
             throw new ArgumentException("Color code is required.");
 
+        // Normalize: auto-prepend # for hex color codes
+        var code = dto.ColorCode.Trim();
+        if (!code.StartsWith('#') && System.Text.RegularExpressions.Regex.IsMatch(code, @"^[0-9A-Fa-f]{3,8}$"))
+            code = "#" + code;
+
         var color = AssetFactory.CreateColor(
-            dto.ColorCode.Trim(), dto.CollectionId, userId,
+            code, dto.CollectionId, userId,
             dto.ColorName, dto.GroupId, dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(color);

@@ -103,6 +103,23 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     [selectedCollection, currentFolderId, refreshItems],
   );
 
+  // ------- Delete single asset -------
+  const handleDeleteAsset = useCallback(
+    async (assetId) => {
+      if (!assetId) return;
+      if (!confirm('Bạn có chắc muốn xóa item này?')) return;
+      try {
+        await assetsApi.deleteAsset(assetId);
+        if (selectedAssetId === assetId) setSelectedAssetId(null);
+        refreshItems();
+      } catch (err) {
+        console.error('Error deleting asset:', err);
+        alert('Lỗi khi xóa item');
+      }
+    },
+    [selectedAssetId, refreshItems],
+  );
+
   // ------- Move -------
   const handleMoveAsset = useCallback(
     async (assetId, folderId) => {
@@ -265,6 +282,7 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     handleCreateLink,
     handleCreateColorGroup,
     handleCreateColor,
+    handleDeleteAsset,
     handleMoveAsset,
     handleMoveSelected,
     handleReorderAssets,
