@@ -95,37 +95,37 @@
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Service layer** | 🟡 MEDIUM | Không có. Controller chứa toàn bộ business logic + data access | Vi phạm SRP. Không thể unit test logic. Code sẽ phình to khi thêm tính năng |
-| **Repository pattern** | 🟡 MEDIUM | Controller gọi `_context` trực tiếp | Coupling chặt với EF Core. Khó swap database provider. Duplicate query code |
-| **Domain separation** | 🟡 MEDIUM | 1 project duy nhất chứa tất cả | Models, DTOs, Controllers, DbContext nằm cùng assembly. Khó tái sử dụng |
-| **Exception handling** | 🔴 HIGH | Không có global middleware | Unhandled exception trả về stack trace cho client (thông tin nhạy cảm). Crash không log |
-| **Logging strategy** | 🟡 MEDIUM | Chỉ có default `ILogger` — không structured, không persistence | Không trace được bug production, không audit trail |
-| **Pagination** | 🔴 HIGH | `GetAssets()` → `ToListAsync()` load toàn bộ bảng | 10K assets → response 5MB+ → frontend freeze. Memory spike trên server |
-| **Query optimization** | 🟡 MEDIUM | N+1 risk trong `ReorderAssets` (FindAsync trong loop) | Performance tuyến tính O(n) cho mỗi reorder — degraded với dữ liệu lớn |
+| **Service layer** | ✅ RESOLVED | Interface-based DI, 11 services tách biệt. SearchService extracted từ controller. Domain methods trên entities | Clean separation |
+| **Repository pattern** | 🟡 MEDIUM | Service layer gọi `_context` trực tiếp (không qua Repository) | Coupling với EF Core, nhưng acceptable cho project size này |
+| **Domain separation** | ✅ IMPROVED | Models có domain behavior, Enums tách riêng, DTOs gom vào Models/DTOs.cs | Rich Domain Model thay vì Anemic |
+| **Exception handling** | ✅ RESOLVED | Global ExceptionHandlingMiddleware (RFC 7807) | Structured error responses |
+| **Logging strategy** | ✅ RESOLVED | Serilog structured logging (Console + File sinks) | Full audit trail |
+| **Pagination** | ✅ RESOLVED | `PagedResult<T>` + `PaginationParams` | Scalable data access |
+| **Query optimization** | 🟡 MEDIUM | Indexes đã khai báo, nhưng N+1 risk vẫn có ở một số services | Cần review Include strategies |
 | **Migration strategy** | ✅ RESOLVED | `Database.Migrate()` + EF Core Migrations | Schema version controlled |
 
 ## 2.3 Database & Dữ liệu
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Schema versioning** | ✅ RESOLVED | EF Core Migrations với `InitialCreate`. Auto-migrate on startup | Schema version controlled |
-| **Indexing** | 🟡 MEDIUM | Không index nào (ngoài PK tự động) | Query `WHERE CollectionId = ? AND ParentFolderId = ?` full table scan. Chậm tuyến tính |
-| **Full-text search** | 🟡 MEDIUM | Chỉ client-side filter bằng JS `.includes()` | Tìm kiếm chậm, không fuzzy match, không accent-insensitive, không rank relevance |
-| **Tags system** | 🟡 MEDIUM | Comma-separated string trong 1 cột | Không thể `WHERE tag = 'landscape'` hiệu quả. Phải `LIKE '%landscape%'` → false positives + full scan |
+| **Schema versioning** | ✅ RESOLVED | EF Core Migrations (5 migrations). Auto-migrate on startup | Schema version controlled |
+| **Indexing** | ✅ RESOLVED | Composite indexes, FK indexes, UserId indexes đã khai báo trong AppDbContext | Optimized query performance |
+| **Full-text search** | ✅ RESOLVED | Server-side search via SearchService (LIKE queries, paginated) | Search qua API, có pagination |
+| **Tags system** | ✅ RESOLVED | Proper many-to-many (Tags table + AssetTags junction) với Tag entity, domain methods | Normalized, query-friendly |
 | **Concurrency** | 🟡 MEDIUM | Không optimistic concurrency (no `RowVersion/ConcurrencyToken`) | 2 user sửa cùng asset → last write wins → data corruption âm thầm |
-| **FK constraints** | 🟡 MEDIUM | Không khai báo FK trong `OnModelCreating` | `CollectionId` có thể trỏ đến collection đã xóa → orphan data |
+| **FK constraints** | ✅ RESOLVED | Full FK constraints + navigation properties trong OnModelCreating. DeleteBehavior.Restrict cho self-ref | Referential integrity enforced |
 | **SQLite limitations** | 🔴 HIGH (khi scale) | Single-writer lock, file-based, max recommend ~100 concurrent reads | Không hỗ trợ multi-server. Write contention khi >5 concurrent users |
 
 ## 2.4 Storage & Mở rộng
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **File storage abstraction** | 🟡 MEDIUM | Hard-coded `Path.Combine(cwd, "wwwroot", "uploads")` trong controller | Không thể swap sang S3/Azure Blob mà không sửa controller |
+| **File storage abstraction** | ✅ RESOLVED | `IStorageService` / `LocalStorageService`. Swap sang S3/Azure chỉ cần implement interface | Clean abstraction |
 | **CDN** | 🟡 MEDIUM | Không có | Mọi request file đi qua backend server → bandwidth bottleneck |
-| **Cloud storage readiness** | 🟡 MEDIUM | Local filesystem only | Server đầy disk → crash. Không backup tự động. Mất server = mất data |
+| **Cloud storage readiness** | ✅ IMPROVED | IStorageService interface sẵn sàng cho cloud implementation | Chỉ cần thêm AzureBlobStorageService / S3StorageService |
 | **Horizontal scaling** | 🔴 HIGH | SQLite file + local wwwroot | Không thể chạy 2+ instance. Sticky session bắt buộc → single point of failure |
-| **Thumbnail/preview** | 🟡 MEDIUM | Serve original file cho mọi kích thước | Upload ảnh 20MB → browser load 20MB cho thumbnail 150px. Bandwidth waste |
-| **Cleanup/orphan files** | 🟡 MEDIUM | Delete asset chỉ xóa DB record, không xóa file vật lý | `wwwroot/uploads` phình to vĩnh viễn. Disk leak |
+| **Thumbnail/preview** | ✅ RESOLVED | ThumbnailService sinh thumbnail + medium preview cho images | Bandwidth optimized |
+| **Cleanup/orphan files** | ✅ RESOLVED | `asset.RequiresFileCleanup` virtual property, IStorageService.DeleteFile() gọi khi delete asset | No orphan files |
 
 ## 2.5 Frontend Architecture
 

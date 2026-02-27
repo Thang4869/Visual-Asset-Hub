@@ -42,12 +42,19 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.Ignore(a => a.HasPhysicalFile);
             entity.Ignore(a => a.CanHaveThumbnails);
             entity.Ignore(a => a.RequiresFileCleanup);
+            entity.Ignore(a => a.IsSystemAsset);
 
-            // FK: Asset → Collection
-            entity.HasOne<Collection>()
-                  .WithMany()
+            // FK: Asset → Collection (with navigation)
+            entity.HasOne(a => a.Collection)
+                  .WithMany(c => c.Assets)
                   .HasForeignKey(a => a.CollectionId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            // Self-referencing FK: Asset → ParentFolder (with navigation)
+            entity.HasOne(a => a.ParentFolder)
+                  .WithMany()
+                  .HasForeignKey(a => a.ParentFolderId)
+                  .OnDelete(DeleteBehavior.Restrict);
 
             // Indexes for common query patterns
             entity.HasIndex(a => a.CollectionId);
@@ -87,9 +94,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(c => c.Id);
 
-            // Self-referencing FK: Collection → Parent Collection
-            entity.HasOne<Collection>()
-                  .WithMany()
+            // Ignore computed properties (not mapped to DB)
+            entity.Ignore(c => c.IsSystemCollection);
+
+            // Self-referencing FK: Collection → Parent Collection (with navigation)
+            entity.HasOne(c => c.Parent)
+                  .WithMany(c => c.Children)
                   .HasForeignKey(c => c.ParentId)
                   .OnDelete(DeleteBehavior.SetNull);
 
@@ -170,6 +180,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<CollectionPermission>(entity =>
         {
             entity.HasKey(p => p.Id);
+
+            // Ignore computed properties (not mapped to DB)
+            entity.Ignore(p => p.CanWrite);
+            entity.Ignore(p => p.CanManage);
 
             entity.HasOne<ApplicationUser>()
                   .WithMany()

@@ -45,12 +45,11 @@ public class TagService : ITagService
 
         var tag = new Tag
         {
-            Name = dto.Name.Trim(),
-            NormalizedName = normalized,
             Color = dto.Color,
             UserId = userId,
             CreatedAt = DateTime.UtcNow
         };
+        tag.SetName(dto.Name);
 
         _context.Tags.Add(tag);
         await _context.SaveChangesAsync();
@@ -65,14 +64,7 @@ public class TagService : ITagService
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId)
             ?? throw new KeyNotFoundException($"Tag {id} not found.");
 
-        if (!string.IsNullOrWhiteSpace(dto.Name))
-        {
-            tag.Name = dto.Name.Trim();
-            tag.NormalizedName = dto.Name.Trim().ToLowerInvariant();
-        }
-
-        if (dto.Color != null)
-            tag.Color = dto.Color;
+        tag.UpdateFrom(dto);
 
         await _context.SaveChangesAsync();
         return tag;
