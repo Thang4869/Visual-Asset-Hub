@@ -1,661 +1,536 @@
-# Visual Asset Hub (VAH) — Tài liệu dự án
+# Visual Asset Hub (VAH) — Tài liệu Kỹ thuật Chi tiết
 
-> Tài liệu mô tả toàn bộ kiến trúc, chức năng và thành phần của dự án Visual Asset Hub — ứng dụng web quản lý tệp tin và tài nguyên số.
-
-## 1. Tổng quan kiến trúc
-
-| Tầng | Công nghệ | Cổng |
-|------|-----------|------|
-| Backend | ASP.NET Core 9.0 (Web API) | `http://localhost:5027` |
-| Frontend | React 19 + Vite 7 | `http://localhost:5173` |
-| Cơ sở dữ liệu | SQLite (file: `vah_database.db`) | nhúng (embedded) |
-| Giao tiếp | REST API thông qua `axios`; CORS policy "AllowAll" | — |
-
-Frontend kết nối đến backend tại `http://localhost:5027/api` (hằng số `API_URL` trong `App.jsx`).
+> **Cập nhật:** 27/02/2026 — Phản ánh đầy đủ trạng thái hiện tại của dự án
 
 ---
 
-## 2. Backend — `VAH.Backend/`
+## 1. Tổng quan
 
-### 2.1 Cấu hình dự án (`VAH.Backend.csproj`)
-
-- **Target:** .NET 9.0 (`net9.0`), Nullable enabled, ImplicitUsings enabled
-- **NuGet packages:**
-  - `Microsoft.EntityFrameworkCore.Design` 9.*
-  - `Microsoft.EntityFrameworkCore.Sqlite` 9.*
-  - `Swashbuckle.AspNetCore` 10.1.4 (Swagger)
-
-### 2.2 Cấu hình ứng dụng (`appsettings.json`)
-
-- Chuỗi kết nối: `Data Source=vah_database.db` (SQLite file trong thư mục gốc dự án)
-- Logging: Default=Information, AspNetCore=Warning
-
-### 2.3 Launch Settings (`Properties/launchSettings.json`)
-
-- Profile `http`: `http://localhost:5027`, `ASPNETCORE_ENVIRONMENT=Development`
-- Profile `https`: `https://localhost:7042` + `http://localhost:5027`
-
-### 2.4 Entry Point (`Program.cs`)
-
-- **Dịch vụ đã đăng ký:** CORS (config-driven origins), Controllers, Swagger, EF Core với SQLite, ASP.NET Identity, JWT Bearer Authentication, Rate Limiting, Application Services (Asset, Collection, Storage, Auth)
-- **Logic khởi động:**
-  - `Database.Migrate()` — tự động apply migrations khi khởi động
-  - **Seed 3 collection mặc định** (trong migration) nếu chưa có:
-    1. `Images` (type=`image`, color=`#007bff`, order=1)
-    2. `Links` (type=`link`, color=`#28a745`, order=2)
-    3. `Colors` (type=`color`, color=`#ffc107`, order=3)
-- **Middleware pipeline:** GlobalExceptionHandler → CORS → RateLimiter → StaticFiles → Swagger (dev only) → Authentication → Authorization → MapControllers
+| Thành phần | Công nghệ | Port | Mô tả |
+|------------|-----------|------|-------|
+| Backend | ASP.NET Core 9.0 | 5027 | REST API + SignalR Hub |
+| Frontend | React 19 + Vite 7 | 5173 (dev) / 3000 (Docker) | SPA dark theme |
+| DB (Dev) | SQLite | embedded | File: `vah_database.db` |
+| DB (Prod) | PostgreSQL 17 | 5432 | Docker volume |
+| Cache | Redis 7 | 6379 | Collection list cache |
+| Reverse Proxy | Nginx | 80 | Frontend serving (Docker) |
 
 ---
 
-### 2.5 Mô hình dữ liệu (Data Models)
+## 2. Models (Entities)
 
-#### `Models/Asset.cs` — Tài nguyên
+### 2.1 Asset
 
-| Thuộc tính | Kiểu | Mặc định | Mô tả |
-|------------|------|----------|-------|
-| `Id` | int | tự tăng | Khóa chính |
-| `FileName` | string (Required) | `""` | Tên file gốc |
-| `FilePath` | string (Required) | `""` | Đường dẫn tương đối (VD: `/uploads/guid.ext`) hoặc mã màu hoặc URL |
-| `Tags` | string | `""` | Tags phân cách bằng dấu phẩy |
-| `CreatedAt` | DateTime | `UtcNow` | Thời gian tạo |
-| `PositionX` | double | `0` | Tọa độ X trên canvas kéo thả |
-| `PositionY` | double | `0` | Tọa độ Y trên canvas kéo thả |
-| `CollectionId` | int | `1` | FK đến Collection |
-| `ContentType` | string | `"image"` | `"image"`, `"link"`, `"color"`, `"folder"`, `"color-group"` |
-| `GroupId` | int? | `null` | Dùng cho nhóm màu |
-| `ParentFolderId` | int? | `null` | FK đến thư mục cha (hỗ trợ thư mục lồng nhau) |
-| `SortOrder` | int | `0` | Thứ tự hiển thị |
-| `IsFolder` | bool | `false` | Phân biệt thư mục và file |
-| `UserId` | string? | `null` | FK đến `AspNetUsers`. `null` = system asset |
+| Property | Type | Constraints | Default | Mô tả |
+|----------|------|-------------|---------|-------|
+| `Id` | int | PK, auto-increment | — | |
+| `FileName` | string | Required, MaxLength(500) | `""` | Tên file hoặc folder |
+| `FilePath` | string | Required, MaxLength(2048) | `""` | Đường dẫn file hoặc URL |
+| `Tags` | string | MaxLength(2000) | `""` | Legacy comma-separated tags |
+| `CreatedAt` | DateTime | | DB default | |
+| `PositionX` | double | | `0` | Vị trí X trên canvas |
+| `PositionY` | double | | `0` | Vị trí Y trên canvas |
+| `CollectionId` | int | FK→Collections | `1` | |
+| `ContentType` | string | MaxLength(50) | `"image"` | image/link/color/folder/file |
+| `GroupId` | int? | | null | Nhóm màu (color collections) |
+| `ParentFolderId` | int? | | null | Thư mục cha (self-ref) |
+| `SortOrder` | int | | `0` | Thứ tự hiển thị |
+| `IsFolder` | bool | | `false` | Là thư mục? |
+| `UserId` | string? | FK→AspNetUsers | null | Data ownership |
+| `ThumbnailSm` | string? | MaxLength(2048) | null | Thumbnail 150px WebP |
+| `ThumbnailMd` | string? | MaxLength(2048) | null | Thumbnail 400px WebP |
+| `ThumbnailLg` | string? | MaxLength(2048) | null | Thumbnail 800px WebP |
+| `AssetTags` | ICollection\<AssetTag\> | Navigation | `[]` | M2M tags |
 
-#### `Models/Collection.cs` — Bộ sưu tập
+### 2.2 Collection
 
-| Thuộc tính | Kiểu | Mặc định | Mô tả |
-|------------|------|----------|-------|
-| `Id` | int | tự tăng | Khóa chính |
-| `Name` | string (Required) | `""` | Tên bộ sưu tập |
-| `Description` | string | `""` | Mô tả |
-| `ParentId` | int? | `null` | Collection cha (hỗ trợ cây phân cấp) |
-| `CreatedAt` | DateTime | `UtcNow` | Thời gian tạo |
-| `Color` | string | `"#007bff"` | Màu hiển thị trên UI |
-| `Type` | string | `"default"` | `"image"`, `"link"`, `"color"`, `"default"` |
-| `Order` | int | `0` | Thứ tự sắp xếp |
-| `LayoutType` | string | `"grid"` | `"grid"`, `"list"`, `"kanban"` |
-| `UserId` | string? | `null` | FK đến `AspNetUsers`. `null` = system collection |
+| Property | Type | Constraints | Default | Mô tả |
+|----------|------|-------------|---------|-------|
+| `Id` | int | PK | — | |
+| `Name` | string | Required, MaxLength(255) | `""` | |
+| `Description` | string | MaxLength(2000) | `""` | |
+| `ParentId` | int? | FK→Collections (self) | null | Collection cha |
+| `CreatedAt` | DateTime | | DB default | |
+| `Color` | string | MaxLength(20) | `"#007bff"` | Màu hiển thị |
+| `Type` | string | MaxLength(50) | `"default"` | image/link/color/default |
+| `Order` | int | | `0` | Thứ tự sắp xếp |
+| `LayoutType` | string | MaxLength(20) | `"grid"` | grid/list/masonry |
+| `UserId` | string? | FK→AspNetUsers | null | null = system collection |
 
-#### `Models/DTOs.cs` — 6 DTO
+### 2.3 ApplicationUser (extends IdentityUser)
 
-| DTO | Trường | Mục đích |
-|-----|--------|----------|
-| `CreateFolderDto` | FolderName, CollectionId, ParentFolderId? | Tạo thư mục mới |
-| `CreateColorDto` | ColorCode, ColorName?, CollectionId, GroupId?, SortOrder?, ParentFolderId? | Tạo mẫu màu |
-| `UpdateAssetDto` | FileName?, SortOrder?, GroupId?, ParentFolderId?, ClearParentFolder? | Cập nhật một phần asset |
-| `CreateLinkDto` | Name, Url, CollectionId, ParentFolderId? | Tạo liên kết/bookmark |
-| `CreateColorGroupDto` | GroupName, CollectionId, ParentFolderId?, SortOrder? | Tạo nhóm màu |
-| `ReorderAssetsDto` | AssetIds (List\<int\>) | Sắp xếp lại hàng loạt |
+| Property | Type | Default | Mô tả |
+|----------|------|---------|-------|
+| `DisplayName` | string | `""` | Tên hiển thị |
+| `CreatedAt` | DateTime | `DateTime.UtcNow` | |
+| + tất cả fields từ IdentityUser (Email, PasswordHash, ...) | | | |
 
-### 2.6 Database Context (`Data/AppDbContext.cs`)
+### 2.4 Tag
 
-- Kế thừa `IdentityDbContext<ApplicationUser>` (ASP.NET Identity)
-- **DbSets:** `Assets`, `Collections` (Identity tables được quản lý bởi base class)
+| Property | Type | Constraints | Mô tả |
+|----------|------|-------------|-------|
+| `Id` | int | PK | |
+| `Name` | string | Required, MaxLength(100) | Tên gốc |
+| `NormalizedName` | string | Required, MaxLength(100) | Lowercase, trimmed |
+| `Color` | string? | MaxLength(20) | Màu badge |
+| `UserId` | string? | FK→AspNetUsers | |
+| `CreatedAt` | DateTime | DB default | |
+| `AssetTags` | ICollection\<AssetTag\> | Navigation, JsonIgnore | |
 
----
+### 2.5 AssetTag (Junction Table)
 
-### 2.7 Controllers & API Endpoints
+| Property | Type | Mô tả |
+|----------|------|-------|
+| `AssetId` | int | FK→Assets, part of composite PK |
+| `TagId` | int | FK→Tags, part of composite PK |
+| `Asset` | Asset? | Navigation, JsonIgnore |
+| `Tag` | Tag? | Navigation |
 
-#### `Controllers/AssetsController.cs` — Route: `api/Assets`
+### 2.6 CollectionPermission
 
-| # | Method | Route | Mục đích |
-|---|--------|-------|----------|
-| 1 | `GET` | `/api/Assets` | Lấy tất cả assets |
-| 2 | `POST` | `/api/Assets` | Tạo asset (JSON body) |
-| 3 | `POST` | `/api/Assets/upload?collectionId=&folderId=` | Upload file (multipart/form-data), lưu vào `wwwroot/uploads/`, đặt tên file bằng GUID |
-| 4 | `PUT` | `/api/Assets/{id}/position` | Cập nhật vị trí X/Y (kéo thả canvas) |
-| 5 | `POST` | `/api/Assets/create-folder` | Tạo thư mục |
-| 6 | `POST` | `/api/Assets/create-color` | Tạo mẫu màu |
-| 7 | `POST` | `/api/Assets/create-color-group` | Tạo nhóm màu |
-| 8 | `POST` | `/api/Assets/create-link` | Tạo liên kết/bookmark |
-| 9 | `PUT` | `/api/Assets/{id}` | Cập nhật một phần (tên, thứ tự, nhóm, thư mục) |
-| 10 | `DELETE` | `/api/Assets/{id}` | Xóa asset |
-| 11 | `POST` | `/api/Assets/reorder` | Sắp xếp lại assets hàng loạt |
-| 12 | `GET` | `/api/Assets/group/{groupId}` | Lấy assets theo nhóm |
+| Property | Type | Constraints | Mô tả |
+|----------|------|-------------|-------|
+| `Id` | int | PK | |
+| `UserId` | string | Required | FK→AspNetUsers |
+| `CollectionId` | int | FK→Collections | |
+| `Role` | string | Required, MaxLength(20) | owner/editor/viewer |
+| `GrantedBy` | string? | | User ID của người cấp |
+| `GrantedAt` | DateTime | DB default | |
 
-#### `Controllers/CollectionsController.cs` — Route: `api/Collections`
-
-| Method | Route | Mục đích |
-|--------|-------|----------|
-| `GET` | `/api/Collections` | Danh sách tất cả collections, sắp xếp theo Order |
-| `GET` | `/api/Collections/{id}/items?folderId=` | Lấy collection cùng items (lọc theo folderId) + subcollections. Trả về `CollectionWithItems`. Items sắp xếp: thư mục trước → SortOrder → FileName. **User-scoped** |
-| `POST` | `/api/Collections` | Tạo collection mới (gán UserId tự động) |
-| `PUT` | `/api/Collections/{id}` | Cập nhật collection |
-| `DELETE` | `/api/Collections/{id}` | Xóa collection (chuyển collection con thành top-level) |
-
----
-
-## 3. Frontend — `VAH.Frontend/`
-
-### 3.1 Cấu hình dự án (`package.json`)
-
-- **Tên:** `vah-frontend`, **Phiên bản:** `0.0.0`
-- **Dependencies:** React 19.2, ReactDOM 19.2, axios 1.13.5, react-dropzone 15.0.0
-- **DevDependencies:** Vite 7.3.1, @vitejs/plugin-react 5.1.1, ESLint 9.39.1
-- **Scripts:** `dev` (vite), `build` (vite build), `lint` (eslint), `preview` (vite preview)
-
-### 3.2 Cấu hình Vite (`vite.config.js`)
-
-- Cấu hình Vite chuẩn với React plugin. Không có proxy được cấu hình.
-
-### 3.3 Entry Point (`index.html`)
-
-- **Tiêu đề:** "Visual Asset Hub"
-- **Font:** Google Fonts `Inter` (weights 400, 500, 600, 700) tải non-blocking
-- Mount React tại `<div id="root">`
-
-### 3.4 Global Styles (`src/index.css`)
-
-- Box-sizing reset, full-height html/body/#root
-- **Font:** `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
-- **Background:** `#0a1929` (xanh lam đậm), **Text:** `#ffffff`
-- Scrollbar tùy chỉnh: mỏng (6px), thumb bán trong suốt
+**CollectionRoles (static class):**
+- `Owner` — toàn quyền (read/write/manage/delete)
+- `Editor` — đọc + ghi (read/write)
+- `Viewer` — chỉ đọc (read only)
+- `CanWrite(role)` → true nếu Owner hoặc Editor
+- `CanManage(role)` → true nếu Owner
 
 ---
 
-### 3.5 Hệ thống thiết kế (`src/App.css`)
+## 3. DTOs
 
-#### Bảng màu CSS Variables (`:root`)
+### Auth DTOs
 
-| Biến | Giá trị | Mục đích |
-|------|---------|----------|
-| `--bg-darkest` | `#0a1929` | Nền trang |
-| `--bg-dark` | `#0d2137` | Khu vực nội dung chính |
-| `--bg-sidebar` | `#0b1a2e` | Nền sidebar |
-| `--bg-header` | `#0b1929` | Nền header trên cùng |
-| `--bg-card` | `#132f4c` | Nền thẻ (card) |
-| `--bg-card-hover` | `#173a5e` | Nền thẻ khi hover |
-| `--bg-input` | `#132f4c` | Nền trường nhập liệu |
-| `--accent` | `#2196F3` | Màu điểm nhấn chính (Xanh dương sáng) |
-| `--accent-hover` | `#1976D2` | Accent khi hover |
-| `--accent-light` | `rgba(33,150,243,0.12)` | Nền accent nhẹ |
-| `--text-primary` | `#ffffff` | Chữ chính (trắng) |
-| `--text-secondary` | `#94a3b8` | Chữ phụ (xám nhạt) |
-| `--text-muted` | `#546e7a` | Chữ mờ/nhãn |
-| `--border-color` | `#1e3a5f` | Viền |
-| `--border-subtle` | `rgba(255,255,255,0.06)` | Đường phân chia mờ |
-| `--shadow-card` | `0 2px 8px rgba(0,0,0,0.25)` | Đổ bóng thẻ |
-| `--shadow-card-hover` | `0 8px 24px rgba(0,0,0,0.4)` | Đổ bóng hover |
-| `--danger` | `#ef5350` | Hành động xóa/nguy hiểm |
-| `--notif-red` | `#f44336` | Chấm thông báo đỏ |
-| `--radius` | `8px` | Bo góc chuẩn |
-| `--radius-lg` | `12px` | Bo góc lớn |
+| DTO | Fields |
+|-----|--------|
+| `RegisterDto` | DisplayName (Required), Email (Required, EmailAddress), Password (Required, MinLength 6) |
+| `LoginDto` | Email (Required), Password (Required) |
+| `AuthResponseDto` | Token, Expiration, UserId, Email, DisplayName |
 
-#### Bố cục 4 khu vực
+### Asset DTOs
 
-1. **Thanh Header trên cùng (56px)**: Logo + Hamburger menu (trái) → Thanh tìm kiếm dạng thuốc (giữa, max 520px) → Cụm icon chức năng + Avatar (phải)
-2. **Sidebar trái (240px)**: Cây thư mục/collection phân cấp với expand/collapse
-3. **Khu vực nội dung chính (flex)**: Toolbar (breadcrumbs + nút hành động + view switcher) → Vùng cuộn nội dung → Upload section
-4. **Panel chi tiết phải (320px)**: Hiển thị có điều kiện khi chọn asset — preview, metadata, full preview
+| DTO | Fields |
+|-----|--------|
+| `CreateFolderDto` | FolderName (Required), CollectionId, ParentFolderId? |
+| `CreateColorDto` | ColorCode (Required), ColorName?, CollectionId, GroupId?, SortOrder?, ParentFolderId? |
+| `UpdateAssetDto` | FileName?, SortOrder?, GroupId?, ParentFolderId?, ClearParentFolder? |
+| `CreateLinkDto` | Name (Required), Url (Required), CollectionId, ParentFolderId? |
+| `CreateColorGroupDto` | GroupName (Required), CollectionId, ParentFolderId?, SortOrder? |
+| `ReorderAssetsDto` | AssetIds (List\<int\>, Required) |
+| `AssetPositionDto` | PositionX, PositionY |
 
-#### Hệ thống nút
+### Tag DTOs
 
-- `.btn-primary`: Nền accent xanh, chữ trắng, padding 8px 18px
-- `.btn-secondary`: Nền card, viền, chữ secondary, hover chuyển accent
-- `.view-switcher`: Segmented control với icon list/grid/masonry
+| DTO | Fields |
+|-----|--------|
+| `CreateTagDto` | Name (Required), Color? |
+| `UpdateTagDto` | Name?, Color? |
+| `AssetTagsDto` | TagIds (List\<int\>, Required) |
 
----
+### Bulk DTOs
 
-### 3.6 Component chính (`src/App.jsx`)
+| DTO | Fields |
+|-----|--------|
+| `BulkDeleteDto` | AssetIds (List\<int\>, Required) |
+| `BulkMoveDto` | AssetIds (Required), TargetCollectionId?, TargetFolderId?, ClearParentFolder? |
+| `BulkTagDto` | AssetIds (Required), TagIds (Required), Remove (bool, default false) |
 
-#### State Management
+### Permission DTOs
 
-| State | Kiểu | Mục đích |
-|-------|------|----------|
-| `collections` | Array | Tất cả collections từ API |
-| `selectedCollection` | Object\|null | Collection đang active |
-| `collectionItems` | `{items, subCollections}` | Items của collection đang chọn |
-| `viewMode` | string | `'browser'` hoặc `'canvas'` |
-| `layoutMode` | string | `'grid'` / `'list'` / `'masonry'` |
-| `loading` | bool | Chỉ thị đang tải |
-| `breadcrumbPath` | Array | Đường dẫn điều hướng collection |
-| `folderPath` | Array | Đường dẫn điều hướng thư mục |
-| `currentFolderId` | int\|null | Thư mục đang mở |
-| `searchTerm` | string | Bộ lọc tìm kiếm toàn cục |
-| `selectedAssetId` | int\|null | Asset được chọn cho panel chi tiết |
+| DTO | Fields |
+|-----|--------|
+| `GrantPermissionDto` | UserEmail (Required), Role (Required, MaxLength 20) |
+| `UpdatePermissionDto` | Role (Required, MaxLength 20) |
+| `PermissionInfoDto` | Id, UserId, UserEmail?, DisplayName?, Role, GrantedAt |
 
-#### Các hàm chính
+### Common DTOs
 
-| Hàm | Mục đích |
-|-----|----------|
-| `fetchCollections()` | GET `/api/Collections`, tự chọn collection đầu tiên |
-| `fetchCollectionItems(id, folderId)` | GET `/api/Collections/{id}/items?folderId=` |
-| `handleSelectCollection(collection, path)` | Điều hướng đến collection, reset state |
-| `handleOpenFolder(folder)` | Mở thư mục, push vào folderPath |
-| `handleUpload(files)` | POST multipart đến `/api/Assets/upload` |
-| `handleCreateCollection(name, parentId)` | POST `/api/Collections`, hỏi type qua prompt |
-| `handleDeleteCollection(id)` | DELETE với xác nhận |
-| `handleCreateFolder()` | POST `/api/Assets/create-folder` qua prompt |
-| `handleCreateLink()` | POST `/api/Assets/create-link` qua prompt |
-| `handleCreateColorGroup()` | POST `/api/Assets/create-color-group` |
-| `handleCreateColor(colorCode, groupId)` | POST `/api/Assets/create-color` |
-| `handleMoveAsset(assetId, folderId)` | PUT `/api/Assets/{id}` với parentFolderId |
-| `handleMoveSelected()` | Di chuyển asset được chọn (nhập tên folder hoặc "root") |
-| `handleReorderAssets(assetIds)` | POST `/api/Assets/reorder` |
-
-#### Logic hiển thị
-
-- Nếu `selectedCollection.type === 'color'` → hiển thị `<ColorBoard>`
-- Nếu `viewMode === 'browser'` → hiển thị `<CollectionBrowser>`
-- Nếu `viewMode === 'canvas'` → hiển thị `<AssetDisplayer>` (chỉ ảnh)
-- Panel chi tiết (phải): hiển thị khi có `selectedAsset` — thumbnail/icon, bảng metadata, preview đầy đủ cho ảnh
+| DTO | Fields |
+|-----|--------|
+| `PagedResult<T>` | Items, TotalCount, Page, PageSize, HasNextPage, HasPreviousPage, TotalPages |
+| `PaginationParams` | Page (default 1), PageSize (default 50, max 100), SortBy?, SortOrder (default "asc") |
+| `FileUploadConfig` | MaxFileSizeBytes (50MB), MaxFilesPerRequest (20), AllowedExtensions (27), AllowedMimeTypePrefixes (13) |
+| `SmartCollectionDefinition` | Id, Name, Description, Icon, Color, Count |
 
 ---
 
-### 3.7 Các Component con
+## 4. Services
 
-#### `CollectionTree` — Cây thư mục bên trái
+### 4.1 AssetService (518 lines)
 
-- **Props:** `collections`, `selectedCollection`, `onSelectCollection`, `onCreateCollection`, `onDeleteCollection`
-- Cây phân cấp với expand/collapse (▶/▼)
-- Mục được chọn: nền accent xanh dương sáng + đổ bóng
-- Icon theo type: 🖼️ (image), 🔗 (link), 🎨 (color), 📁 (default)
-- Nút xóa (✕) xuất hiện khi hover
+**Dependencies:** AppDbContext, IStorageService, FileUploadConfig, IThumbnailService, INotificationService, ILogger
 
-#### `CollectionBrowser` — Trình duyệt file chính
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `GetAssetsAsync(PaginationParams, userId)` | `PagedResult<Asset>` | Phân trang, sắp xếp, user-scoped |
+| `GetByIdAsync(id, userId)` | `Asset?` | |
+| `CreateAssetAsync(Asset, userId)` | `Asset` | + SignalR notify |
+| `UploadFilesAsync(files, collectionId, folderId, userId)` | `List<Asset>` | Validate size/ext/MIME, thumbnail gen |
+| `UpdatePositionAsync(id, x, y, userId)` | `Asset` | Canvas position |
+| `CreateFolderAsync(dto, userId)` | `Asset` | |
+| `CreateColorAsync(dto, userId)` | `Asset` | |
+| `CreateColorGroupAsync(dto, userId)` | `Asset` | |
+| `CreateLinkAsync(dto, userId)` | `Asset` | URL validation (http/https) |
+| `UpdateAssetAsync(id, dto, userId)` | `Asset` | Partial update |
+| `DeleteAssetAsync(id, userId)` | `bool` | Xóa file + thumbnails, orphan prevention |
+| `ReorderAssetsAsync(ids, userId)` | `void` | Batch SortOrder |
+| `GetAssetsByGroupAsync(groupId, userId)` | `List<Asset>` | |
+| `BulkDeleteAsync(ids, userId)` | `int` | Bulk cleanup |
+| `BulkMoveAsync(dto, userId)` | `int` | Validate target collection |
+| `BulkTagAsync(dto, userId)` | `int` | Add/remove tags batch |
 
-- **Props:** `assets`, `subCollections`, `onSelectCollection`, `onSelectFolder`, `onMoveAsset`, `onSelectAsset`, `selectedAssetId`, `onReorder`, `loading`, `searchTerm`, `layoutMode`
-- Lọc tìm kiếm theo tên collection, thư mục, file
-- Hai phần: "Thư mục" và "Tệp tin"
-- **Layout modes:** `grid` (auto-fill 175px), `list` (flex column), `masonry` (CSS columns 4×200px)
-- Kéo thả: kéo file vào thư mục để di chuyển
-- File được chọn: viền accent + đổ bóng
-- Nút sắp xếp lại (▲/▼) trong chế độ list
-- Thumbnail ảnh, icon link (🔗), mẫu màu
+### 4.2 CollectionService (264 lines)
 
-#### `AssetDisplayer` — Gallery / Canvas view
+**Dependencies:** AppDbContext, ILogger, IDistributedCache, INotificationService, IPermissionService
 
-- **Props:** `assets`, `subCollections`, `viewMode`, `onSelectCollection`, `loading`
-- Thẻ subcollection với viền trên màu và icon type
-- Gallery grid (minmax 180px) cho chế độ không phải canvas
-- Chế độ canvas: ủy thác cho `<DraggableAssetCanvas>`
-- Hỗ trợ: images, links, colors
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `GetAllAsync(userId)` | `List<Collection>` | Cached (5min/2min), own + system + shared |
+| `GetByIdAsync(id, userId)` | `Collection?` | Permission-aware |
+| `GetWithItemsAsync(id, folderId, userId)` | `CollectionWithItemsResult` | Items + SubCollections, permission check |
+| `CreateAsync(collection, userId)` | `Collection` | Invalidate cache, notify |
+| `UpdateAsync(id, collection, userId)` | `Collection` | Editor+ permission cho shared |
+| `DeleteAsync(id, userId)` | `bool` | Owner only, orphan prevention |
 
-#### `AssetGrid` — Lưới thumbnail cơ bản
+### 4.3 AuthService (115 lines)
 
-- **Props:** `assets`
-- Grid auto-fill (minmax 160px), hiển thị `thumbnailUrl`, fileName, tags
-- Card hover với hiệu ứng nâng + viền accent
+**Dependencies:** UserManager\<ApplicationUser\>, IConfiguration, ILogger
 
-#### `SearchBar` — Thanh tìm kiếm (component phụ)
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `RegisterAsync(dto)` | `AuthResponseDto` | UserManager.CreateAsync + JWT |
+| `LoginAsync(dto)` | `AuthResponseDto` | Validate credentials + JWT |
 
-- **Props:** `onSearch`
-- Input dạng thuốc 300px
+**JWT Claims:** NameIdentifier, Email, Name (DisplayName), Jti (GUID)
 
-#### `UploadArea` — Vùng upload kéo thả
+### 4.4 LocalStorageService (82 lines)
 
-- **Props:** `onUpload`
-- Sử dụng `react-dropzone`
-- Viền nét đứt, accent khi drag-active/hover
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `UploadAsync(stream, fileName, contentType)` | `string` | GUID naming, trả `/uploads/{guid}.ext` |
+| `DeleteAsync(filePath)` | `bool` | Xóa file vật lý |
+| `GetPublicUrl(path)` | `string` | Trả path as-is |
+| `Exists(path)` | `bool` | File.Exists check |
 
-#### `ColorBoard` — Bảng quản lý bảng màu
+### 4.5 ThumbnailService (113 lines)
 
-- **Props:** `items`, `onCreateColor`, `onCreateGroup`
-- Input nhập mã màu (VD: `#FFAA00`), Enter để tạo
-- Dropdown chọn nhóm đích
-- Nút "New group" tạo nhóm màu
-- Các cột theo nhóm (auto-fit grid, minmax 220px)
-- Mỗi màu: swatch (20×20) + mã monospace
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `GenerateThumbnailsAsync(originalPath)` | `Dictionary<string,string>` | sm(150px), md(400px), lg(800px) WebP |
 
-#### `DraggableAssetCanvas` — Canvas kéo thả tự do
+**Formats hỗ trợ:** jpg, jpeg, png, gif, bmp, webp, tiff  
+**Output:** `/uploads/thumbs/{size}_{fileId}.webp`, quality 80
 
-- **Props:** `assets`, `onPositionUpdate`
-- Kéo thả bằng mouse events (mousedown → mousemove → mouseup)
-- Giới hạn vị trí trong canvas
-- Tự lưu vị trí qua `PUT /api/Assets/{id}/position` khi thả chuột
-- Nền grid pattern (ô vuông 50px)
-- Asset: thẻ 150px rộng, preview ảnh 110px + tên file
+### 4.6 TagService (281 lines)
+
+**Dependencies:** AppDbContext, ILogger
+
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `GetAllAsync(userId)` | `List<Tag>` | |
+| `GetByIdAsync(id, userId)` | `Tag` | |
+| `CreateAsync(dto, userId)` | `Tag` | Dedup by normalized name |
+| `UpdateAsync(id, dto, userId)` | `Tag` | |
+| `DeleteAsync(id, userId)` | `bool` | |
+| `GetOrCreateTagsAsync(names, userId)` | `List<Tag>` | Batch get-or-create |
+| `SetAssetTagsAsync(assetId, tagIds, userId)` | `void` | Replace all + sync legacy field |
+| `AddAssetTagsAsync(assetId, tagIds, userId)` | `void` | Additive |
+| `RemoveAssetTagsAsync(assetId, tagIds, userId)` | `void` | |
+| `GetAssetTagsAsync(assetId, userId)` | `List<Tag>` | |
+| `MigrateCommaSeparatedTagsAsync(userId)` | `void` | One-time migration |
+
+### 4.7 NotificationService (35 lines)
+
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `NotifyAsync(userId, eventType, payload)` | `void` | Gửi tới group `user:{userId}`, silent error |
+
+### 4.8 SmartCollectionService (198 lines)
+
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `GetDefinitionsAsync(userId)` | `List<SmartCollectionDefinition>` | 8 built-in + top 10 per-tag |
+| `GetItemsAsync(id, params, userId)` | `PagedResult<Asset>` | Dynamic LINQ filter |
+
+**Built-in smart collections:**
+
+| ID | Tên | Mô tả |
+|----|-----|-------|
+| `recent-7d` | Gần đây (7 ngày) | Assets tạo trong 7 ngày |
+| `recent-30d` | Gần đây (30 ngày) | Assets tạo trong 30 ngày |
+| `all-images` | Tất cả hình ảnh | ContentType = image |
+| `all-links` | Tất cả liên kết | ContentType = link |
+| `all-colors` | Tất cả màu sắc | ContentType = color |
+| `untagged` | Chưa gắn tag | Không có AssetTag nào |
+| `with-thumbnails` | Có thumbnail | ThumbnailSm != null |
+| `tag-{id}` | Theo tag | Assets có tag cụ thể |
+
+### 4.9 PermissionService (228 lines)
+
+**Dependencies:** AppDbContext, UserManager, ILogger
+
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `HasPermissionAsync(collectionId, userId, minRole)` | `bool` | Owner luôn có full access |
+| `GetRoleAsync(collectionId, userId)` | `string?` | |
+| `GrantAsync(collectionId, dto, grantedBy)` | `CollectionPermission` | Owner only, upsert, by email |
+| `UpdateAsync(permId, dto, userId)` | `CollectionPermission` | Owner only |
+| `RevokeAsync(permId, userId)` | `bool` | Owner only |
+| `ListAsync(collectionId, userId)` | `List<PermissionInfoDto>` | Viewer+ access |
+| `GetSharedCollectionsAsync(userId)` | `List<Collection>` | Collections shared with user |
 
 ---
 
-## 4. Tính năng chính
+## 5. Controllers — 38 Endpoints
 
-| # | Tính năng | Mô tả |
-|---|-----------|-------|
-| 1 | **Quản lý Collection** | Tạo, xóa, cây phân cấp cha/con; types: image, link, color, default |
-| 2 | **Upload File** | Kéo thả qua react-dropzone, upload multipart đến `wwwroot/uploads/`, tên file GUID |
-| 3 | **Hệ thống thư mục** | Thư mục lồng nhau trong collections (asset với `IsFolder=true`), breadcrumb navigation |
-| 4 | **Hiển thị hình ảnh** | Grid/List/Masonry layouts + canvas kéo thả tự do với vị trí persistent |
-| 5 | **Quản lý liên kết** | Lưu trữ bookmarks (tên + URL) |
-| 6 | **Bảng màu** | Mẫu màu tổ chức theo nhóm, nhập bằng mã hex, hiển thị dạng cột Kanban |
-| 7 | **Tìm kiếm** | Lọc phía client theo tên trên collections, thư mục và files |
-| 8 | **Panel chi tiết Asset** | Sidebar phải với preview, bảng metadata, preview đầy đủ cho ảnh |
-| 9 | **Kéo & thả** | Di chuyển file giữa thư mục bằng kéo thả; sắp xếp lại trong list view |
-| 10 | **Responsive Layouts** | Grid (auto-fill), List (stacked rows), Masonry (CSS multi-column) |
+### 5.1 AssetsController — 15 endpoints
 
----
-
-## 5. Thiết kế giao diện (Design Theme)
-
-| Khía cạnh         | Chi tiết                                                  |
-|-------------------|-----------------------------------------------------------|
-| **Chủ đề**        | Dark Navy / Material Dark                                 |
-| **Phong cách**    | Chế độ tối, hiện đại, phẳng (flat design) với đổ bóng nhẹ |
-| **Nền chính**     | `#0a1929` → `#0d2137` (xanh lam đậm + xám đen)            |
-| **Bề mặt card**   | `#132f4c` / hover `#173a5e`                               |
-| **Màu điểm nhấn** | `#2196F3` (Xanh dương sáng) / hover `#1976D2`             |
-| **Typography**    | Inter (Google Fonts), weights 400–700, sans-serif         |
-| **Bo góc**        | 8px chuẩn, 12px cho cards                                 |
-| **Đổ bóng**       | Multi-layer box shadows                                   |
-| **Icon**          | Inline SVG (Feather-style) + emoji (📁🖼️🔗🎨)           |
-| **Scrollbar**     | Tùy chỉnh mỏng (6px), bán trong suốt                      |
-| **Ngôn ngữ**      | Tiếng Việt cho nhãn UI                                    |
-
----
-
-## 6. Cơ sở dữ liệu
-
-- **Engine:** SQLite qua Entity Framework Core
-- **File:** `vah_database.db` trong thư mục `VAH.Backend/`
-- **Bảng:** `Assets`, `Collections`
-- **Quản lý schema:** EF Core Migrations — `dotnet ef migrations add` / `dotnet ef database update`. Ứng dụng tự động chạy `db.Database.Migrate()` khi khởi động
-- **Seed data:** 3 collections mặc định (Images, Links, Colors) qua `HasData()` trong `OnModelCreating`
-- **Migration files:** `VAH.Backend/Migrations/`
-- **Lưu ý:** `CreatedAt` sử dụng `HasDefaultValueSql("datetime('now')")` ở DB level; services set `DateTime.UtcNow` khi tạo entity
-
----
-
-## 7. Lưu trữ file upload
-
-- **Thư mục:** `VAH.Backend/wwwroot/uploads/`
-- **Đặt tên:** GUID + extension gốc (VD: `a1b2c3d4-...-e5f6.png`)
-- **Phục vụ:** Static files middleware từ đường dẫn `/uploads/`
-- **Truy cập từ frontend:** `http://localhost:5027/uploads/{filename}`
-
----
-
-## 8. Cấu trúc thư mục dự án
-```text
-1A/
-├── VAH.sln                          # Solution file
-├── README.md                        # Hướng dẫn cài đặt & sử dụng
-├── docs/                            # Tài liệu dự án
-│   ├── PROJECT_DOCUMENTATION.md     # Tài liệu này
-│   ├── ARCHITECTURE_REVIEW.md       # Đánh giá kiến trúc & roadmap
-│   └── IMPLEMENTATION_GUIDE.md      # Hướng dẫn triển khai canvas
-│
-├── VAH.Backend/                     # ASP.NET Core Web API
-│   ├── Program.cs                   # Entry point, cấu hình services
-│   ├── VAH.Backend.csproj           # Cấu hình dự án .NET
-│   ├── appsettings.json             # Cấu hình (connection string, logging)
-│   ├── Controllers/
-│   │   ├── AssetsController.cs      # REST API cho assets (12 endpoints)
-│   │   ├── CollectionsController.cs # REST API cho collections (5 endpoints)
-│   │   ├── SearchController.cs      # REST API tìm kiếm (1 endpoint)
-│   │   └── HealthController.cs      # Health check (1 endpoint)
-│   ├── Services/
-│   │   ├── IAssetService.cs         # Interface
-│   │   ├── AssetService.cs          # Implementation (328 dòng)
-│   │   ├── ICollectionService.cs    # Interface
-│   │   ├── CollectionService.cs     # Implementation (111 dòng)
-│   │   ├── IStorageService.cs       # Interface
-│   │   └── LocalStorageService.cs   # Local file storage
-│   ├── Models/
-│   │   ├── Asset.cs                 # Model tài nguyên
-│   │   ├── Collection.cs            # Model bộ sưu tập
-│   │   ├── DTOs.cs                  # Data Transfer Objects
-│   │   └── Common.cs                # PagedResult, PaginationParams, FileUploadConfig
-│   ├── Data/
-│   │   └── AppDbContext.cs          # EF Core DbContext + Fluent API config
-│   ├── Middleware/
-│   │   └── ExceptionHandlingMiddleware.cs  # Global exception handler (RFC 7807)
-│   ├── Migrations/                  # EF Core migration files
-│   │   ├── *_InitialCreate.cs       # Initial schema migration
-│   │   └── AppDbContextModelSnapshot.cs
-│   ├── Properties/
-│   │   └── launchSettings.json      # Cấu hình chạy
-│   └── wwwroot/uploads/             # Thư mục lưu file upload
-│
-└── VAH.Frontend/                    # React + Vite SPA
-    ├── package.json                 # Dependencies & scripts
-    ├── vite.config.js               # Vite configuration
-    ├── index.html                   # HTML entry point
-    └── src/
-        ├── main.jsx                 # React entry point
-        ├── App.jsx                  # Component chính (state, routing, layout)
-        ├── App.css                  # Design system & layout styles
-        ├── index.css                # Global reset & base styles
-        ├── api/
-        │   ├── client.js            # Axios instance + interceptors
-        │   ├── assetsApi.js         # API functions cho assets
-        │   ├── collectionsApi.js     # API functions cho collections
-        │   └── searchApi.js          # API function cho search
-        ├── hooks/
-        │   ├── useCollections.js     # Collections state + CRUD
-        │   └── useAssets.js          # Assets state + CRUD
-        └── components/
-            ├── CollectionTree.jsx/css     # Cây thư mục sidebar
-            ├── CollectionBrowser.jsx/css  # Trình duyệt file chính
-            ├── AssetDisplayer.jsx/css     # Gallery / Canvas view
-            ├── AssetGrid.jsx/css          # Lưới thumbnail cơ bản
-            ├── SearchBar.jsx/css          # Thanh tìm kiếm (phụ)
-            ├── UploadArea.jsx/css         # Vùng upload kéo thả
-            ├── ColorBoard.jsx/css         # Bảng quản lý màu
-            ├── DraggableAssetCanvas.jsx/css # Canvas kéo thả tự do
-            └── ErrorBoundary.jsx          # Error boundary component
 ```
----
+[Authorize] api/Assets
 
-## 9. ĐÁNH GIÁ DỰ ÁN — Hiện trạng & Tiến độ thực hiện
+GET    /                      → PagedResult<Asset>   (PaginationParams)
+POST   /                      → Asset                (Asset body)
+POST   /upload                → List<Asset>          (FormData files, ?collectionId, ?folderId)
+PUT    /{id}/position         → Asset                (AssetPositionDto)
+POST   /create-folder         → Asset                (CreateFolderDto)
+POST   /create-color          → Asset                (CreateColorDto)
+POST   /create-color-group    → Asset                (CreateColorGroupDto)
+POST   /create-link           → Asset                (CreateLinkDto)
+PUT    /{id}                  → Asset                (UpdateAssetDto)
+DELETE /{id}                  → 204
+POST   /reorder               → 200                  (ReorderAssetsDto)
+GET    /group/{groupId}       → List<Asset>
+POST   /bulk-delete            → {deleted: int}       (BulkDeleteDto)
+POST   /bulk-move              → {moved: int}         (BulkMoveDto)
+POST   /bulk-tag               → {affected: int}      (BulkTagDto)
+```
 
-> **Ngày đánh giá:** 25/02/2026  
-> **Phạm vi:** So sánh hiện trạng thực tế của code với khuyến nghị trong ARCHITECTURE_REVIEW.md  
-> **Mục tiêu:** Xác định rõ những gì đã làm, đang thiếu, và cần bổ sung
+### 5.2 AuthController — 2 endpoints
 
----
+```
+[RateLimited("Fixed")] api/Auth
 
-### 9.1 Tổng quan tiến độ
+POST   /register              → AuthResponseDto       (RegisterDto)
+POST   /login                 → AuthResponseDto       (LoginDto)
+```
 
-| Giai đoạn (theo ARCHITECTURE_REVIEW) | Tổng hạng mục | Đã hoàn thành | Chưa thực hiện | Tỷ lệ |
-|---------------------------------------|--------------|---------------|----------------|--------|
-| **GĐ 1 — Production cơ bản** | 7 | 7 | 0 | 100% |
-| **GĐ 2 — Chuẩn hóa kiến trúc** | 6 | 5 | 1 | 83% |
-| **GĐ 3 — Production-grade** | 5+ | 1 | 4+ | ~20% |
-| **Bổ sung mới (không trong roadmap)** | 5 | 5 | 0 | 100% |
+### 5.3 CollectionsController — 5 endpoints
 
----
+```
+[Authorize] api/Collections
 
-### 9.2 NHỮNG THỨ ĐÃ CÓ TRONG DỰ ÁN (Đã thực hiện)
+GET    /                      → List<Collection>
+GET    /{id}/items             → CollectionWithItemsResult  (?folderId)
+POST   /                      → Collection             (Collection body)
+PUT    /{id}                  → 204                    (Collection body)
+DELETE /{id}                  → 204
+```
 
-#### A) Backend — Kiến trúc & Patterns
+### 5.4 SearchController — 1 endpoint
 
-| # | Hạng mục | Thuộc giai đoạn | Chi tiết thực hiện |
-|---|----------|-----------------|-------------------|
-| 1 | **Service Layer** | GĐ 2.1 | ✅ Đã tách hoàn chỉnh: `IAssetService` / `AssetService` (328 dòng), `ICollectionService` / `CollectionService` (111 dòng). Controller chỉ còn nhận request + gọi service + trả response. Đúng mô hình Thin Controller → Service |
-| 2 | **Storage Abstraction** | GĐ 2.4 | ✅ `IStorageService` interface với 4 methods (`UploadAsync`, `DeleteAsync`, `GetPublicUrl`, `Exists`). Implementation: `LocalStorageService` với GUID naming, logging. Sẵn sàng swap sang S3/Azure qua DI |
-| 3 | **Global Exception Handling** | GĐ 1.3 | ✅ `ExceptionHandlingMiddleware` hoàn chỉnh: RFC 7807 ProblemDetails, pattern matching exception → status code, ẩn stack trace ở production, trả `traceId`. Extension method `UseGlobalExceptionHandler()` |
-| 4 | **Pagination** | GĐ 1.6 | ✅ `PagedResult<T>` + `PaginationParams` (max 100/page, default 50). `GetAssets` endpoint hỗ trợ `?page=1&pageSize=50&sortBy=createdAt&sortOrder=desc`. Có `HasNextPage`, `TotalPages` |
-| 5 | **File Upload Restrictions** | GĐ 1.5 | ✅ `FileUploadConfig`: max 50MB/file, max 20 files/request, whitelist extensions (image, document, media, archive), MIME type prefix validation. Kestrel `MaxRequestBodySize` = 100MB |
-| 6 | **Database Indexing** | GĐ 2.3 | ✅ 9 indexes khai báo trong `OnModelCreating`: `CollectionId`, `ParentFolderId`, composite `(CollectionId, ParentFolderId)`, `ContentType`, `GroupId`, `CreatedAt`, `IsFolder`, `ParentId` (Collection), `Order`, `Type` |
-| 7 | **FK Constraints** | GĐ 2.3 | ✅ Asset → Collection (CASCADE delete), Collection → Parent Collection (SET NULL). Khai báo rõ ràng trong Fluent API |
-| 8 | **Rate Limiting** | GĐ 3+ | ✅ Hai policy: "Fixed" (100 req/phút), "Upload" (20 req/phút). Trả 429 khi vượt limit. Đăng ký trong pipeline |
-| 9 | **Data Validation (DTOs)** | GĐ 1.4 partial | ✅ Data Annotations trên tất cả DTOs: `[Required]`, `[MaxLength]`, `[Range]`. Model entities cũng có `[MaxLength]` constraints. URL validation trên `CreateLinkDto` kiểm tra http/https scheme |
-| 10 | **Seed Data** | — | ✅ Sử dụng `HasData()` trong `OnModelCreating` thay vì runtime seeding — đúng pattern cho EF Core |
-| 11 | **EF Core Migrations** | GĐ 1.2 | ✅ Chuyển từ `EnsureCreated()` sang `Database.Migrate()`. Migration file `InitialCreate` bao gồm toàn bộ schema + seed data + indexes + FK constraints. `CreatedAt` dùng `HasDefaultValueSql("datetime('now')")` thay vì dynamic `DateTime.UtcNow` trong model. Thư mục `Migrations/` được version control |
-| 12 | **Authentication (JWT + Identity)** | GĐ 1.1 | ✅ **MỚI** — ASP.NET Identity + JWT Bearer. `ApplicationUser` kế thừa `IdentityUser` (thêm `DisplayName`, `CreatedAt`). `AuthService` xử lý register/login + JWT generation. `AuthController`: `POST /api/auth/register`, `POST /api/auth/login`. Tất cả controller có `[Authorize]` (trừ Auth + Health). JWT config trong `appsettings.json` |
-| 13 | **User Entity + Data Ownership** | GĐ 1.7 | ✅ **MỚI** — `UserId` (nullable string FK → `AspNetUsers`) trên cả `Asset` và `Collection`. Mọi service filter theo `UserId == currentUser`. System collections (seed, `UserId == null`) hiển thị cho tất cả user. Tạo/sửa/xóa chỉ được trên dữ liệu của mình |
+```
+[Authorize] api/Search
 
-#### B) Backend — Logic & An toàn dữ liệu
+GET    /?q=&type=&collectionId=&page=&pageSize=  → SearchResult
+```
 
-| # | Hạng mục | Chi tiết |
-|---|----------|---------|
-| 11 | **File cleanup on delete** | ✅ `DeleteAssetAsync` xóa file vật lý khi xóa asset có `FilePath` bắt đầu `/uploads/`. Không xóa folder/link/color |
-| 12 | **Orphan prevention** | ✅ Xóa folder → con chuyển sang thư mục ông (grandparent). Xóa collection → con chuyển thành top-level (`ParentId = null`) |
-| 13 | **Batch reorder** | ✅ `ReorderAssetsAsync` fetch tất cả assets một lần bằng `Where(Contains)` rồi update, tránh N+1 |
-| 14 | **URL validation** | ✅ `CreateLinkAsync` kiểm tra `Uri.TryCreate` + scheme `http`/`https`, chặn `javascript:` URLs |
-| 15 | **CORS cải thiện** | ✅ Từ `AllowAnyOrigin` → config-driven `WithOrigins()` đọc từ `appsettings.json`, chỉ cho phép origins cụ thể |
-| 16 | **Server-side Search** | GĐ 2.2 | ✅ **MỚI** — `SearchController` với `GET /api/search?q=&type=&collectionId=&page=&pageSize=`. Tìm kiếm cả Assets (theo tên + tags) và Collections (theo tên + mô tả). Hỗ trợ phân trang |
-| 17 | **Health Check** | GĐ 3+ | ✅ **MỚI** — `HealthController` với `GET /api/health`. Kiểm tra database connectivity + storage availability. Trả status `healthy`/`degraded` + environment info + version |
+### 5.5 TagsController — 10 endpoints
 
-#### C) Frontend — Kiến trúc
+```
+[Authorize] api/Tags
 
-| # | Hạng mục | Thuộc giai đoạn | Chi tiết |
-|---|----------|-----------------|---------|
-| 18 | **Custom Hooks** | GĐ 2.5 | ✅ `useCollections()` (178 dòng): quản lý collections, breadcrumb, folder navigation, CRUD. `useAssets()` (186 dòng): upload, create, move, reorder, select. `App.jsx` giảm từ ~650 → 395 dòng |
-| 19 | **API Abstraction Layer** | GĐ 2.5 | ✅ 3 module: `client.js` (axios instance + interceptors + env config), `assetsApi.js` (11 API functions), `collectionsApi.js` (4 API functions), `searchApi.js` (1 API function) |
-| 20 | **Error Boundary** | GĐ 2.5 | ✅ `ErrorBoundary.jsx`: Class component, `getDerivedStateFromError`, `componentDidCatch` với logging, UI fallback tiếng Việt, nút "Thử lại" |
-| 21 | **Environment-based config** | DevOps | ✅ `VITE_API_URL` và `VITE_STATIC_URL` env vars. Không hardcode URL trong source |
-| 22 | **Axios interceptors** | GĐ 2.5 | ✅ Response interceptor log lỗi theo status code, handle no-response và setup errors |
-| 23 | **Debounced Search** | Performance | ✅ **MỚI** — Search input 300ms debounce, tránh re-render/filter mỗi keystroke |
+GET    /                      → List<Tag>
+GET    /{id}                  → Tag
+POST   /                      → Tag                   (CreateTagDto)
+PUT    /{id}                  → Tag                   (UpdateTagDto)
+DELETE /{id}                  → 204
+GET    /asset/{assetId}       → List<Tag>
+PUT    /asset/{assetId}       → 200                   (AssetTagsDto — replace all)
+POST   /asset/{assetId}/add   → 200                   (AssetTagsDto — add)
+POST   /asset/{assetId}/remove → 200                  (AssetTagsDto — remove)
+POST   /migrate               → {message}             (migrate legacy tags)
+```
 
-#### D) Frontend — UI/UX Components (8 components)
+### 5.6 SmartCollectionsController — 2 endpoints
 
-| Component | Dòng | Vai trò | Đặc điểm nổi bật |
-|-----------|------|---------|-------------------|
-| `CollectionTree` | 97 | Cây sidebar | Recursive rendering, expand/collapse, icons theo type |
-| `CollectionBrowser` | 153 | File manager chính | HTML5 Drag & Drop, 3 layout modes, reorder arrows, search filter |
-| `AssetDisplayer` | 99 | Gallery / Canvas | Delegate canvas mode → `DraggableAssetCanvas`, fallback images |
-| `AssetGrid` | 19 | Grid cơ bản | Auto-fill grid, tags display |
-| `ColorBoard` | 85 | Quản lý bảng màu | Grouped columns, hex input, useMemo optimization |
-| `DraggableAssetCanvas` | 99 | Canvas kéo thả | Mouse events, boundary clamping, auto-save position |
-| `UploadArea` | 22 | Dropzone upload | react-dropzone, drag-active visual |
-| `SearchBar` | 15 | Tìm kiếm phụ | Simple input |
-| `ErrorBoundary` | 55 | Error catching | Class component, Vietnamese fallback UI |
+```
+[Authorize] api/SmartCollections
 
----
+GET    /                      → List<SmartCollectionDefinition>
+GET    /{id}/items             → PagedResult<Asset>    (PaginationParams)
+```
 
-### 9.3 NHỮNG THỨ CHƯA THỰC HIỆN
+### 5.7 PermissionsController — 6 endpoints
 
-#### Giai đoạn 1 — ✅ HOÀN THÀNH 100% (7/7)
+```
+[Authorize] api/collections/{collectionId}/permissions
 
-Tất cả hạng mục GĐ 1 đã được implement. Hệ thống đạt mức Production cơ bản.
+GET    /                      → List<PermissionInfoDto>
+POST   /                      → CollectionPermission   (GrantPermissionDto)
+PUT    /{permissionId}        → CollectionPermission   (UpdatePermissionDto)
+DELETE /{permissionId}        → 204
 
-#### Giai đoạn 2 — Còn thiếu (1/6 hạng mục)
+GET    /my-role               → {role: string}
 
-| # | Hạng mục | Mức ưu tiên | Ghi chú |
-|---|----------|-------------|---------|
-| 4 | **React Router** | 🟡 MEDIUM | URL không phản ánh trạng thái UI. Không bookmark/share/back-forward được |
+[Authorize] api/shared-collections
+GET    /                      → List<Collection>
+```
 
-#### Giai đoạn 3 — Còn thiếu (4+ hạng mục)
+### 5.8 HealthController — 1 endpoint
 
-| # | Hạng mục | Mức ưu tiên | Ghi chú |
-|---|----------|-------------|---------|
-| 5 | **Chuyển sang PostgreSQL** | 🟡 MEDIUM | SQLite giới hạn ~100 concurrent reads, single-writer. Cần cho multi-user |
-| 6 | **Docker + docker-compose** | 🟡 MEDIUM | Không có containerization. Deploy thủ công |
-| 7 | **CI/CD Pipeline** | 🟡 MEDIUM | Không có automated build/test/deploy |
-| 8 | **Structured Logging (Serilog)** | 🟡 MEDIUM | Chỉ có console logger mặc định |
-| 9 | **Unit/Integration Tests** | 🟡 MEDIUM | Không có test project nào. Refactor = đánh cược |
-| 10 | **FluentValidation** | 🟢 LOW | Data Annotations đang cover cơ bản. FluentValidation cho complex rules |
-| 11 | **Thumbnail generation** | 🟢 LOW | Serve original file cho mọi kích thước |
-| 12 | **CDN / Caching** | 🟢 LOW | Mọi request file đi qua backend server |
+```
+[No Auth] api/Health
+
+GET    /                      → {status, timestamp, checks: {database, storage}, info}
+                                → 200 (healthy) / 503 (unhealthy)
+```
 
 ---
 
-### 9.4 MỚI BỔ SUNG (Phiên đánh giá 25/02/2026)
+## 6. Frontend — API Layer
 
-Sau khi đánh giá toàn bộ codebase, các cải thiện sau đã được bổ sung ngay:
+### 6.1 client.js — Axios Instance
 
-| # | Bổ sung | File | Lý do |
-|---|---------|------|-------|
-| 1 | **Server-side Search API** | `Controllers/SearchController.cs` | Tìm kiếm từ client-side `.includes()` không scale. Endpoint mới hỗ trợ: search by name + tags, filter by type + collectionId, phân trang |
-| 2 | **Health Check Endpoint** | `Controllers/HealthController.cs` | Cần cho monitoring, load balancer readiness. Kiểm tra DB + storage, trả version + environment |
-| 3 | **Search API Frontend** | `src/api/searchApi.js` | Module gọi search endpoint mới |
-| 4 | **Debounce Search** | `src/App.jsx` | Search input trước đó fire mỗi keystroke, gây re-render không cần thiết. Thêm 300ms debounce |
-| 5 | **Xóa Dead Code** | `src/components/CollectionTree.jsx` | Loại bỏ `showNewForm`, `newCollectionName`, `handleAddCollection` — khai báo nhưng không bao giờ dùng |
-| 6 | **EF Core Migrations** | `Program.cs`, `Data/AppDbContext.cs`, `Migrations/` | Thay `EnsureCreated()` bằng `Database.Migrate()`. Sử dụng `HasDefaultValueSql` cho `CreatedAt`. Seed data dùng static `DateTime`. Migration `InitialCreate` bao gồm toàn bộ schema |
-| 7 | **Authentication (JWT + Identity)** | `Models/ApplicationUser.cs`, `Models/AuthDTOs.cs`, `Services/AuthService.cs`, `Controllers/AuthController.cs`, `Program.cs`, `appsettings.json` | ASP.NET Identity + JWT Bearer. Register/Login endpoints. `[Authorize]` trên tất cả controllers (trừ Auth, Health). JWT config đọc từ `appsettings.json` |
-| 8 | **User Entity + Data Ownership** | `Models/Asset.cs`, `Models/Collection.cs`, `Data/AppDbContext.cs`, `Services/*.cs`, `Controllers/*.cs` | `UserId` FK trên Asset + Collection. Service layer filter theo user. System collections (seed) hiển thị cho all users. Controllers extract userId từ JWT claims |
+- **Base URL:** `VITE_API_URL` hoặc `http://localhost:5027/api`
+- **Timeout:** 30s
+- **Request interceptor:** Gắn `Authorization: Bearer <token>` từ localStorage
+- **Response interceptor:** Auto-clear token + reload khi 401
+- **Exports:** `default` (axios), `getToken`, `setToken`, `clearToken`, `STATIC_URL`, `staticUrl(path)`
 
----
+### 6.2 API Modules
 
-### 9.5 PHÂN TÍCH CHẤT LƯỢNG CODE HIỆN TẠI
-
-#### Backend — Điểm mạnh
-
-| Khía cạnh | Điểm | Ghi chú |
-|-----------|------|---------|
-| Tách lớp (Separation) | 9/10 | Controller → Service → DbContext. Storage abstracted. Clean DI registration |
-| Data integrity | 8/10 | FK constraints, cascade/set null, orphan prevention, file cleanup |
-| Validation | 7/10 | Data annotations + manual checks trong services. URL scheme validation. Chưa dùng FluentValidation |
-| Error handling | 8/10 | Global middleware RFC 7807, exception mapping, traceId. Ẩn details ở production |
-| Performance | 7/10 | Pagination, batch reorder, index coverage tốt. Chưa có caching |
-| Security | 7/10 | Rate limiting + CORS config + JWT Authentication + Data Ownership. [Authorize] trên tất cả controllers. UserId scoping trên mọi query |
-
-#### Frontend — Điểm mạnh
-
-| Khía cạnh | Điểm | Ghi chú |
-|-----------|------|---------|
-| Code organization | 8/10 | Hooks + API layer tách rõ. App.jsx gọn (<400 dòng) |
-| Component design | 7/10 | 9 components, mỗi component đơn trách nhiệm. Props interface rõ ràng |
-| Error handling | 6/10 | ErrorBoundary ở root, try/catch trong hooks. Image fallbacks. Chưa có loading skeleton |
-| UX | 7/10 | Dark theme nhất quán, 3 layout modes, breadcrumb, drag-and-drop. Chưa responsive |
-| Performance | 6/10 | Debounced search, useMemo/useCallback. Chưa có React.memo, virtualization |
-| Accessibility | 3/10 | Không aria-*, không keyboard nav trên tree/grid, không focus management |
+| Module | Functions |
+|--------|-----------|
+| `assetsApi.js` | uploadFiles, createFolder, createLink, createColor, createColorGroup, updateAsset, updatePosition, deleteAsset, reorderAssets, bulkDelete, bulkMove, bulkTag |
+| `authApi.js` | register(displayName, email, password), login(email, password) |
+| `collectionsApi.js` | fetchAllCollections, fetchCollectionItems(id, folderId?), createCollection, deleteCollection |
+| `searchApi.js` | search({q, type, collectionId, page, pageSize}) |
+| `tagsApi.js` | fetchAllTags, fetchTag, createTag, updateTag, deleteTag, getAssetTags, setAssetTags, addAssetTags, removeAssetTags, migrateTags |
+| `smartCollectionsApi.js` | fetchSmartCollections, fetchSmartCollectionItems(id, page?, pageSize?) |
+| `permissionsApi.js` | fetchPermissions, grantPermission, updatePermission, revokePermission, getMyRole, fetchSharedCollections |
 
 ---
 
-### 9.6 THỐNG KÊ DỰ ÁN
+## 7. Frontend — Hooks
 
-#### Quy mô code
+### 7.1 useAuth
 
-| Thành phần | Files | Dòng code (ước tính) |
-|------------|-------|---------------------|
-| Backend Controllers | 5 | ~320 |
-| Backend Services | 4 interfaces + 4 implementations | ~650 |
-| Backend Models/DTOs | 5 | ~230 |
-| Backend Middleware | 1 | ~83 |
-| Backend Data | 1 | ~100 |
-| Backend Config | Program.cs | ~102 |
-| **Tổng Backend** | **~18 files** | **~1,485** |
-| Frontend Components | 9 (.jsx) | ~644 |
-| Frontend Hooks | 2 | ~364 |
-| Frontend API | 4 | ~115 |
-| Frontend App | 1 | ~395 |
-| Frontend Styles | 10+ (.css) | ~800+ |
-| **Tổng Frontend** | **~26+ files** | **~2,318+** |
-| **TỔNG DỰ ÁN** | **~44+ files** | **~3,803+** |
+**Provider:** `AuthProvider` (context)  
+**Returns:** `{ user, isAuthenticated, authLoading, authError, login, register, logout, setAuthError }`  
+**Persist:** `vah_token` + `vah_user` trong localStorage
 
-#### API Endpoints (21 total)
+### 7.2 useCollections
 
-| Controller | Endpoints | Methods |
-|------------|-----------|---------|
-| Assets | 12 | GET(2), POST(6), PUT(2), DELETE(1) |
-| Collections | 5 | GET(2), POST(1), PUT(1), DELETE(1) |
-| Auth | 2 | POST(2) |
-| Search | 1 | GET(1) |
-| Health | 1 | GET(1) |
+**Returns:** `{ collections, selectedCollection, collectionItems, loading, breadcrumbPath, folderPath, currentFolderId, selectCollection, breadcrumbClick, navigateToCollection, openFolder, folderBreadcrumbClick, folderBreadcrumbRoot, handleCreateCollection, handleDeleteCollection, refreshItems, setSelectedCollection }`  
+**URL Sync:** `useParams()` cho collectionId/folderId, `useNavigate()` push URL
 
-#### Database
+### 7.3 useAssets
 
-| Bảng | Columns | Indexes | FK |
-|------|---------|---------|-----|
-| Assets | 13 | 7 (inc. 1 composite) | 1 (→ Collections) |
-| Collections | 9 | 3 | 1 (self-ref → ParentId) |
+**Input:** `{ selectedCollection, currentFolderId, collectionItems, refreshItems }`  
+**Returns:** `{ selectedAssetId, setSelectedAssetId, selectedAsset, selectedAssetIds, toggleSelectAsset, selectAllAssets, clearSelection, handleUpload, handleCreateFolder, handleCreateLink, handleCreateColorGroup, handleCreateColor, handleMoveAsset, handleMoveSelected, handleReorderAssets, handleBulkDelete, handleBulkMove, handleBulkTag }`  
+**Multi-select:** Ctrl+click (toggle), Shift+click (range), normal (single)
 
----
+### 7.4 useTags
 
-### 9.7 ĐỀ XUẤT BƯỚC TIẾP THEO (Ưu tiên cao → thấp)
+**Returns:** `{ tags, loading, fetchTags, createTag, updateTag, deleteTag, getAssetTags, setAssetTags, addAssetTags, removeAssetTags }`  
+Auto-fetch on mount.
 
-| Ưu tiên | Việc cần làm | Độ khó | Ảnh hưởng |
-|---------|--------------|--------|-----------|
-| 🔴 1 | **React Router** — `/collections/:id`, `/search?q=`, deep linking | Medium | URL shareable, browser back/forward |
-| 🟡 2 | **Loading Skeleton / Empty States** | Low | UX mượt hơn, professional hơn |
-| 🟡 3 | **Responsive breakpoints** | Medium | Mobile/tablet support |
-| 🟡 4 | **Unit Tests** — xUnit + Moq cho services, Jest cho hooks | Medium | Refactor an toàn |
-| 🟢 5 | **Docker + docker-compose** | Low | Deploy nhất quán |
-| 🟢 6 | **Serilog structured logging** | Low | Log searchable, aggregatable |
-| 🟢 7 | **Thumbnail generation** | Medium | Giảm bandwidth, tải nhanh hơn |
-| 🟢 8 | **Frontend Login/Register page** | Medium | Hoàn thiện auth flow phía client |
+### 7.5 useSignalR
+
+**Input:** `(handlers, enabled)`  
+**Returns:** `{ connection }`  
+**Hub URL:** `/hubs/assets` + JWT token  
+**Auto-reconnect:** [0, 2s, 5s, 10s, 30s]  
+**10 event types:** AssetCreated, AssetUpdated, AssetDeleted, AssetsUploaded, AssetsBulkDeleted, AssetsBulkMoved, CollectionCreated, CollectionUpdated, CollectionDeleted, TagsChanged
+
+### 7.6 useUndoRedo
+
+**Input:** `(maxHistory = 50)`  
+**Returns:** `{ execute, undo, redo, canUndo, canRedo, history }`  
+**Command:** `{ execute: fn, undo: fn, description: string }`  
+**Keyboard:** Ctrl+Z (undo), Ctrl+Shift+Z (redo)
 
 ---
 
-### 9.8 KẾT LUẬN
+## 8. Frontend — Components
 
-Dự án Visual Asset Hub đã tiến xa từ trạng thái MVP ban đầu. So với đánh giá kiến trúc (ARCHITECTURE_REVIEW.md), **~80% các khuyến nghị đã được hiện thực hóa** — đặc biệt mạnh ở phần kiến trúc backend (Service Layer, Storage Abstraction, Exception Handling, Rate Limiting, Indexing, EF Core Migrations, **Authentication, User Entity**) và frontend (Hooks, API layer, ErrorBoundary).
+| Component | Props | Chức năng |
+|-----------|-------|-----------|
+| `LoginPage` | — (sử dụng useAuth) | Login/Register form với toggle |
+| `ErrorBoundary` | children | React error boundary, hiển thị fallback khi crash |
+| `CollectionTree` | collections, selectedCollection, onSelectCollection, onCreateCollection, onDeleteCollection | Sidebar hierarchical tree, icons theo type |
+| `CollectionBrowser` | assets, subCollections, onSelectCollection, onSelectFolder, onMoveAsset, onSelectAsset, selectedAssetId, selectedAssetIds, onReorder, loading, searchTerm, layoutMode | File browser chính: grid/list/masonry, drag-and-drop, reorder, search filter |
+| `AssetDisplayer` | assets, subCollections, viewMode, onSelectCollection, loading | Gallery + canvas mode |
+| `AssetGrid` | assets | Simple card grid |
+| `UploadArea` | onUpload | react-dropzone file drop zone |
+| `ColorBoard` | items, onCreateColor, onCreateGroup | Color palette manager, group columns |
+| `SearchBar` | onSearch | Search input |
+| `ShareDialog` | collectionId, collectionName, onClose | RBAC sharing modal: grant/update/revoke by email |
+| `DraggableAssetCanvas` | (internal) | Canvas drag-and-drop cho images |
 
-**Giai đoạn 1 đã hoàn thành 100% (7/7).** Hệ thống có Authentication (JWT + ASP.NET Identity), data ownership (UserId trên mọi entity), và sẵn sàng cho deployment cơ bản. **Rào cản lớn nhất còn lại** là Frontend login/register page và React Router — cần thiết để auth flow hoàn chỉnh.
+---
 
-Hệ thống hiện tại phù hợp cho:
-- ✅ Demo / Prototype
-- ✅ Phát triển local cho 1 developer
-- ✅ Internal tool (nằm sau VPN/firewall)
-- ⚠️ Public deployment (có auth backend, cần frontend login page)
-- ❌ Multi-user SaaS (cần thêm frontend auth flow + tests + PostgreSQL)
+## 9. Cấu hình
+
+### 9.1 appsettings.json
+
+```json
+{
+  "DatabaseProvider": "SQLite",
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=vah_database.db",
+    "PostgreSQL": "Host=localhost;Port=5432;Database=vah;...",
+    "Redis": ""
+  },
+  "Jwt": {
+    "SecretKey": "...(32+ chars)...",
+    "Issuer": "VAH.Backend",
+    "Audience": "VAH.Frontend",
+    "ExpirationHours": 24
+  },
+  "Cors": {
+    "AllowedOrigins": ["http://localhost:5173", "http://localhost:5174"]
+  }
+}
+```
+
+### 9.2 Docker Compose Environment
+
+```yaml
+backend:
+  ASPNETCORE_ENVIRONMENT: Production
+  DatabaseProvider: PostgreSQL
+  ConnectionStrings__DefaultConnection: Host=postgres;Database=vah;...
+  ConnectionStrings__Redis: redis:6379
+  Jwt__SecretKey: ...(production key)...
+  Cors__AllowedOrigins__0: http://localhost:3000
+
+frontend:
+  VITE_API_URL: http://backend:5027/api
+```
+
+---
+
+## 10. File Upload Configuration
+
+| Setting | Value |
+|---------|-------|
+| Max file size | 50 MB |
+| Max files per request | 20 |
+| Kestrel body limit | 100 MB |
+| Allowed extensions | .jpg .jpeg .png .gif .bmp .webp .tiff .svg .ico .pdf .doc .docx .xls .xlsx .ppt .pptx .txt .csv .json .xml .zip .rar .mp4 .mp3 .wav .mov .avi |
+| Allowed MIME prefixes | image/, video/, audio/, application/pdf, application/msword, application/vnd.openxmlformats, application/vnd.ms-, text/, application/json, application/xml, application/zip, application/x-rar |
+| Thumbnail formats | jpg, jpeg, png, gif, bmp, webp, tiff |
+| Thumbnail sizes | sm: 150px, md: 400px, lg: 800px |
+| Thumbnail format | WebP, quality 80 |
+| Storage path | wwwroot/uploads/ |
+| Thumbnail path | wwwroot/uploads/thumbs/ |

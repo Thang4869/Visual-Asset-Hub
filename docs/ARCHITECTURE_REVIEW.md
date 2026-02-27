@@ -1,702 +1,500 @@
-# Visual Asset Hub — Báo cáo Kiến trúc & Roadmap nâng cấp
+# Visual Asset Hub — Đánh giá Kiến trúc & Lộ trình Phát triển
 
-> **Vai trò:** Senior Software Architect & Tech Lead  
-> **Ngày đánh giá:** 25/02/2026  
-> **Phạm vi:** Toàn bộ hệ thống VAH (Backend .NET 9 + Frontend React 19 + SQLite)  
-> **Mục tiêu:** Đánh giá hiện trạng → Phân tích thiếu sót & rủi ro → Đề xuất roadmap chuyển từ MVP local sang Production-ready / SaaS-ready
+> **Cập nhật lần cuối:** 27/02/2026  
+> **Phiên bản:** 4.0 — Hoàn thành 4 giai đoạn phát triển (26/26 hạng mục)
 
 ---
 
-## MỤC LỤC
+## 1. Tổng quan hệ thống
 
-- [PHẦN 1 — ĐÁNH GIÁ HIỆN TRẠNG](#phần-1--đánh-giá-hiện-trạng)
-- [PHẦN 2 — PHÂN TÍCH THIẾU SÓT & RỦI RO](#phần-2--phân-tích-thiếu-sót--rủi-ro)
-- [PHẦN 3 — ĐỀ XUẤT & ROADMAP NÂNG CẤP](#phần-3--đề-xuất--roadmap-nâng-cấp)
-- [PHỤ LỤC — KIẾN TRÚC ĐÍCH (TARGET ARCHITECTURE)](#phụ-lục--kiến-trúc-đích-target-architecture)
+Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh, link, bảng màu) với giao diện dark theme hiện đại, hỗ trợ kéo thả, tổ chức theo collection phân cấp, tag many-to-many, chia sẻ RBAC và real-time sync.
 
----
+### Kiến trúc tổng thể
 
-# PHẦN 1 — ĐÁNH GIÁ HIỆN TRẠNG
-
-## 1.1 Điểm sáng trong lựa chọn Tech Stack
-
-| Thành phần | Lựa chọn | Đánh giá |
-| --- | --- | --- |
-| Runtime | .NET 9.0 | Hiệu năng cao, cross-platform, LTS ecosystem mạnh. Đúng hướng cho enterprise-grade API |
-| Frontend | React 19 + Vite 7 | Stack hiện đại nhất hiện tại, HMR nhanh, tree-shaking tốt, ecosystem plugin phong phú |
-| ORM | Entity Framework Core 9 | Code-first, LINQ mạnh, migration system sẵn có. Phù hợp rapid development |
-| HTTP Client | axios | Interceptor pattern, cancel token, error handling tốt hơn fetch native |
-| Upload | react-dropzone | Thư viện phổ biến, accessible, hỗ trợ drag-and-drop tốt |
-| API Docs | Swashbuckle/Swagger | Tự động sinh OpenAPI spec, hỗ trợ testing trực tiếp |
-| DB (MVP) | SQLite | Zero-config, embedded, phù hợp local development & prototyping nhanh |
-
-**Nhận xét:** Bộ công nghệ được chọn hoàn toàn hợp lý cho giai đoạn MVP. .NET + React là combo đã được chứng minh ở production scale (Microsoft, Facebook). Không có lựa chọn "lệch hướng" nào cần thay thế hoàn toàn.
-
-## 1.2 Mức độ hoàn thiện tính năng cốt lõi
-
-### UI/UX — 7/10
-
-- ✅ Design system hoàn chỉnh với 24 CSS custom properties, dark theme nhất quán
-- ✅ Layout 4 khu vực (header, sidebar, main, details panel) bám sát chuẩn file manager hiện đại
-- ✅ 3 chế độ hiển thị (grid, list, masonry) + canvas drag-and-drop
-- ✅ Breadcrumb navigation cho cả collection lẫn folder lồng nhau
-- ✅ Details panel contextual khi chọn asset
-- ⚠️ Chưa có responsive breakpoints cho mobile/tablet
-- ⚠️ Chưa có loading skeleton, error boundary, empty state design
-
-### Database Schema — 6/10
-
-- ✅ Schema đủ dùng cho MVP: 2 bảng Assets + Collections với quan hệ cha-con
-- ✅ Hỗ trợ folder hierarchy qua `ParentFolderId` (self-referencing)
-- ✅ Hỗ trợ collection hierarchy qua `ParentId`
-- ✅ Đa dạng content type: image, link, color, folder, color-group
-- ⚠️ Tags lưu dạng comma-separated string — không query/filter được
-- ⚠️ Không có FK constraint definition trong DbContext (chỉ convention)
-- ⚠️ Không có index nào được khai báo
-
-### Luồng API — 7/10
-
-- ✅ 17 endpoints RESTful đầy đủ CRUD cho cả Assets lẫn Collections
-- ✅ Upload multipart với GUID filename (tránh collision)
-- ✅ Reorder API cho batch update `SortOrder`
-- ✅ Nested folder navigation qua query parameter `folderId`
-- ✅ Subcollection hierarchy trong response `CollectionWithItems`
-- ⚠️ Thiếu pagination hoàn toàn — `GET /api/Assets` trả về **toàn bộ**
-- ⚠️ Không có validation layer (FluentValidation hoặc tương đương)
-- ⚠️ Không có error handling middleware — exception rơi vào default handler
-
-## 1.3 Những thiết kế đã làm tốt
-
-1. **GUID file naming** — Tránh path traversal và filename collision. Đây là best practice cho file upload.
-2. **DTO pattern** — Đã tách 6 DTO riêng biệt thay vì expose trực tiếp entity. Đúng hướng.
-3. **Cây phân cấp linh hoạt** — Cả Collection lẫn Folder đều hỗ trợ nesting bằng parent reference, cho phép tổ chức dữ liệu phức tạp.
-4. **Content type polymorphism** — Một bảng `Assets` chứa nhiều loại (image, link, color, folder) qua field `ContentType`, giảm số bảng và đơn giản hóa query.
-5. **Static file serving** — `UseStaticFiles()` + `wwwroot/uploads/` cho phép serve file trực tiếp không qua controller, hiệu quả.
-6. **Separation of concerns (Frontend)** — 8 components riêng biệt, mỗi component đảm nhận một trách nhiệm rõ ràng.
-
----
-
-# PHẦN 2 — PHÂN TÍCH THIẾU SÓT & RỦI RO
-
-## 2.1 Bảo mật (Security)
-
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả nếu không cải thiện |
-| --- | --- | --- | --- |
-| **Authentication** | ✅ RESOLVED | JWT Bearer + ASP.NET Identity. `[Authorize]` trên tất cả endpoints (trừ Auth, Health) | Đã khắc phục |
-| **Authorization** | ✅ RESOLVED | User-scoped data access. Mọi query filter theo UserId | Đã khắc phục |
-| **User isolation** | ✅ RESOLVED | `UserId` FK trên Asset + Collection. System collections (null) shared, user data isolated | Đã khắc phục |
-| **Data ownership** | ✅ RESOLVED | Service layer enforce `UserId == currentUser` trên mọi CRUD operation | Đã khắc phục |
-| **Input validation** | 🟡 MEDIUM | Chỉ có `[Required]` trên FileName/FilePath. DTO không validate | SQL injection risk thấp (EF Core parameterize), nhưng logic bugs cao. Có thể tạo asset với collectionId không tồn tại |
-| **File upload protection** | 🟡 MEDIUM | Không giới hạn size, type, số lượng file | Server bị DoS bằng upload file lớn. Upload `.exe`, `.php` shell |
-| **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` |
-| **CORS policy** | 🟡 MEDIUM | `AllowAnyOrigin + AllowAnyMethod + AllowAnyHeader` | CSRF attack surface mở hoàn toàn. Bất kỳ domain nào đều gọi được API |
-
-## 2.2 Kiến trúc Backend
-
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
-| --- | --- | --- | --- |
-| **Service layer** | 🟡 MEDIUM | Không có. Controller chứa toàn bộ business logic + data access | Vi phạm SRP. Không thể unit test logic. Code sẽ phình to khi thêm tính năng |
-| **Repository pattern** | 🟡 MEDIUM | Controller gọi `_context` trực tiếp | Coupling chặt với EF Core. Khó swap database provider. Duplicate query code |
-| **Domain separation** | 🟡 MEDIUM | 1 project duy nhất chứa tất cả | Models, DTOs, Controllers, DbContext nằm cùng assembly. Khó tái sử dụng |
-| **Exception handling** | 🔴 HIGH | Không có global middleware | Unhandled exception trả về stack trace cho client (thông tin nhạy cảm). Crash không log |
-| **Logging strategy** | 🟡 MEDIUM | Chỉ có default `ILogger` — không structured, không persistence | Không trace được bug production, không audit trail |
-| **Pagination** | 🔴 HIGH | `GetAssets()` → `ToListAsync()` load toàn bộ bảng | 10K assets → response 5MB+ → frontend freeze. Memory spike trên server |
-| **Query optimization** | 🟡 MEDIUM | N+1 risk trong `ReorderAssets` (FindAsync trong loop) | Performance tuyến tính O(n) cho mỗi reorder — degraded với dữ liệu lớn |
-| **Migration strategy** | ✅ RESOLVED | `Database.Migrate()` + EF Core Migrations | Schema version controlled |
-
-## 2.3 Database & Dữ liệu
-
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
-| --- | --- | --- | --- |
-| **Schema versioning** | ✅ RESOLVED | EF Core Migrations với `InitialCreate`. Auto-migrate on startup | Schema version controlled |
-| **Indexing** | 🟡 MEDIUM | Không index nào (ngoài PK tự động) | Query `WHERE CollectionId = ? AND ParentFolderId = ?` full table scan. Chậm tuyến tính |
-| **Full-text search** | 🟡 MEDIUM | Chỉ client-side filter bằng JS `.includes()` | Tìm kiếm chậm, không fuzzy match, không accent-insensitive, không rank relevance |
-| **Tags system** | 🟡 MEDIUM | Comma-separated string trong 1 cột | Không thể `WHERE tag = 'landscape'` hiệu quả. Phải `LIKE '%landscape%'` → false positives + full scan |
-| **Concurrency** | 🟡 MEDIUM | Không optimistic concurrency (no `RowVersion/ConcurrencyToken`) | 2 user sửa cùng asset → last write wins → data corruption âm thầm |
-| **FK constraints** | 🟡 MEDIUM | Không khai báo FK trong `OnModelCreating` | `CollectionId` có thể trỏ đến collection đã xóa → orphan data |
-| **SQLite limitations** | 🔴 HIGH (khi scale) | Single-writer lock, file-based, max recommend ~100 concurrent reads | Không hỗ trợ multi-server. Write contention khi >5 concurrent users |
-
-## 2.4 Storage & Mở rộng
-
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
-| --- | --- | --- | --- |
-| **File storage abstraction** | 🟡 MEDIUM | Hard-coded `Path.Combine(cwd, "wwwroot", "uploads")` trong controller | Không thể swap sang S3/Azure Blob mà không sửa controller |
-| **CDN** | 🟡 MEDIUM | Không có | Mọi request file đi qua backend server → bandwidth bottleneck |
-| **Cloud storage readiness** | 🟡 MEDIUM | Local filesystem only | Server đầy disk → crash. Không backup tự động. Mất server = mất data |
-| **Horizontal scaling** | 🔴 HIGH | SQLite file + local wwwroot | Không thể chạy 2+ instance. Sticky session bắt buộc → single point of failure |
-| **Thumbnail/preview** | 🟡 MEDIUM | Serve original file cho mọi kích thước | Upload ảnh 20MB → browser load 20MB cho thumbnail 150px. Bandwidth waste |
-| **Cleanup/orphan files** | 🟡 MEDIUM | Delete asset chỉ xóa DB record, không xóa file vật lý | `wwwroot/uploads` phình to vĩnh viễn. Disk leak |
-
-## 2.5 Frontend Architecture
-
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
-| --- | --- | --- | --- |
-| **State management** | 🟡 MEDIUM | 11 `useState` trong `App.jsx`. Tất cả logic + state ở root component | Props drilling qua 3+ levels. Re-render toàn bộ tree khi bất kỳ state nào thay đổi. 650+ lines trong 1 file |
-| **API abstraction** | 🟡 MEDIUM | `axios.get/post/put/delete` gọi trực tiếp trong handler functions | Duplicate error handling. Hardcode `API_URL`. Không interceptor cho auth token |
-| **Data fetching** | 🟡 MEDIUM | Manual `useEffect` + `useState` pattern | Không cache, dedup, background refetch, stale-while-revalidate. Re-fetch toàn bộ khi navigate |
-| **Routing** | 🟡 MEDIUM | Không có router — single page state-driven | URL không reflect trạng thái UI. Không shareable link. Browser back/forward broken |
-| **Code splitting** | 🟢 LOW | Không cần thiết hiện tại (8 components nhỏ) | Sẽ thành vấn đề khi bundle >500KB |
-| **Error boundary** | 🟡 MEDIUM | Không có React Error Boundary | JS error trong child component → white screen toàn app |
-| **Loading/empty states** | 🟢 LOW | `loading` boolean nhưng chưa có skeleton UI | UX không mượt nhưng không phải risk kỹ thuật |
-
-## 2.6 DevOps & Production Readiness
-
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
-| --- | --- | --- | --- |
-| **Dockerization** | ✅ RESOLVED | Multi-stage Dockerfile + docker-compose (backend + postgres + redis + frontend) | Deploy reproducible |
-| **Environment separation** | 🟡 MEDIUM | `API_URL` hardcode trong frontend. Swagger chỉ tắt theo env check | Không thể deploy staging/production mà không sửa source code |
-| **CI/CD** | 🟡 MEDIUM | Không có pipeline | Deploy thủ công → error-prone, chậm, không rollback |
-| **Structured logging** | ✅ RESOLVED | Serilog + Console + File sinks, structured request logging | Full audit trail |
-| **Monitoring** | ✅ RESOLVED | HealthController + `/api/Health` endpoint, Docker healthchecks | System status visible |
-| **Rate limiting** | ✅ RESOLVED | Fixed window 100 req/min + Upload 20 req/min | DoS protection |
-| **Caching** | ✅ RESOLVED | Redis/In-memory distributed cache, CollectionService cached (TTL 5m) | 80%+ DB reads reduced |
-| **HTTPS enforcement** | 🟡 MEDIUM | Default profile là HTTP | Data truyền plaintext → sniff được nội dung + các thông tin nhạy cảm |
-
-## 2.7 Testability
-
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
-| --- | --- | --- | --- |
-| **Unit test** | 🟡 MEDIUM | Không có test project nào | Refactor = đánh cược. Regression bugs vào production |
-| **Integration test** | 🟡 MEDIUM | Không có | API contract thay đổi không ai biết |
-| **E2E test** | 🟢 LOW | Không có | Regression trên UI flow chỉ phát hiện bằng manual testing |
-| **API contract testing** | 🟡 MEDIUM | Chỉ có Swagger cho dev | Frontend/Backend out of sync → runtime errors |
-
-## 2.8 Đánh giá khả năng Scale hiện tại
-
-```text
-Concurrent Users:  ~1-3 (SQLite write lock, no auth)
-Data Volume:       ~1,000 assets (no pagination, no index)
-File Storage:      ~5-10GB (local disk, no cleanup)
-Deployment:        Single instance only
-Availability:      Zero redundancy
 ```
-
-**Kết luận Phần 2:** Hệ thống đã có **Authentication + Data Ownership + Dockerization + Structured Logging + Rate Limiting + Caching + Thumbnail Generation**, khắc phục phần lớn rủi ro. Còn lại là các rủi ro mức MEDIUM tập trung ở: CI/CD pipeline, HTTPS enforcement, testing, và CORS tiếp tục cải thiện. Hệ thống đủ điều kiện deploy production (bằng Docker) và phát triển tiếp Giai đoạn 4.
-
----
-
-# PHẦN 3 — ĐỀ XUẤT & ROADMAP NÂNG CẤP
-
-## Giai đoạn 1 — Bắt buộc để đạt Production cơ bản
-
-> **Mục tiêu:** Hệ thống an toàn tối thiểu, không mất data, deploy được  
-> **Thời gian ước lượng:** 2-3 tuần  
-> **ROI:** Rất cao — chặn mọi rủi ro HIGH
-
-### 1.1 Authentication — JWT + ASP.NET Identity — ✅ HOÀN THÀNH (25/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Không auth = không thể deploy. Đây là hard blocker #1 |
-| **Giải pháp** | `Microsoft.AspNetCore.Identity.EntityFrameworkCore` + JWT Bearer token |
-| **Impact** | Thêm `User` entity, `IdentityDbContext`, `[Authorize]` attribute trên tất cả controller. Frontend cần login page + token storage |
-| **Độ khó** | Medium |
-| **Ưu tiên ROI** | ★★★★★ |
-| **Trạng thái** | ✅ `ApplicationUser` kế thừa `IdentityUser` (DisplayName, CreatedAt). `AuthService` xử lý register/login + JWT generation. `AuthController`: POST /api/auth/register, POST /api/auth/login. `[Authorize]` trên Assets, Collections, Search controllers. JWT config đọc từ appsettings.json. Password policy: min 6 chars, require digit + lowercase |
-
-```text
-Cấu trúc đã thêm:
-├── Models/ApplicationUser.cs        (kế thừa IdentityUser)
-├── Models/AuthDTOs.cs               (RegisterDto, LoginDto, AuthResponseDto)
-├── Services/IAuthService.cs         (interface)
-├── Services/AuthService.cs          (login, register, JWT generation)
-├── Controllers/AuthController.cs    (POST /api/auth/login, /register)
-```
-
-### 1.2 EF Core Migrations (thay thế EnsureCreated) — ✅ HOÀN THÀNH (25/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | `EnsureCreated` không update schema. Thay đổi model = xóa DB = mất production data |
-| **Giải pháp** | `dotnet ef migrations add Initial` → `dotnet ef database update`. Xóa `EnsureCreated()` |
-| **Impact** | Seed data chuyển vào `OnModelCreating` hoặc `IHostedService`. Schema version control |
-| **Độ khó** | Low |
-| **Ưu tiên ROI** | ★★★★★ |
-| **Trạng thái** | ✅ `Program.cs`: `EnsureCreated()` → `Database.Migrate()`. Migration `InitialCreate` tạo toàn bộ schema + indexes + FK + seed data. `CreatedAt` dùng `HasDefaultValueSql("datetime('now')")`. Thư mục `Migrations/` được version control |
-
-### 1.3 Global Exception Handling Middleware
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Unhandled exception → stack trace leak → thông tin nhạy cảm cho attacker |
-| **Giải pháp** | Custom `ExceptionHandlingMiddleware` wrap tất cả request. Trả `ProblemDetails` chuẩn RFC 7807 |
-| **Impact** | 1 file middleware + đăng ký trong pipeline. Logging tự động mỗi exception |
-| **Độ khó** | Low |
-| **Ưu tiên ROI** | ★★★★★ |
-
-```csharp
-// Mẫu cấu trúc response
-{
-  "type": "https://tools.ietf.org/html/rfc7807",
-  "title": "Internal Server Error",
-  "status": 500,
-  "traceId": "00-abc123-def456-00"
-}
-```
-
-### 1.4 Validation Layer — FluentValidation
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | DTO hiện tại không validate gì ngoài field presence. Dữ liệu bẩn vào DB |
-| **Giải pháp** | `FluentValidation.AspNetCore` — tạo Validator class cho mỗi DTO |
-| **Impact** | Validate tự động trước khi vào controller action. Trả 400 với message rõ ràng |
-| **Độ khó** | Low |
-| **Ưu tiên ROI** | ★★★★☆ |
-
-```csharp
-// Ví dụ
-public class CreateLinkDtoValidator : AbstractValidator<CreateLinkDto>
-{
-    public CreateLinkDtoValidator()
-    {
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(255);
-        RuleFor(x => x.Url).NotEmpty().Must(BeValidUrl);
-        RuleFor(x => x.CollectionId).GreaterThan(0);
-    }
-}
-```
-
-### 1.5 File Upload Restrictions
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Upload không giới hạn → DoS, malware upload, disk exhaustion |
-| **Giải pháp** | Whitelist MIME types (image/png, image/jpeg, image/webp, image/gif, image/svg+xml), max 50MB/file, max 20 files/request. Configure `Kestrel` `MaxRequestBodySize` |
-| **Impact** | Thêm validation trong `UploadFiles` action + Kestrel config |
-| **Độ khó** | Low |
-| **Ưu tiên ROI** | ★★★★☆ |
-
-### 1.6 Pagination
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | `GetAssets` load toàn bộ. `GetCollectionWithItems` load tất cả items. 10K records = crash |
-| **Giải pháp** | `PagedResult<T>` response wrapper. Query params: `?page=1&pageSize=50&sortBy=createdAt&order=desc` |
-| **Impact** | Sửa tất cả list endpoints. Frontend cần infinite scroll hoặc pagination component |
-| **Độ khó** | Medium |
-| **Ưu tiên ROI** | ★★★★★ |
-
-```csharp
-public class PagedResult<T>
-{
-    public List<T> Items { get; set; }
-    public int TotalCount { get; set; }
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public bool HasNextPage => Page * PageSize < TotalCount;
-}
-```
-
-### 1.7 User Entity + Data Ownership — ✅ HOÀN THÀNH (25/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Prerequisite cho multi-user. Không có `UserId` → không biết ai sở hữu gì |
-| **Giải pháp** | Thêm `UserId` FK vào Asset + Collection. Filter trong query: `Where(a => a.UserId == currentUserId)` |
-| **Impact** | Migration mới, sửa mỗi controller endpoint để filter theo user |
-| **Độ khó** | Medium |
-| **Ưu tiên ROI** | ★★★★★ |
-| **Trạng thái** | ✅ `UserId` (nullable string) FK → `AspNetUsers` trên cả Asset và Collection. CASCADE delete. Index trên UserId. System collections (seed, UserId=null) hiển thị cho tất cả users. Mọi service method nhận `string userId` parameter. Controllers extract từ JWT `ClaimTypes.NameIdentifier`. Read: own + system. Create: gán UserId tự động. Update/Delete: chỉ own data |
-
----
-
-## Giai đoạn 2 — Chuẩn hóa kiến trúc
-
-> **Mục tiêu:** Clean Architecture, maintainable, testable  
-> **Thời gian ước lượng:** 3-4 tuần  
-> **ROI:** Cao — giảm technical debt, tăng tốc phát triển feature mới
-
-### 2.1 Service Layer + Repository Pattern (hoặc CQRS nhẹ)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Controller hiện tại = 320 lines chứa cả business logic + data access. Không test được, không reuse được |
-| **Giải pháp đề xuất** | Thin Controller → Service → Repository |
-| **Impact kiến trúc** | Tách thành 3 layers rõ ràng. DI registration cho mỗi layer |
-| **Độ khó** | Medium |
-
-```text
-Controllers/                     ← Chỉ nhận request + trả response
-  AssetsController.cs
-Services/                        ← Business logic, validation, orchestration
-  IAssetService.cs
-  AssetService.cs
-  ICollectionService.cs
-  CollectionService.cs
-Repositories/                    ← Data access
-  IAssetRepository.cs
-  AssetRepository.cs
-  ICollectionRepository.cs
-  CollectionRepository.cs
-```
-
-**Thay thế khả thi:** Nếu muốn nhẹ hơn, dùng **MediatR + CQRS patterns** (tách Command/Query) thay vì Service + Repository truyền thống. Phù hợp nếu business logic phức tạp.
-
-### 2.2 Server-side Search API
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Tìm kiếm hiện tại chạy trên frontend bằng `.includes()` — không scale, không fuzzy, không accent-insensitive |
-| **Giải pháp** | `GET /api/search?q=landscape&type=image&collectionId=1` với SQL `LIKE` ban đầu, sau chuyển full-text search |
-| **Impact** | Thêm SearchController + SearchService. Frontend chuyển sang debounced API call |
-| **Độ khó** | Medium |
-
-### 2.3 Database Indexing
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Mỗi query `WHERE CollectionId = ? AND ParentFolderId = ?` đang full table scan |
-| **Giải pháp** | Khai báo trong `OnModelCreating`: |
-| **Độ khó** | Low |
-
-```csharp
-modelBuilder.Entity<Asset>(entity =>
-{
-    entity.HasIndex(a => a.CollectionId);
-    entity.HasIndex(a => a.ParentFolderId);
-    entity.HasIndex(a => new { a.CollectionId, a.ParentFolderId }); // composite
-    entity.HasIndex(a => a.ContentType);
-    entity.HasIndex(a => a.GroupId);
-    entity.HasIndex(a => a.CreatedAt);
-});
-
-modelBuilder.Entity<Collection>(entity =>
-{
-    entity.HasIndex(c => c.ParentId);
-    entity.HasIndex(c => c.Order);
-});
-```
-
-### 2.4 Storage Abstraction
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Hard-coded local path → không thể swap sang cloud mà không sửa controller |
-| **Giải pháp** | Interface `IStorageService` với implementations: `LocalStorageService`, `S3StorageService`, `AzureBlobStorageService` |
-| **Impact** | Tách file I/O ra khỏi controller. DI swap implementation theo config |
-| **Độ khó** | Medium |
-
-```csharp
-public interface IStorageService
-{
-    Task<string> UploadAsync(Stream file, string fileName, string contentType);
-    Task DeleteAsync(string filePath);
-    string GetPublicUrl(string filePath);
-}
-```
-
-### 2.5 Refactor Frontend State Management
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | 11 useState + 14 handlers trong 1 file 650 lines → unmaintainable |
-| **Giải pháp — Giai đoạn 2a (nhẹ)** | Custom hooks: `useCollections()`, `useAssets()`, `useUpload()`, `useSearch()`. Từ 1 component → tách thành hooks + context |
-| **Giải pháp — Giai đoạn 2b (mạnh)** | Zustand hoặc Jotai cho global state. TanStack Query (React Query) cho server state |
-| **Impact** | App.jsx giảm từ 650 → ~150 lines. Mỗi hook tự quản lý state + API call |
-| **Độ khó** | Medium |
-
-```text
-src/
-├── hooks/
-│   ├── useCollections.js      ← state + CRUD collections
-│   ├── useAssets.js           ← state + CRUD assets
-│   ├── useUpload.js           ← upload logic
-│   └── useSearch.js           ← search state + debounce
-├── api/
-│   ├── client.js              ← axios instance + interceptors
-│   ├── assetsApi.js           ← API functions cho assets
-│   └── collectionsApi.js      ← API functions cho collections
-├── context/
-│   └── AppContext.jsx         ← shared state (selectedCollection, user)
-```
-
-### 2.6 React Router — ✅ HOÀN THÀNH (27/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Không routing → URL không reflect state → không bookmark/share/back-forward |
-| **Giải pháp** | `react-router-dom` v7: `/collections/:id`, `/collections/:id/folder/:folderId`, `/login` |
-| **Impact** | Restructure App.jsx thành route-based layout. Deep linking hoạt động |
-| **Độ khó** | Medium |
-| **Trạng thái** | ✅ `react-router-dom@7` cài đặt. `BrowserRouter` wrap app trong `main.jsx`. 4 routes: `/login`, `/`, `/collections/:collectionId`, `/collections/:collectionId/folder/:folderId`. `useCollections` hook sync URL ↔ state (pushes URL on navigate, reads URL on load/back-forward). Auth guard redirect `/login` ↔ `/`. AppLayout component render cho tất cả authenticated routes. Browser back/forward hoạt động. Deep link bookmarkable. |
-
----
-
-## Giai đoạn 3 — Production-grade
-
-> **Mục tiêu:** Deployable, monitorable, resilient  
-> **Thời gian ước lượng:** 4-6 tuần  
-> **ROI:** Cao cho production deployment
-
-### 3.1 Chuyển sang PostgreSQL — ✅ HOÀN THÀNH (27/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | SQLite: single-writer, no concurrent access, file-based, max ~100 reads. Không scale |
-| **Giải pháp** | `Npgsql.EntityFrameworkCore.PostgreSQL` v9.0.4. Dual-provider: SQLite cho dev, PostgreSQL cho Docker/production |
-| **Bonus** | PostgreSQL hỗ trợ: Full-text search (`tsvector`), JSONB cho flexible metadata, GIN index cho tags array, concurrent writes |
-| **Impact** | `DatabaseProvider` config key. `AppDbContext` nhận `DatabaseProviderInfo` → dialect-aware `HasDefaultValueSql`. `docker-compose.yml` dùng PostgreSQL 17. Local dev vẫn dùng SQLite |
-| **Độ khó** | Low (nhờ EF Core abstraction) |
-| **Trạng thái** | ✅ Install `Npgsql.EntityFrameworkCore.PostgreSQL` 9.0.4. `Program.cs`: đọc `DatabaseProvider` config → `UseNpgsql()` hoặc `UseSqlite()`. `AppDbContext`: `DatabaseProviderInfo` inject, `HasDefaultValueSql` trả `now()` (PG) hoặc `datetime('now')` (SQLite). `appsettings.json`: `DatabaseProvider: SQLite`, thêm PG connection string. `docker-compose.yml`: PostgreSQL 17 Alpine + healthcheck |
-
-### 3.2 Docker + docker-compose — ✅ HOÀN THÀNH (27/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Reproducible environment. Deploy lên bất kỳ cloud nào |
-| **Giải pháp** | Multi-stage Dockerfile (build + runtime). docker-compose cho local dev (backend + postgres + redis + frontend) |
-| **Độ khó** | Low |
-| **Trạng thái** | ✅ `VAH.Backend/Dockerfile`: SDK 9.0 build → ASP.NET 9.0 runtime, non-root user, port 5027. `VAH.Frontend/Dockerfile`: Node 22 build → Nginx Alpine, `VITE_API_URL` build arg. `VAH.Frontend/nginx.conf`: SPA fallback + gzip + cache. `docker-compose.yml`: 4 services (postgres:17, redis:7, backend, frontend), named volumes, healthchecks. `.dockerignore` cho cả backend + frontend |
-
-```yaml
-# docker-compose.yml
-services:
-  backend:
-    build: ./VAH.Backend
-    depends_on: [postgres, redis]
-    environment:
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=vah;...
-  postgres:
-    image: postgres:17
-  redis:
-    image: redis:7-alpine
-  frontend:
-    build: ./VAH.Frontend
-    ports: ["5173:80"]
-```
-
-### 3.3 Redis Cache — ✅ HOÀN THÀNH (27/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Collections list, asset metadata thay đổi không thường xuyên nhưng đọc liên tục |
-| **Giải pháp** | `Microsoft.Extensions.Caching.StackExchangeRedis` v10.0.3. `IDistributedCache` inject vào `CollectionService` |
-| **Impact** | Giảm 80%+ DB reads cho navigation operations |
-| **Độ khó** | Low |
-| **Trạng thái** | ✅ Install `StackExchangeRedis` 10.0.3. `Program.cs`: nếu có `ConnectionStrings:Redis` → `AddStackExchangeRedisCache`, nếu không → `AddDistributedMemoryCache` fallback. `CollectionService`: `GetAllAsync` cache 5 phút (absolute) / 2 phút (sliding). `InvalidateCacheAsync` gọi sau Create/Update/Delete. Cache key = `collections:all:{userId}`. Try-catch bọc mọi cache operation → graceful degradation nếu Redis down |
-
-### 3.4 Structured Logging — Serilog — ✅ HOÀN THÀNH (27/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Console log → không search, filter, alert, aggregate |
-| **Giải pháp** | `Serilog.AspNetCore` v10.0.0 + Console + File sinks |
-| **Impact** | Structured JSON logs. Correlation ID per request. Performance metrics |
-| **Độ khó** | Low |
-| **Trạng thái** | ✅ `Serilog.AspNetCore` 10.0.0, `Serilog.Sinks.Console` 6.1.1, `Serilog.Sinks.File` 7.0.0. Bootstrap logger trước host build. `UseSerilog()` trên host. `UseSerilogRequestLogging()` trong pipeline (custom template, log level by status code/elapsed). Console: `[HH:mm:ss LVL] SourceContext\n  Message`. File: `logs/vah-{Date}.log`, rolling daily, 30 ngày retention. Override: ASP.NET + EF Core → Warning only. Try/catch/finally wrap toàn bộ `Program.cs` |
-
-### 3.5 Health Check + Monitoring — ✅ ĐÃ CÓ SẴN
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Không biết system đang up/down, DB accessible hay không |
-| **Giải pháp** | `HealthController` + `/api/Health` endpoint |
-| **Độ khó** | Low |
-| **Trạng thái** | ✅ Đã có `HealthController` với endpoint GET `/api/Health`. Docker healthcheck sử dụng endpoint này |
-
-### 3.6 Rate Limiting — ✅ ĐÃ CÓ SẴN
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Không rate limit → bất kỳ client nào spam 10K request/giây → DoS |
-| **Giải pháp** | `Microsoft.AspNetCore.RateLimiting` (built-in .NET 9). Fixed window per endpoint |
-| **Impact** | 2 policies: `Fixed` (100 req/phút), `Upload` (20 req/phút) |
-| **Độ khó** | Low |
-| **Trạng thái** | ✅ Đã có `AddRateLimiter` trong `Program.cs` + `UseRateLimiter()` trong pipeline |
-
-### 3.7 Background Job — Thumbnail Generation — ✅ HOÀN THÀNH (27/02/2026)
-
-| | Chi tiết |
-| --- | --- |
-| **Lý do** | Hiện tại serve ảnh gốc 20MB cho thumbnail 150px → bandwidth disaster |
-| **Giải pháp** | `SixLabors.ImageSharp` v3.1.12. Sync thumbnail generation ngay sau upload (không cần Hangfire cho MVP) |
-| **Impact** | Thêm `ThumbnailSm/Md/Lg` vào Asset model. Serve thumbnail cho browse, original cho preview |
-| **Độ khó** | Medium |
-| **Trạng thái** | ✅ `IThumbnailService` + `ThumbnailService`: generate WebP thumbnails 3 sizes (sm:150px, md:400px, lg:800px). Supports: jpg, jpeg, png, gif, bmp, webp, tiff. Output: `/uploads/thumbs/{size}_{guid}.webp`. `Asset.cs`: thêm `ThumbnailSm`, `ThumbnailMd`, `ThumbnailLg` (nullable, MaxLength 2048). `AssetService`: post-upload thumbnail generation + delete cleanup. Migration `AddThumbnailColumns` |
-
----
-
-## Giai đoạn 4 — Nâng cấp sản phẩm ✅ HOÀN THÀNH (6/6)
-
-> **Mục tiêu:** Feature-rich, SaaS-ready  
-> **Thời gian ước lượng:** 6-10 tuần  
-> **ROI:** Trung bình — business value cao nhưng đòi hỏi nền tảng GĐ1-3 vững
-
-### 4.1 Smart Collections — Auto-categorize ✅
-
-- ✅ `SmartCollectionService` + `ISmartCollectionService` — 8 built-in smart collections (recent 7d/30d, all images/links/colors, untagged, with thumbnails) + per-tag smart collections
-- ✅ `SmartCollectionsController` — GET definitions + GET items with dynamic query
-- ✅ Frontend: `smartCollectionsApi.js` + sidebar UI + smart collection view
-- **Công nghệ:** Dynamic LINQ queries based on rule definitions
-
-### 4.2 Tag System chuẩn hóa — Many-to-Many ✅
-
-- ✅ `Tag` entity + `AssetTag` junction table with navigation properties
-- ✅ EF Core config: unique index on (NormalizedName, UserId), cascade delete
-- ✅ `TagService` — full CRUD + asset‐tag management + migration from comma-separated
-- ✅ `TagsController` — 9 endpoints (CRUD, asset tags, migration)
-- ✅ Frontend: `tagsApi.js` + `useTags` hook + tag display in details panel
-
-### 4.3 Bulk Operations ✅
-
-- ✅ Backend: `POST /api/assets/bulk-delete`, `POST /api/assets/bulk-move`, `POST /api/assets/bulk-tag`
-- ✅ Frontend: Multi-select with Shift+click range select, Ctrl+click toggle
-- ✅ Bulk actions bar with select all, clear, delete, move buttons
-- ✅ Real-time sync notifications for bulk operations
-
-### 4.4 Undo/Redo ✅
-
-- ✅ `useUndoRedo()` hook — command pattern with execute/undo/redo, maxHistory=50
-- ✅ Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Shift+Z (redo)
-- ✅ Stack-based action history
-
-### 4.5 Real-time Sync — SignalR ✅
-
-- ✅ `AssetHub` SignalR hub at `/hubs/assets` with JWT authentication
-- ✅ `NotificationService` — sends to user group `user:{userId}`
-- ✅ JWT query string token support for SignalR WebSocket connections
-- ✅ Frontend: `useSignalR` hook with auto-reconnect, subscribes to 10 event types
-- ✅ Notifications after all CRUD operations (assets, collections, tags, bulk)
-
-### 4.6 Permission Model — Role-based Access Control (RBAC) ✅
-
-- ✅ `CollectionPermission` entity — (UserId, CollectionId, Role, GrantedBy, GrantedAt)
-- ✅ `CollectionRoles` — Owner/Editor/Viewer with CanWrite/CanManage helpers
-- ✅ `PermissionService` — grant, update, revoke, check access, list, shared collections
-- ✅ `PermissionsController` — 6 endpoints (list, grant, update, revoke, my-role, shared)
-- ✅ `CollectionService` updated — shared collections in GetAll, permission checks in GetById/GetWithItems/Update
-- ✅ Frontend: `permissionsApi.js` + `ShareDialog` component with grant/update/revoke UI
-
----
-
-# PHỤ LỤC — KIẾN TRÚC ĐÍCH (TARGET ARCHITECTURE)
-
-## Sơ đồ kiến trúc target-state
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                            CLIENTS                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│  │  React SPA  │  │  Mobile App │  │  Public API │              │
-│  │  (Vite PWA) │  │  (future)   │  │  (future)   │              │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
-└─────────┼────────────────┼────────────────┼─────────────────────┘
-          │                │                │
-          ▼                ▼                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     REVERSE PROXY / CDN                         │
-│                    (Nginx / Cloudflare)                         │
-│  ┌──────────────────────────────────────────────┐               │
-│  │  SSL Termination │ Rate Limiting │ Caching   │               │
-│  └──────────────────────────────────────────────┘               │
-└───────────────────────────┬─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                            CLIENTS                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
+│  │  React 19 SPA│  │  Mobile App  │  │  Public API  │            │
+│  │  (Vite 7)    │  │  (future)    │  │  (future)    │            │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘            │
+└─────────┼─────────────────┼─────────────────┼────────────────────┘
+          │ HTTP + WebSocket│                 │
+          ▼                 ▼                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                     REVERSE PROXY (Nginx)                         │
+│  SPA fallback • Gzip • Cache /assets/ 1 year • Port 80           │
+└───────────────────────────┬──────────────────────────────────────┘
                             │
                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    API GATEWAY / BACKEND                        │
-│                   ASP.NET Core 9.0                              │
-│                                                                 │
-│  ┌────────────┐  ┌──────────────┐  ┌──────────────────────┐     │
-│  │ Controllers│→ │  Services    │→ │  Repositories        │     │
-│  │ (thin)     │  │ (biz logic)  │  │ (EF Core + cache)    │     │
-│  └────────────┘  └──────────────┘  └───────────┬──────────┘     │
-│                                                │                │
-│  ┌────────────┐  ┌──────────────┐              │                │
-│  │ Auth (JWT) │  │ SignalR Hub  │              │                │
-│  └────────────┘  └──────────────┘              │                │
-│                                                │                │
-│  ┌────────────┐  ┌──────────────┐              │                │
-│  │ Middleware │  │ Background   │              │                │
-│  │ (Exception,│  │ Jobs         │              │                │
-│  │  RateLimit,│  │ (Hangfire)   │              │                │
-│  │  Logging)  │  │ - Thumbnails │              │                │
-│  └────────────┘  │ - Cleanup    │              │                │
-│                  │ - AI Tags    │              │                │
-│                  └──────────────┘              │                │
-└────────────────────────────────────────────────│────────────────┘
-                             ┌───────────────────┘
-       ┌─────────────────────┼───────────────────────┐
-       │                     │                       │
-       ▼                     ▼                       ▼
-┌───────────────┐   ┌──────────────────┐   ┌─────────────────────┐
-│  PostgreSQL   │   │  Redis           │   │  Storage Service    │
-│  (Primary DB) │   │  (Cache + Session│   │  Local / S3 / Azure │
-│               │   │  + Queue)        │   │  Blob               │
-│  - Assets     │   └──────────────────┘   └─────────────────────┘         
-│  - Collections│           
-│  - Users      │                           
-│  - Permissions│                           
-│  - Tags       │                           
-│  - AuditLog   │
-└───────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                   ASP.NET Core 9.0 Backend                        │
+│  ┌────────────────────────────────────────────────────────────┐   │
+│  │ Middleware:                                                  │   │
+│  │  ExceptionHandler → CORS → Serilog → RateLimiter →          │   │
+│  │  StaticFiles → Auth → Controllers + SignalR Hub              │   │
+│  ├────────────────────────────────────────────────────────────┤   │
+│  │ 8 Controllers (38 endpoints):                               │   │
+│  │  Assets(15) • Auth(2) • Collections(5) • Search(1) •        │   │
+│  │  Tags(10) • SmartCollections(2) • Permissions(6) • Health(1)│   │
+│  ├────────────────────────────────────────────────────────────┤   │
+│  │ 9 Services:                                                  │   │
+│  │  Asset • Collection • Auth • Storage • Thumbnail •           │   │
+│  │  Tag • Notification • SmartCollection • Permission           │   │
+│  ├────────────────────────────────────────────────────────────┤   │
+│  │ EF Core 9 (SQLite dev / PostgreSQL prod) • 5 DbSets         │   │
+│  │ ASP.NET Identity • Auto-Migrate on Startup                   │   │
+│  └────────────────────────────────────────────────────────────┘   │
+│  Port 5027 • JWT Bearer • SignalR (/hubs/assets)                  │
+└──────────┬───────────────────┬──────────────────┬────────────────┘
+           │                   │                  │
+           ▼                   ▼                  ▼
+    ┌─────────────┐    ┌─────────────┐    ┌────────────────┐
+    │ PostgreSQL 17│    │  Redis 7    │    │ Local Storage  │
+    │ (Docker)     │    │  (Cache)    │    │ wwwroot/uploads│
+    │ Port 5432    │    │  Port 6379  │    │ + /thumbs      │
+    └─────────────┘    └─────────────┘    └────────────────┘
 ```
 
-## Frontend Target Architecture
+### Tech Stack
 
-```text
-src/
-├── api/                          ← Axios instance + typed API functions
-│   ├── client.ts                 (interceptors, auth token, error handler)
-│   ├── assets.ts  
-│   ├── collections.ts
-│   └── auth.ts
-├── hooks/                        ← Custom hooks (business logic)
-│   ├── useAuth.ts
-│   ├── useCollections.ts
-│   ├── useAssets.ts
-│   ├── useUpload.ts
-│   ├── useSearch.ts
-│   └── useUndoRedo.ts
-├── stores/                       ← Zustand stores (global state)
-│   ├── authStore.ts
-│   ├── uiStore.ts                (layout, theme, sidebar collapsed)
-│   └── selectionStore.ts         (selected items, multi-select)
-├── pages/                        ← Route-level components
-│   ├── LoginPage.tsx
-│   ├── DashboardPage.tsx
-│   ├── CollectionPage.tsx
-│   └── SearchPage.tsx
-├── components/                   ← Presentational components
-│   ├── layout/
-│   │   ├── AppHeader.tsx
-│   │   ├── Sidebar.tsx
-│   │   └── DetailsPanel.tsx
-│   ├── collections/
-│   │   ├── CollectionTree.tsx
-│   │   └── CollectionBrowser.tsx
-│   ├── assets/
-│   │   ├── AssetGrid.tsx
-│   │   ├── AssetList.tsx
-│   │   └── AssetCanvas.tsx
-│   └── ui/                       ← Reusable primitives
-│       ├── Button.tsx
-│       ├── SearchInput.tsx
-│       ├── Skeleton.tsx
-│       └── ErrorBoundary.tsx
-├── utils/                        ← Pure utility functions
-│   ├── format.ts
-│   └── validators.ts
-└── types/                        ← TypeScript interfaces
-    ├── asset.ts
-    └── collection.ts
+| Layer | Công nghệ | Phiên bản |
+|-------|-----------|-----------|
+| **Runtime** | .NET | 9.0 |
+| **Web Framework** | ASP.NET Core | 9.0 |
+| **ORM** | Entity Framework Core | 9.x |
+| **DB (Dev)** | SQLite | 3.x (embedded) |
+| **DB (Prod)** | PostgreSQL | 17 Alpine |
+| **Cache** | Redis (StackExchangeRedis) | 7 Alpine |
+| **Auth** | ASP.NET Identity + JWT Bearer | 9.x |
+| **Real-time** | SignalR | 9.x |
+| **Image Processing** | SixLabors.ImageSharp | 3.1.12 |
+| **Logging** | Serilog (Console + File) | 10.x |
+| **API Docs** | Swashbuckle/Swagger | 10.1.4 |
+| **Frontend** | React | 19.2 |
+| **Frontend Build** | Vite | 7.3.1 |
+| **Routing** | react-router-dom | 7.13 |
+| **HTTP Client** | axios | 1.13.5 |
+| **File Upload** | react-dropzone | 15.0 |
+| **SignalR Client** | @microsoft/signalr | 10.0 |
+| **Container** | Docker + docker-compose | Multi-stage |
+
+---
+
+## 2. Kiến trúc Backend
+
+### 2.1 Dependency Injection (Program.cs)
+
+| Đăng ký | Lifetime | Mô tả |
+|---------|----------|-------|
+| CORS "Frontend" | Config | Origins từ appsettings, AllowCredentials cho SignalR |
+| Rate Limiter "Fixed" | Config | 100 req/min, queue 10 |
+| Rate Limiter "Upload" | Config | 20 req/min, queue 5 |
+| Kestrel MaxRequestBodySize | Config | 100 MB |
+| `AppDbContext` | Scoped | SQLite hoặc PostgreSQL theo `DatabaseProvider` config |
+| `DatabaseProviderInfo` | Singleton | Record(ProviderName) với `IsPostgreSql` / `IsSqlite` |
+| ASP.NET Identity | — | `ApplicationUser` + `IdentityRole` |
+| JWT Bearer Auth | — | Validate Issuer/Audience/SigningKey, ClockSkew=Zero, SignalR query string support |
+| Redis / MemoryCache | Singleton | Conditional: Redis nếu có connection string |
+| `FileUploadConfig` | Singleton | 50MB max, 20 files/request, 27 extensions, 13 MIME prefixes |
+| `IStorageService` → `LocalStorageService` | Scoped | Lưu file tại wwwroot/uploads |
+| `IAssetService` → `AssetService` | Scoped | Asset business logic |
+| `ICollectionService` → `CollectionService` | Scoped | Collection logic + Redis cache |
+| `IAuthService` → `AuthService` | Scoped | Register/Login + JWT generation |
+| `IThumbnailService` → `ThumbnailService` | Scoped | ImageSharp: sm/md/lg WebP |
+| `ITagService` → `TagService` | Scoped | Tag CRUD + M2M |
+| `INotificationService` → `NotificationService` | Scoped | SignalR notification wrapper |
+| `ISmartCollectionService` → `SmartCollectionService` | Scoped | Dynamic virtual collections |
+| `IPermissionService` → `PermissionService` | Scoped | RBAC permission management |
+| SignalR | — | Hub + group management |
+
+### 2.2 Middleware Pipeline (thứ tự thực thi)
+
+```
+ Request ──►
+ 1. UseGlobalExceptionHandler()     ← Bắt mọi exception → ProblemDetails JSON
+ 2. UseCors("Frontend")             ← CORS cho SPA + SignalR
+ 3. UseSerilogRequestLogging()      ← HTTP request/response logging
+ 4. UseRateLimiter()                ← Fixed window rate limiting
+ 5. UseStaticFiles()                ← Serve uploads + thumbnails
+ 6. UseSwagger()                    ← Dev only
+ 7. UseAuthentication()             ← JWT Bearer validation
+ 8. UseAuthorization()              ← Authorization policies
+ 9. MapControllers()                ← 38 REST API endpoints
+10. MapHub<AssetHub>("/hubs/assets") ← SignalR WebSocket hub
+ ◄── Response
+```
+
+### 2.3 Database Schema
+
+**5 entity tables + ASP.NET Identity tables:**
+
+| Table | Số cột | FK | Indexes |
+|-------|--------|----|---------| 
+| `Assets` | 18 | CollectionId, UserId, ParentFolderId(self) | 8 indexes |
+| `Collections` | 10 | ParentId(self), UserId | 4 indexes |
+| `Tags` | 6 | UserId | 3 indexes (incl. unique composite) |
+| `AssetTags` | 2 | AssetId, TagId | Composite PK + 1 index |
+| `CollectionPermissions` | 6 | UserId, CollectionId | Unique composite + 1 index |
+
+**Tổng: 22 indexes** — tối ưu cho common query patterns.
+
+**Quan hệ giữa bảng:**
+
+```
+AspNetUsers ──┬──< Assets (UserId FK, Cascade)
+              ├──< Collections (UserId FK, Cascade)
+              ├──< Tags (UserId FK, Cascade)
+              └──< CollectionPermissions (UserId FK, Cascade)
+
+Collections ──┬──< Assets (CollectionId FK, Cascade)
+              ├──< Collections (ParentId self-ref FK, SetNull)
+              └──< CollectionPermissions (CollectionId FK, Cascade)
+
+Assets ──< AssetTags ──> Tags  (M2M junction, Cascade both)
+Assets ──< Assets (ParentFolderId self-ref, cho folders)
+```
+
+**Seed data:** 3 collections mặc định — Images (type=image), Links (type=link), Colors (type=color).
+
+**Dual-provider:** `DatabaseProviderInfo` record cho phép AppDbContext tạo dialect-aware SQL (ví dụ: `datetime('now')` vs `now()` cho default values).
+
+### 2.4 Exception Handling
+
+`ExceptionHandlingMiddleware` map exception → HTTP status:
+
+| Exception | Status | ProblemDetails |
+|-----------|--------|----------------|
+| `ArgumentException` | 400 | Bad Request |
+| `KeyNotFoundException` | 404 | Not Found |
+| `UnauthorizedAccessException` | 401 | Unauthorized |
+| `InvalidOperationException` | 409 | Conflict |
+| Tất cả khác | 500 | Internal Server Error |
+
+Chi tiết exception chỉ hiện ở Development environment.
+
+### 2.5 SignalR Hub
+
+`AssetHub` tại `/hubs/assets`:
+
+- **Auth:** `[Authorize]`, JWT via query string (`?access_token=...`)
+- **Groups:** Mỗi user có group `user:{userId}`, join/leave tự động
+- **10 event types:** AssetCreated, AssetUpdated, AssetDeleted, AssetsUploaded, AssetsBulkDeleted, AssetsBulkMoved, CollectionCreated, CollectionUpdated, CollectionDeleted, TagsChanged
+- **NotificationService:** Gửi notification tới user group, silently catches errors
+
+---
+
+## 3. API Reference (38 Endpoints)
+
+### 3.1 Assets — `api/Assets` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/Assets` | Danh sách assets phân trang |
+| 2 | POST | `/api/Assets` | Tạo asset mới |
+| 3 | POST | `/api/Assets/upload` | Upload multi-file (validation: size, ext, MIME) |
+| 4 | PUT | `/api/Assets/{id}/position` | Cập nhật vị trí trên canvas |
+| 5 | POST | `/api/Assets/create-folder` | Tạo thư mục |
+| 6 | POST | `/api/Assets/create-color` | Tạo asset màu sắc |
+| 7 | POST | `/api/Assets/create-color-group` | Tạo nhóm màu |
+| 8 | POST | `/api/Assets/create-link` | Tạo liên kết (URL validation) |
+| 9 | PUT | `/api/Assets/{id}` | Cập nhật asset (partial) |
+| 10 | DELETE | `/api/Assets/{id}` | Xóa asset + file vật lý + thumbnails |
+| 11 | POST | `/api/Assets/reorder` | Sắp xếp lại thứ tự |
+| 12 | GET | `/api/Assets/group/{groupId}` | Assets theo nhóm |
+| 13 | POST | `/api/Assets/bulk-delete` | Xóa hàng loạt |
+| 14 | POST | `/api/Assets/bulk-move` | Di chuyển hàng loạt |
+| 15 | POST | `/api/Assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
+
+### 3.2 Auth — `api/Auth` [RateLimited]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | POST | `/api/Auth/register` | Đăng ký → JWT token + user info |
+| 2 | POST | `/api/Auth/login` | Đăng nhập → JWT token + user info |
+
+### 3.3 Collections — `api/Collections` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/Collections` | Tất cả collections (own + system + shared) |
+| 2 | GET | `/api/Collections/{id}/items` | Items + sub-collections (permission-aware) |
+| 3 | POST | `/api/Collections` | Tạo collection mới |
+| 4 | PUT | `/api/Collections/{id}` | Cập nhật (cần editor+ permission nếu shared) |
+| 5 | DELETE | `/api/Collections/{id}` | Xóa (owner only) |
+
+### 3.4 Search — `api/Search` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/Search?q=&type=&collectionId=&page=&pageSize=` | Tìm kiếm assets + collections |
+
+### 3.5 Tags — `api/Tags` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/Tags` | Tất cả tags của user |
+| 2 | GET | `/api/Tags/{id}` | Chi tiết tag |
+| 3 | POST | `/api/Tags` | Tạo tag (dedup normalized) |
+| 4 | PUT | `/api/Tags/{id}` | Cập nhật tag |
+| 5 | DELETE | `/api/Tags/{id}` | Xóa tag |
+| 6 | GET | `/api/Tags/asset/{assetId}` | Tags của 1 asset |
+| 7 | PUT | `/api/Tags/asset/{assetId}` | Set toàn bộ tags (replace) |
+| 8 | POST | `/api/Tags/asset/{assetId}/add` | Thêm tags |
+| 9 | POST | `/api/Tags/asset/{assetId}/remove` | Gỡ tags |
+| 10 | POST | `/api/Tags/migrate` | Migrate comma-separated → M2M |
+
+### 3.6 Smart Collections — `api/SmartCollections` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/SmartCollections` | Danh sách smart collections (8 built-in + per-tag) |
+| 2 | GET | `/api/SmartCollections/{id}/items` | Items phân trang |
+
+### 3.7 Permissions — `api/collections/{collectionId}/permissions` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `.../permissions` | Danh sách quyền (viewer+ access) |
+| 2 | POST | `.../permissions` | Cấp quyền (owner only, by email) |
+| 3 | PUT | `.../permissions/{permissionId}` | Cập nhật role (owner only) |
+| 4 | DELETE | `.../permissions/{permissionId}` | Thu hồi (owner only) |
+| 5 | GET | `.../permissions/my-role` | Role hiện tại |
+| 6 | GET | `/api/shared-collections` | Collections được chia sẻ cho user |
+
+### 3.8 Health — `api/Health` [No Auth]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/Health` | DB + Storage checks, env info (200/503) |
+
+---
+
+## 4. Kiến trúc Frontend
+
+### 4.1 Cấu trúc thư mục
+
+```
+VAH.Frontend/src/
+├── main.jsx                     # StrictMode → ErrorBoundary → BrowserRouter → AuthProvider → App
+├── App.jsx                      # AppLayout + Routes (615 lines)
+├── App.css                      # Dark Navy theme (24 CSS variables)
+│
+├── api/                         # 7 API modules
+│   ├── client.js                # Axios instance + JWT interceptor + staticUrl
+│   ├── assetsApi.js             # 12 functions
+│   ├── authApi.js               # register, login
+│   ├── collectionsApi.js        # fetchAll, fetchItems, create, delete
+│   ├── searchApi.js             # search(params)
+│   ├── tagsApi.js               # 10 functions
+│   ├── smartCollectionsApi.js   # 2 functions
+│   └── permissionsApi.js        # 6 functions
+│
+├── hooks/                       # 6 custom hooks
+│   ├── useAuth.js               # AuthProvider context + login/register/logout
+│   ├── useAssets.js             # CRUD + multi-select + bulk operations
+│   ├── useCollections.js        # State + URL sync + CRUD
+│   ├── useTags.js               # Tag CRUD + asset-tag M2M
+│   ├── useSignalR.js            # Real-time connection + events
+│   └── useUndoRedo.js           # Command pattern (50 history)
+│
+└── components/                  # 12 components
+    ├── LoginPage.jsx            # Login/Register form
+    ├── ErrorBoundary.jsx        # React error boundary
+    ├── CollectionTree.jsx       # Sidebar tree navigation
+    ├── CollectionBrowser.jsx    # File browser (grid/list/masonry)
+    ├── AssetDisplayer.jsx       # Asset gallery + canvas
+    ├── AssetGrid.jsx            # Simple card grid
+    ├── UploadArea.jsx           # Drag-and-drop upload zone
+    ├── ColorBoard.jsx           # Color palette manager
+    ├── SearchBar.jsx            # Search input
+    ├── ShareDialog.jsx          # RBAC sharing dialog
+    └── DraggableAssetCanvas.jsx # Canvas drag-and-drop
+```
+
+### 4.2 Routing
+
+| Path | Component | Mô tả |
+|------|-----------|-------|
+| `/login` | LoginPage | Redirect → `/` nếu đã đăng nhập |
+| `/` | AppLayout | Trang chủ hoặc collection browser |
+| `/collections/:collectionId` | AppLayout | Xem collection |
+| `/collections/:collectionId/folder/:folderId` | AppLayout | Xem thư mục con |
+| `*` | Redirect → `/` | Fallback |
+
+### 4.3 State Management
+
+Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
+
+| Hook | Chức năng | Đặc điểm |
+|------|-----------|----------|
+| `useAuth()` | Auth state, login/register/logout | Context Provider, persist localStorage |
+| `useCollections()` | Collection list, selection, CRUD | URL sync qua useParams/useNavigate |
+| `useAssets()` | Asset CRUD, multi-select, bulk ops | Ctrl+click toggle, Shift+click range |
+| `useTags()` | Tag CRUD, asset-tag management | Auto-fetch on mount |
+| `useSignalR()` | Real-time events | Auto-reconnect [0, 2s, 5s, 10s, 30s] |
+| `useUndoRedo()` | Command pattern undo/redo | Ctrl+Z / Ctrl+Shift+Z, max 50 history |
+
+### 4.4 Layout
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  HEADER (56px)                                                  │
+│  Logo • Search Input • Folder/Settings/Notifications/Logout    │
+├──────────┬───────────────────────────────────────┬─────────────┤
+│ SIDEBAR  │              MAIN AREA                 │  DETAILS    │
+│ (240px)  │                                        │  (320px)    │
+│          │  Toolbar: Breadcrumbs + Actions + View │             │
+│ Tài liệu │  ┌──────────────────────────────────┐  │  Preview    │
+│ của tôi  │  │                                    │  │  Metadata   │
+│ ├ Images │  │  CollectionBrowser (grid/list/     │  │  Tags       │
+│ ├ Links  │  │  masonry) hoặc ColorBoard          │  │  Tag mgmt   │
+│ ├ Colors │  │  hoặc SmartCollection view         │  │             │
+│ └ Custom │  │                                    │  │             │
+│          │  └──────────────────────────────────┘  │             │
+│ Smart    │                                        │             │
+│ Collections│  Upload Section (react-dropzone)     │             │
+│ ├ Gần đây│  Bulk Actions Bar (multi-select)      │             │
+│ ├ Images │                                        │             │
+│ └ ...    │                                        │             │
+├──────────┴───────────────────────────────────────┴─────────────┤
+│  ShareDialog (modal overlay) — hiện khi nhấn "Chia sẻ"         │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Tổng kết rủi ro mở rộng nếu KHÔNG refactor
+## 5. Docker & Deployment
 
-| Scenario | Hiện tại | Với 1K users | Với 10K users |
-| --- | --- | --- | --- |
-| **DB Writes** | OK (SQLite single user) | 🔴 Write contention, timeout | 🔴 SQLite crash, data corruption |
-| **API Response** | OK (<100 assets) | 🟡 3-5s load (no pagination) | 🔴 30s+ timeout, OOM |
-| **File Storage** | OK (local <5GB) | 🟡 50GB disk pressure | 🔴 Disk full, server down |
-| **Security** | N/A (local only) | 🔴 Data breach, unauthorized access | 🔴 Legal liability |
-| **Frontend** | OK (small data) | 🟡 Re-render lag, state bugs | 🔴 Browser crash (10K DOM nodes) |
-| **Deploy** | Manual | 🟡 Error-prone, slow | 🔴 Impossible without CI/CD |
+### 5.1 Docker Compose — 4 Services
 
-**Bottom line:** Giai đoạn 1 đã hoàn thành **7/7** hạng mục (100%) — bao gồm Authentication (JWT + Identity), User Entity + Data Ownership, EF Core Migrations, Exception Handling, Validation, File Upload Restrictions, Pagination. Giai đoạn 2 đã hoàn thành **6/6** (100%) — bao gồm Service Layer, Server-side Search, Database Indexing, Storage Abstraction, Frontend State Refactor, React Router. Giai đoạn 3 đã hoàn thành **7/7** (100%) — bao gồm PostgreSQL dual-provider, Docker + docker-compose, Redis Cache, Serilog, Health Check, Rate Limiting, Thumbnail Generation. Giai đoạn 4 đã hoàn thành **6/6** (100%) — bao gồm Smart Collections, Tag System (M2M), Bulk Operations, Undo/Redo, Real-time Sync (SignalR), Permission Model (RBAC).
+| Service | Image | Port | Depends On | Healthcheck |
+|---------|-------|------|------------|-------------|
+| `postgres` | postgres:17-alpine | 5432 | — | `pg_isready` |
+| `redis` | redis:7-alpine | 6379 | — | `redis-cli ping` |
+| `backend` | Build `./VAH.Backend` | 5027 | postgres, redis | `wget /api/Health` |
+| `frontend` | Build `./VAH.Frontend` | 3000→80 | backend | — |
+
+### 5.2 Named Volumes
+
+| Volume | Mô tả |
+|--------|-------|
+| `postgres-data` | PostgreSQL data persistence |
+| `redis-data` | Redis data persistence |
+| `backend-uploads` | User uploaded files |
+| `backend-logs` | Serilog log files |
+
+### 5.3 Docker Build Details
+
+**Backend Dockerfile:**
+- Multi-stage: SDK 9.0 (build) → ASP.NET 9.0 (runtime)
+- Non-root user `appuser:appgroup`
+- Auto-creates `/app/wwwroot/uploads`, `/app/wwwroot/uploads/thumbs`, `/app/logs`
+
+**Frontend Dockerfile:**
+- Multi-stage: Node 22 Alpine (build) → Nginx Alpine (serve)
+- Build arg: `VITE_API_URL` cho backend URL
+- Custom nginx.conf: SPA fallback, gzip, 1-year cache `/assets/`
 
 ---
 
-> *Tài liệu này được cập nhật lần cuối: **28/02/2026**. Mỗi section có thể trở thành epic/ticket riêng trong project management tool.*
+## 6. Bảo mật
+
+| Biện pháp | Chi tiết |
+|-----------|---------|
+| **JWT Authentication** | 24h expiration, ClockSkew=Zero, HS256 |
+| **Password Policy** | Min 6 chars, require digit + lowercase |
+| **Data Ownership** | UserId FK trên mọi entity, user chỉ truy cập dữ liệu của mình |
+| **RBAC Permissions** | 3 roles (Owner/Editor/Viewer) trên collection, check ở service layer |
+| **CORS** | Config-driven origins, AllowCredentials cho SignalR |
+| **Rate Limiting** | Fixed window: 100 req/min (general), 20 req/min (upload) |
+| **File Validation** | Size (50MB max), extension whitelist (27 types), MIME type check |
+| **Exception Privacy** | Exception details chỉ ở Development mode |
+| **SignalR Auth** | JWT via query string, user-scoped groups |
+| **Docker Security** | Non-root container user, isolated volumes |
+
+---
+
+## 7. Hiệu suất
+
+| Strategy | Chi tiết |
+|----------|---------|
+| **Redis Cache** | Collection list: 5 min absolute / 2 min sliding |
+| **Fallback Cache** | In-memory khi không có Redis |
+| **Cache Invalidation** | Auto-invalidate sau mutation |
+| **Thumbnail Pre-gen** | sm(150px)/md(400px)/lg(800px) WebP, quality 80 |
+| **Nginx Cache** | /assets/ 1-year immutable |
+| **Gzip** | css/js/json/svg |
+| **DB Indexes** | 22 indexes cho common queries |
+| **Pagination** | Server-side, max 100 items/page |
+
+---
+
+## 8. Lộ trình Phát triển — Tổng kết 4 Giai đoạn
+
+### Giai đoạn 1 — Nền tảng Production ✅ 7/7 (100%)
+
+| # | Hạng mục | Files liên quan |
+|---|----------|-----------------|
+| 1 | Authentication (JWT + Identity) | AuthService, AuthController, useAuth |
+| 2 | User Entity + Data Ownership | ApplicationUser, UserId FK |
+| 3 | EF Core Migrations | 4 migrations (Initial, Thumbnails, Tags, Permissions) |
+| 4 | Exception Handling | ExceptionHandlingMiddleware |
+| 5 | Validation | FileUploadConfig, DTO annotations |
+| 6 | File Upload Restrictions | AssetService.UploadFilesAsync |
+| 7 | Pagination | PagedResult\<T\>, PaginationParams |
+
+### Giai đoạn 2 — Architecture ✅ 6/6 (100%)
+
+| # | Hạng mục | Files liên quan |
+|---|----------|-----------------|
+| 1 | Service Layer | 9 services với interfaces |
+| 2 | Server-side Search | SearchController, SearchResult DTO |
+| 3 | Database Indexing | 22 indexes trong AppDbContext |
+| 4 | Storage Abstraction | IStorageService → LocalStorageService |
+| 5 | Frontend State Refactor | 6 custom hooks |
+| 6 | React Router | useCollections URL sync, 4 routes |
+
+### Giai đoạn 3 — Production-Grade ✅ 7/7 (100%)
+
+| # | Hạng mục | Files liên quan |
+|---|----------|-----------------|
+| 1 | PostgreSQL Dual-Provider | DatabaseProviderInfo, dialect-aware SQL |
+| 2 | Docker + docker-compose | 4 services, multi-stage, healthchecks |
+| 3 | Redis Cache | CollectionService cache, 5min/2min TTL |
+| 4 | Serilog Logging | Console + File sinks, 30-day retention |
+| 5 | Health Check | HealthController: DB + Storage |
+| 6 | Rate Limiting | Fixed window: 100/min, 20/min upload |
+| 7 | Thumbnails | ThumbnailService: sm/md/lg WebP |
+
+### Giai đoạn 4 — Nâng cấp Sản phẩm ✅ 6/6 (100%)
+
+| # | Hạng mục | Files liên quan |
+|---|----------|-----------------|
+| 1 | Smart Collections | SmartCollectionService, 8 built-in + per-tag |
+| 2 | Tag System (M2M) | Tag, AssetTag, TagService, TagsController |
+| 3 | Bulk Operations | bulk-delete/move/tag, Ctrl/Shift multi-select |
+| 4 | Undo/Redo | useUndoRedo hook, Ctrl+Z/Ctrl+Shift+Z |
+| 5 | Real-time Sync | AssetHub, NotificationService, useSignalR |
+| 6 | RBAC Permissions | CollectionPermission, PermissionService, ShareDialog |
+
+---
+
+## 9. Tổng kết Metrics
+
+| Metric | Giá trị |
+|--------|---------|
+| Tổng API endpoints | 38 |
+| Backend services | 9 (với interfaces) |
+| Frontend hooks | 6 |
+| Frontend components | 12 |
+| API modules (frontend) | 7 |
+| Database tables | 5 entity + Identity |
+| Database indexes | 22 |
+| Docker services | 4 |
+| EF Migrations | 4 |
+| Giai đoạn hoàn thành | **4/4 (26/26 — 100%)** |
+
+---
+
+> *Tất cả 4 giai đoạn phát triển đã hoàn thành. Hệ thống sẵn sàng deploy production qua Docker Compose với PostgreSQL, Redis, SignalR real-time, RBAC sharing, và non-root containers.*
