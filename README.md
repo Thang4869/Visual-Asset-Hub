@@ -1,231 +1,195 @@
 # Visual Asset Hub (VAH)
 
-Ứng dụng web quản lý tài nguyên số (ảnh, link, bảng màu) với giao diện dark theme hiện đại, hỗ trợ kéo thả, tổ chức theo collection và thư mục phân cấp.
+**Digital Asset Management** — Ứng dụng web quản lý tài nguyên số (ảnh, link, màu sắc) với phân quyền, real-time sync, và giao diện Dark Navy hiện đại.
 
-![Tech Stack](https://img.shields.io/badge/.NET-9.0-512BD4?style=flat&logo=dotnet)
-![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)
-![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite)
-![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=flat&logo=vite)
-
----
-
-## Yêu cầu hệ thống
-
-| Phần mềm | Phiên bản tối thiểu | Kiểm tra |
-| --- | --- | --- |
-| **.NET SDK** | 9.0 | `dotnet --version` |
-| **Node.js** | 18+ (khuyến nghị 20+) | `node --version` |
-| **npm** | 9+ (đi kèm Node.js) | `npm --version` |
-| **Git** | bất kỳ | `git --version` |
-
-> **Hệ điều hành:** Windows, macOS, hoặc Linux đều được hỗ trợ.
-
----
-
-## Cài đặt nhanh
-
-### 1. Clone repository
-
-```bash
-git clone <https://github.com/Thang4869/Visual-Asset-Hub.git>
-cd 1A
-```
-
-### 2. Chạy Backend
-
-```bash
-cd VAH.Backend
-dotnet restore
-dotnet run
-```
-
-Backend khởi động tại: **http://localhost:5027**
-
-- Database SQLite (`vah_database.db`) được quản lý bằng **EF Core Migrations** — tự động apply khi chạy lần đầu.
-- 3 collection mặc định (Images, Links, Colors) được seed sẵn.
-- Swagger UI (API docs) có sẵn tại: http://localhost:5027/swagger
-
-### 3. Chạy Frontend
-
-Mở **terminal mới** (giữ backend đang chạy):
-
-```bash
-cd VAH.Frontend
-npm install
-npm run dev
-```
-
-Frontend khởi động tại: **http://localhost:5173**
-
-### 4. Mở trình duyệt
-
-Truy cập **http://localhost:5173** — ứng dụng sẽ tự kết nối đến backend.
-
----
-
-## Cấu trúc dự án
-
-```text
-1A/
-├── VAH.sln                          # Solution file (.NET)
-├── README.md                        # File này
-├── docs/                            # Tài liệu dự án
-│   ├── PROJECT_DOCUMENTATION.md     # Mô tả chi tiết kiến trúc & tính năng
-│   ├── ARCHITECTURE_REVIEW.md       # Đánh giá kiến trúc & roadmap nâng cấp
-│   └── IMPLEMENTATION_GUIDE.md      # Hướng dẫn triển khai canvas feature
-│
-├── VAH.Backend/                     # ASP.NET Core 9.0 Web API
-│   ├── Controllers/                 # API endpoints (Assets, Collections, Auth, Search, Health)
-│   ├── Services/                    # Business logic layer (Asset, Collection, Auth, Storage)
-│   ├── Models/                      # Entity models & DTOs (inc. ApplicationUser, AuthDTOs)
-│   ├── Data/                        # EF Core IdentityDbContext
-│   ├── Migrations/                  # EF Core Migrations (schema versioning)
-│   ├── Middleware/                   # Exception handling
-│   └── wwwroot/uploads/             # Thư mục lưu file upload
-│
-└── VAH.Frontend/                    # React 19 + Vite 7 SPA
-    └── src/
-        ├── components/              # 9 UI components
-        ├── hooks/                   # Custom hooks (useAssets, useCollections)
-        └── api/                     # Axios API client layer
-```
+![.NET 9](https://img.shields.io/badge/.NET-9.0-purple)
+![React 19](https://img.shields.io/badge/React-19.2-blue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Redis](https://img.shields.io/badge/Redis-7-red)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue)
+![SignalR](https://img.shields.io/badge/SignalR-10.0-green)
 
 ---
 
 ## Tính năng chính
 
-| # | Tính năng | Mô tả |
-| --- | --- | --- |
-| 1 | **Authentication** | Đăng ký / đăng nhập với JWT token. Dữ liệu user-scoped |
-| 2 | **Quản lý Collection** | Tạo, xóa, cây phân cấp cha/con với 4 loại: image, link, color, default |
-| 2 | **Upload file** | Kéo thả hoặc chọn file, upload multipart, tên file GUID tránh trùng |
-| 3 | **Thư mục lồng nhau** | Tổ chức file trong thư mục con, breadcrumb navigation |
-| 4 | **3 chế độ hiển thị** | Grid, List, Masonry + Canvas kéo thả tự do |
-| 5 | **Bảng màu** | Quản lý mẫu màu theo nhóm, nhập bằng mã hex |
-| 6 | **Bookmark/Link** | Lưu trữ và tổ chức links |
-| 7 | **Kéo & thả** | Di chuyển file giữa thư mục, sắp xếp lại thứ tự |
-| 8 | **Tìm kiếm** | Server-side search theo tên + tags, phân trang |
-| 9 | **Panel chi tiết** | Sidebar phải hiển thị preview + metadata khi chọn asset |
+- **Asset Management** — Upload, tổ chức, tìm kiếm files/links/colors
+- **Collection Tree** — Phân cấp parent-child, 3 default collections
+- **Smart Collections** — 8+ bộ sưu tập ảo tự động (recent, by type, by tag, untagged...)
+- **Tags** — Hệ thống many-to-many, autocomplete, migrate legacy
+- **Thumbnails** — Auto-generate 3 sizes (WebP), ImageSharp pipeline
+- **Real-time Sync** — SignalR WebSocket, multi-tab, auto-reconnect
+- **Multi-select** — Ctrl+click, Shift+click, bulk delete/move
+- **Undo/Redo** — Ctrl+Z / Ctrl+Shift+Z, max 50 history
+- **Drag Canvas** — Free positioning trên infinite canvas
+- **Color Board** — Tạo và quản lý bảng màu
+- **RBAC** — Owner/Editor/Viewer per collection, share bằng email
+- **Docker** — 4-service compose (PostgreSQL, Redis, Backend, Frontend)
+- **Structured Logging** — Serilog (Console + File rolling daily)
 
 ---
 
-## API Endpoints
+## Tech Stack
 
-Backend cung cấp 21 endpoints, Swagger UI có đầy đủ tài liệu tại `/swagger` khi chạy development.
-
-| Controller | Base route | Endpoints |
-| --- | --- | --- |
-| Auth | `/api/Auth` | 2 (register, login) |
-| Assets | `/api/Assets` | 12 (CRUD, upload, reorder, position, folder, color, link) |
-| Collections | `/api/Collections` | 5 (CRUD, items with hierarchy) |
-| Search | `/api/search` | 1 (tìm kiếm assets + collections) |
-| Health | `/api/health` | 1 (kiểm tra trạng thái hệ thống) |
-
-> **Lưu ý:** Tất cả endpoints (trừ Auth và Health) yêu cầu JWT token trong header `Authorization: Bearer <token>`.
-
----
-
-## Cấu hình
-
-### Backend (`VAH.Backend/appsettings.json`)
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=vah_database.db"
-  },
-  "Jwt": {
-    "SecretKey": "VAH-SuperSecret-Key-For-Development-Only-32chars!",
-    "Issuer": "VAH.Backend",
-    "Audience": "VAH.Frontend",
-    "ExpirationHours": 24
-  },
-  "Cors": {
-    "AllowedOrigins": ["http://localhost:5173", "http://localhost:5174"]
-  }
-}
-```
-
-> **Lưu ý:** `Jwt.SecretKey` chỉ dùng cho development. Production phải đặt trong User Secrets hoặc biến môi trường.
-
-### Frontend (biến môi trường)
-
-Tạo file `.env` trong `VAH.Frontend/` nếu cần đổi URL backend:
-
-```env
-VITE_API_URL=http://localhost:5027/api
-VITE_STATIC_URL=http://localhost:5027
-```
-
-> Mặc định không cần tạo `.env` — frontend tự kết nối đến `http://localhost:5027`.
+| Layer | Công nghệ |
+|-------|-----------|
+| Backend | ASP.NET Core 9.0, EF Core 9, JWT + Identity |
+| Frontend | React 19.2, Vite 7.3, React Router 7.13 |
+| Database | SQLite (dev) / PostgreSQL 16 (prod) |
+| Cache | Redis 7 |
+| Real-time | SignalR 10.0 |
+| Thumbnails | SixLabors.ImageSharp 3.x |
+| Logging | Serilog (Console + File) |
+| Deploy | Docker Compose, Nginx |
 
 ---
 
-## Xử lý sự cố (Troubleshooting)
+## Quick Start
 
-### Backend không khởi động được
+### Docker (khuyến nghị)
 
 ```bash
-# Kiểm tra .NET SDK đã cài chưa
-dotnet --version
+git clone https://github.com/Thang4869/Visual-Asset-Hub.git
+cd 1A
+docker-compose up --build -d
+```
 
-# Nếu thiếu, tải tại: https://dotnet.microsoft.com/download/dotnet/9.0
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:5027 |
+| Swagger | http://localhost:5027/swagger |
 
-# Restore lại dependencies
+### Local Development
+
+**Backend:**
+```bash
 cd VAH.Backend
 dotnet restore
-```
-
-### Frontend báo lỗi kết nối API
-
-- Đảm bảo backend đang chạy tại port `5027`
-- Kiểm tra CORS: origin `http://localhost:5173` phải nằm trong `appsettings.json` → `Cors.AllowedOrigins`
-
-### Ảnh không hiển thị
-
-- Kiểm tra thư mục `VAH.Backend/wwwroot/uploads/` tồn tại
-- Đảm bảo backend đang chạy (ảnh được serve qua `http://localhost:5027/uploads/...`)
-
-### Muốn reset database
-
-```bash
-cd VAH.Backend
-# Xóa file database (Windows PowerShell)
-Remove-Item vah_database.db -ErrorAction SilentlyContinue
-# Apply lại migrations — DB tạo mới với đầy đủ schema + seed data
-dotnet ef database update
-# Hoặc chạy backend — migrations tự apply khi khởi động
 dotnet run
+# → http://localhost:5027
+```
+
+**Frontend:**
+```bash
+cd VAH.Frontend
+npm install
+npm run dev
+# → http://localhost:5173
 ```
 
 ---
 
-## Scripts có sẵn
+## API Endpoints (38 total)
 
-### Backend
+### Auth (4)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| POST | `/api/Auth/register` | Đăng ký |
+| POST | `/api/Auth/login` | Đăng nhập → JWT |
+| GET | `/api/Auth/profile` | Thông tin user |
+| POST | `/api/Auth/change-password` | Đổi mật khẩu |
 
-```bash
-dotnet run                              # Chạy development server
-dotnet run --configuration Release      # Chạy release mode
-dotnet build                            # Build project
-dotnet ef migrations add <TenMigration> # Tạo migration mới khi thay đổi model
-dotnet ef database update               # Apply migrations vào database
-dotnet ef migrations list               # Xem danh sách migrations
+### Assets (10)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/Assets` | List (paged, sorted) |
+| GET | `/api/Assets/{id}` | Chi tiết |
+| POST | `/api/Assets` | Upload/Create |
+| PUT | `/api/Assets/{id}` | Cập nhật |
+| DELETE | `/api/Assets/{id}` | Xóa |
+| POST | `/api/Assets/reorder` | Sắp xếp lại |
+| POST | `/api/Assets/bulk-delete` | Xóa hàng loạt |
+| POST | `/api/Assets/bulk-move` | Di chuyển hàng loạt |
+| PUT | `/api/Assets/{id}/position` | Vị trí canvas |
+| POST | `/api/Assets/add-link` | Thêm link |
+
+### Collections (5)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/Collections` | List (tree) |
+| GET | `/api/Collections/{id}` | Chi tiết |
+| POST | `/api/Collections` | Tạo mới |
+| PUT | `/api/Collections/{id}` | Cập nhật |
+| DELETE | `/api/Collections/{id}` | Xóa |
+
+### Tags (7)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/Tags` | List tags |
+| POST | `/api/Tags` | Tạo tag |
+| DELETE | `/api/Tags/{id}` | Xóa tag |
+| GET | `/api/Tags/asset/{assetId}` | Tags của asset |
+| PUT | `/api/Tags/asset/{assetId}` | Set tags (replace) |
+| POST | `/api/Tags/asset/{assetId}/add` | Thêm tags |
+| POST | `/api/Tags/migrate` | Migrate legacy |
+
+### Smart Collections (2)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/SmartCollections` | Danh sách |
+| GET | `/api/SmartCollections/{id}/assets` | Assets trong SC |
+
+### Search (2)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/Search` | Tìm kiếm assets |
+| GET | `/api/Search/suggestions` | Gợi ý search |
+
+### Permissions (5)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/Permissions/collection/{id}` | List permissions |
+| POST | `/api/Permissions/grant` | Cấp quyền |
+| DELETE | `/api/Permissions/revoke` | Thu hồi |
+| GET | `/api/Permissions/shared-with-me` | Collections được chia sẻ |
+| GET | `/api/Permissions/my-role/{collectionId}` | Role hiện tại |
+
+### Health (3)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/Health` | Quick check |
+| GET | `/api/Health/detailed` | DB + Redis status |
+| GET | `/api/Health/version` | App version |
+
+---
+
+## Cấu trúc dự án
+
 ```
-
-### Frontend
-
-```bash
-npm run dev       # Chạy dev server (HMR)
-npm run build     # Build production bundle
-npm run preview   # Preview bản build
-npm run lint      # Kiểm tra ESLint
+1A/
+├── docker-compose.yml
+├── VAH.sln
+├── README.md
+├── docs/                       # 4 tài liệu
+├── VAH.Backend/                # .NET 9 API
+│   ├── Controllers/            # 8 controllers
+│   ├── Services/               # 9 services
+│   ├── Models/                 # 6 entities + DTOs
+│   ├── Data/                   # EF Core DbContext
+│   ├── Hubs/                   # SignalR
+│   ├── Middleware/             # Exception handling
+│   └── Migrations/             # 4 migrations
+└── VAH.Frontend/               # React 19 SPA
+    └── src/
+        ├── api/                # 7 API modules
+        ├── hooks/              # 6 custom hooks
+        └── components/         # 12 components
 ```
 
 ---
 
-## Tài liệu thêm
+## Tài liệu
 
-- [PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) — Mô tả chi tiết toàn bộ kiến trúc, models, API, components
-- [ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md) — Đánh giá kiến trúc, phân tích rủi ro, roadmap nâng cấp
-- [IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) — Hướng dẫn tính năng Canvas kéo thả
+| File | Nội dung |
+|------|----------|
+| [docs/ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md) | Kiến trúc hệ thống, tech stack, roadmap |
+| [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) | Tài liệu kỹ thuật chi tiết (models, services, APIs) |
+| [docs/IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) | Hướng dẫn cài đặt, sử dụng, troubleshooting |
+| [docs/FIX_REPORT_20260227.md](docs/FIX_REPORT_20260227.md) | Lịch sử phát triển & sửa lỗi |
+
+---
+
+## License
+
+MIT

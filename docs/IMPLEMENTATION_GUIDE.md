@@ -1,105 +1,372 @@
-# Visual Asset Hub - Draggable Canvas Feature
+# Visual Asset Hub — Hướng dẫn Triển khai & Phát triển
 
-## Tổng quan thay đổi
+> **Cập nhật:** 27/02/2026
 
-Tôi đã cải thiện ứng dụng của bạn với các tính năng sau:
+---
 
-### 1. Backend Changes (C# ASP.NET Core)
-- **Thêm properties vị trí:** PositionX và PositionY vào model Asset để lưu trữ vị trí hình ảnh trên canvas
-- **Tạo endpoint cập nhật vị trí:** `PUT /api/Assets/{id}/position` - Cho phép client gửi vị trí mới của hình ảnh
-- **Tạo DTO:** AssetPositionDto để nhận dữ liệu từ client
+## 1. Cài đặt phát triển local
 
-### 2. Frontend Changes (React)
-- **Tạo DraggableAssetCanvas component:** Cho phép kéo thả hình ảnh trên canvas
-- **Thêm canvas view mode:** Hiển thị hình ảnh trong một không gian có thể kéo thả thay vì grid thông thường
-- **Thêm grid view mode toggle:** Buttons để chuyển đổi giữa Canvas view và Grid view
-- **Save position on drag:** Khi kéo thả xong, vị trí được lưu lên backend tự động
-- **Restore position on load:** Khi tải lại web, hình ảnh sẽ hiển thị tại vị trí đã lưu
+### 1.1 Yêu cầu hệ thống
 
-## Các file được thay đổi/tạo
+| Phần mềm | Phiên bản | Kiểm tra |
+|-----------|-----------|----------|
+| .NET SDK | 9.0+ | `dotnet --version` |
+| Node.js | 18+ (khuyến nghị 22+) | `node --version` |
+| npm | 9+ | `npm --version` |
+| Git | bất kỳ | `git --version` |
 
-### Backend:
-1. [Models/Asset.cs](VAH.Backend/Models/Asset.cs) - Thêm PositionX, PositionY
-2. [Controllers/AssetsController.cs](VAH.Backend/Controllers/AssetsController.cs) - Thêm UpdateAssetPosition endpoint
+> Docker + Docker Compose cần thiết nếu muốn chạy với PostgreSQL + Redis.
 
-### Frontend:
-1. [src/App.jsx](VAH.Frontend/src/App.jsx) - Thêm viewMode state, import DraggableAssetCanvas
-2. [src/components/DraggableAssetCanvas.jsx](VAH.Frontend/src/components/DraggableAssetCanvas.jsx) - Component mới cho canvas
-3. [src/components/DraggableAssetCanvas.css](VAH.Frontend/src/components/DraggableAssetCanvas.css) - Styles cho canvas
-4. [src/App.css](VAH.Frontend/src/App.css) - Thêm styles cho view-mode-toggle
-
-## Cách sử dụng
-
-### 1. Chuẩn bị Database
-Vì đã thêm các column mới (PositionX, PositionY), bạn cần xóa database cũ để nó tự động tạo lại schema mới:
+### 1.2 Clone & Setup
 
 ```bash
-cd b:\1A\VAH.Backend
-# Xóa file database cũ
-rm vah_database.db
-# Hoặc trên Windows PowerShell:
-Remove-Item vah_database.db -ErrorAction SilentlyContinue
+git clone https://github.com/Thang4869/Visual-Asset-Hub.git
+cd 1A
 ```
 
-### 2. Chạy Backend
-```bash
-cd b:\1A\VAH.Backend
-dotnet run --configuration Development
-```
-- Backend sẽ khởi động trên http://localhost:5027
-- Database sẽ tự động tạo với schema mới
+### 1.3 Chạy Backend (SQLite mode)
 
-### 3. Chạy Frontend
 ```bash
-cd b:\1A\VAH.Frontend
-npm install  # Nếu chưa cài dependencies
+cd VAH.Backend
+dotnet restore
+dotnet run
+```
+
+- Backend tại: **http://localhost:5027**
+- Swagger UI: **http://localhost:5027/swagger**
+- Database SQLite (`vah_database.db`) tự động tạo + migrate lần đầu
+- 3 collection mặc định (Images, Links, Colors) được seed
+
+### 1.4 Chạy Frontend
+
+```bash
+cd VAH.Frontend
+npm install
 npm run dev
 ```
-- Frontend sẽ khởi động trên http://localhost:5173
 
-## Tính năng
+- Frontend tại: **http://localhost:5173**
+- Hot reload enabled (Vite HMR)
 
-### Canvas View (Mặc định):
-- **Kéo thả hình ảnh:** Click và giữ để kéo hình ảnh đến vị trí mới
-- **Save tự động:** Khi thả chuột, vị trí tự động được lưu lên backend
-- **Grid nền:** Hiển thị lưới nền để giúp căn chỉnh
-- **Tooltip:** Hiển thị tên file khi hover trên hình ảnh
+### 1.5 Sử dụng
 
-### Grid View:
-- Hiển thị hình ảnh dạng grid thông thường (giống như trước)
+1. Mở **http://localhost:5173**
+2. **Đăng ký** tài khoản mới (hoặc đăng nhập nếu đã có)
+3. Chọn collection ở sidebar → upload file, tạo thư mục, thêm link, quản lý màu sắc
+4. Ctrl+click / Shift+click để multi-select → bulk actions bar
+5. Chi tiết panel bên phải: xem metadata, quản lý tags
+6. Nút "Chia sẻ" → cấp quyền cho user khác bằng email
 
-### Toggle View:
-- Buttons trong header để chuyển đổi giữa Canvas ↔ Grid view
+---
 
-### Search & Tags:
-- Tất cả chức năng tìm kiếm và lọc theo tags vẫn hoạt động bình thường
+## 2. Chạy bằng Docker Compose (Production-like)
 
-## Lưu ý
+### 2.1 Khởi động
 
-1. **Lần đầu khởi động:** Có thể mất vài giây để tạo database mới
-2. **Vị trí lưu trữ:** Mỗi hình ảnh đã được kéo thả một lần sẽ có vị trí được lưu
-3. **Images không hiển thị:** Đảm bảo backend đang chạy và đường dẫn `/uploads/` được mapping đúng
-4. **Position reset:** Nếu upload hình ảnh mới, vị trí mặc định sẽ là (0, 0)
-
-## API Endpoints
-
-### Lấy danh sách assets (có vị trí lưu)
-```
-GET /api/Assets
-```
-Response: Array của Asset objects với PositionX, PositionY
-
-### Cập nhật vị trí asset
-```
-PUT /api/Assets/{id}/position
-Body: {
-  "positionX": 100,
-  "positionY": 150
-}
+```bash
+cd 1A
+docker-compose up --build -d
 ```
 
-### Upload file (vị trí mặc định 0,0)
+### 2.2 Services
+
+| Service | URL | Mô tả |
+|---------|-----|-------|
+| Frontend | http://localhost:3000 | Nginx + React SPA |
+| Backend | http://localhost:5027 | .NET API + SignalR |
+| PostgreSQL | localhost:5432 | Database |
+| Redis | localhost:6379 | Cache |
+
+### 2.3 Dừng & Xóa
+
+```bash
+# Dừng
+docker-compose down
+
+# Dừng + xóa volumes (reset database)
+docker-compose down -v
 ```
-POST /api/Assets/upload
-Body: FormData với files
+
+### 2.4 Xem logs
+
+```bash
+docker-compose logs -f backend
+docker-compose logs -f frontend
 ```
+
+---
+
+## 3. Cấu trúc dự án
+
+```
+1A/
+├── docker-compose.yml          # 4 services: postgres, redis, backend, frontend
+├── VAH.sln                     # Visual Studio solution
+├── README.md                   # Quick start guide
+├── docs/
+│   ├── ARCHITECTURE_REVIEW.md  # Kiến trúc + roadmap
+│   ├── PROJECT_DOCUMENTATION.md # Tài liệu kỹ thuật chi tiết
+│   ├── IMPLEMENTATION_GUIDE.md # Hướng dẫn này
+│   └── FIX_REPORT_20260227.md  # Lịch sử thay đổi
+│
+├── VAH.Backend/
+│   ├── Program.cs              # Entry point + DI + middleware
+│   ├── VAH.Backend.csproj      # NuGet packages
+│   ├── Dockerfile              # Multi-stage .NET build
+│   ├── appsettings.json        # Configuration
+│   ├── appsettings.Development.json
+│   ├── Controllers/            # 8 controllers (38 endpoints)
+│   │   ├── AssetsController.cs
+│   │   ├── AuthController.cs
+│   │   ├── CollectionsController.cs
+│   │   ├── HealthController.cs
+│   │   ├── SearchController.cs
+│   │   ├── TagsController.cs
+│   │   ├── SmartCollectionsController.cs
+│   │   └── PermissionsController.cs
+│   ├── Services/               # 9 services (interface + implementation)
+│   │   ├── IAssetService.cs / AssetService.cs
+│   │   ├── ICollectionService.cs / CollectionService.cs
+│   │   ├── IAuthService.cs / AuthService.cs
+│   │   ├── IStorageService.cs / LocalStorageService.cs
+│   │   ├── IThumbnailService.cs / ThumbnailService.cs
+│   │   ├── ITagService.cs / TagService.cs
+│   │   ├── INotificationService.cs / NotificationService.cs
+│   │   ├── ISmartCollectionService.cs / SmartCollectionService.cs
+│   │   └── IPermissionService.cs / PermissionService.cs
+│   ├── Models/                 # 6 entity classes + DTOs
+│   │   ├── Asset.cs
+│   │   ├── Collection.cs
+│   │   ├── ApplicationUser.cs
+│   │   ├── Tag.cs              # Tag + AssetTag
+│   │   ├── CollectionPermission.cs # Permission + Roles + DTOs
+│   │   ├── AuthDTOs.cs
+│   │   ├── Common.cs           # PagedResult, PaginationParams, FileUploadConfig
+│   │   └── DTOs.cs             # Asset/Tag/Bulk DTOs
+│   ├── Data/
+│   │   └── AppDbContext.cs     # EF Core context, 5 DbSets, fluent config
+│   ├── Hubs/
+│   │   └── AssetHub.cs         # SignalR hub
+│   ├── Middleware/
+│   │   └── ExceptionHandlingMiddleware.cs
+│   ├── Migrations/             # 4 migrations
+│   └── wwwroot/uploads/        # File storage + thumbnails
+│
+└── VAH.Frontend/
+    ├── package.json            # Dependencies
+    ├── vite.config.js          # Vite config
+    ├── Dockerfile              # Multi-stage Node + Nginx
+    ├── nginx.conf              # SPA fallback + caching
+    ├── index.html
+    └── src/
+        ├── main.jsx            # Entry point
+        ├── App.jsx             # Main layout + routes
+        ├── App.css             # Dark Navy theme
+        ├── api/                # 7 API modules
+        ├── hooks/              # 6 custom hooks
+        └── components/         # 12 components
+```
+
+---
+
+## 4. Database Migrations
+
+### 4.1 Danh sách migrations
+
+| # | Migration | Mô tả |
+|---|-----------|-------|
+| 1 | `InitialCreate` | Assets, Collections, Identity tables |
+| 2 | `AddThumbnailColumns` | ThumbnailSm, ThumbnailMd, ThumbnailLg |
+| 3 | `AddTagSystem` | Tags, AssetTags (M2M junction) |
+| 4 | `AddCollectionPermissions` | CollectionPermissions (RBAC) |
+
+### 4.2 Tạo migration mới
+
+```bash
+cd VAH.Backend
+dotnet ef migrations add <MigrationName>
+```
+
+### 4.3 Apply migrations
+
+Migrations tự động apply khi khởi động (`db.Database.Migrate()` trong Program.cs).
+
+Hoặc manually:
+
+```bash
+dotnet ef database update
+```
+
+### 4.4 Đổi sang PostgreSQL
+
+1. Sửa `appsettings.json`:
+   ```json
+   {
+     "DatabaseProvider": "PostgreSQL",
+     "ConnectionStrings": {
+       "DefaultConnection": "Host=localhost;Port=5432;Database=vah;Username=vah;Password=vah_secret"
+     }
+   }
+   ```
+2. Chạy lại backend — migrations sẽ auto-apply trên PostgreSQL
+
+---
+
+## 5. Tính năng chính — Cách sử dụng
+
+### 5.1 Quản lý Collections
+
+- **Tạo:** Nhấn "+" ở sidebar → nhập tên → chọn type (image/link/color/default)
+- **Xóa:** Hover collection → nhấn "✕" → confirm
+- **Phân cấp:** Collections hỗ trợ parent-child (tree)
+- **Chia sẻ:** Nhấn "Chia sẻ" trong toolbar → nhập email + role
+
+### 5.2 Upload & Quản lý Files
+
+- **Upload:** Kéo thả file vào upload zone, hoặc click để chọn
+- **Multi-upload:** Hỗ trợ tối đa 20 file/lần, mỗi file tối đa 50MB
+- **Thư mục:** Nhấn "Thư mục mới" → tổ chức file phân cấp
+- **Liên kết:** Nhấn "Tải xuống" → nhập URL → lưu dưới dạng link asset
+- **Xóa:** Chọn asset → delete (xóa cả file vật lý + thumbnails)
+- **Reorder:** List mode → dùng nút ▲/▼ hoặc POST /api/Assets/reorder
+
+### 5.3 Multi-Select & Bulk Operations
+
+- **Ctrl+Click:** Toggle single selection
+- **Shift+Click:** Range select (từ last selected đến click)
+- **Click thường:** Single select (clear previous)
+- **Bulk bar:** Hiện khi có item selected → Chọn tất cả / Bỏ chọn / Xóa / Di chuyển
+
+### 5.4 Tags (Many-to-Many)
+
+- **Tạo tag:** POST `/api/Tags` hoặc qua details panel "+" button
+- **Gắn tag:** PUT `/api/Tags/asset/{id}` (replace all) hoặc POST `.../add`
+- **Migration:** POST `/api/Tags/migrate` → convert comma-separated legacy tags sang M2M
+- **Dedup:** Tags tự động normalize (lowercase, trim) và dedup per user
+
+### 5.5 Smart Collections
+
+- Tự động tạo virtual collections dựa trên rules
+- 8 loại: recent (7d, 30d), all images/links/colors, untagged, with thumbnails
+- Mỗi tag cũng tạo 1 smart collection tương ứng
+- Hiển thị ở sidebar "Bộ sưu tập thông minh"
+
+### 5.6 Real-time Sync (SignalR)
+
+- Khi user A thay đổi → tự động refresh data cho user A
+- Hỗ trợ multi-tab: cả 2 tab sẽ cập nhật đồng thời
+- Auto-reconnect khi mất kết nối WebSocket
+- JWT authentication qua query string
+
+### 5.7 Undo/Redo
+
+- **Ctrl+Z:** Undo last action
+- **Ctrl+Shift+Z:** Redo
+- Hỗ trợ tối đa 50 actions trong history
+- Command pattern: mỗi action có `execute()` + `undo()`
+
+### 5.8 Permissions (RBAC)
+
+| Role | Read | Write | Manage | Delete |
+|------|------|-------|--------|--------|
+| **Owner** | ✅ | ✅ | ✅ | ✅ |
+| **Editor** | ✅ | ✅ | ❌ | ❌ |
+| **Viewer** | ✅ | ❌ | ❌ | ❌ |
+
+- Owner = người tạo collection (tự động)
+- Grant/Revoke qua ShareDialog (nhập email)
+- Manage = quyền cấp/thu hồi quyền cho người khác
+
+---
+
+## 6. Thumbnails
+
+### 6.1 Kích thước
+
+| Size | Pixels (max dimension) | Dùng cho |
+|------|----------------------|---------|
+| `sm` | 150px | Grid thumbnails |
+| `md` | 400px | Preview panels |
+| `lg` | 800px | Full previews |
+
+### 6.2 Format
+
+- Output: **WebP**, quality 80, lossy
+- Storage: `wwwroot/uploads/thumbs/{size}_{fileId}.webp`
+- Generated on upload automatically
+- Nếu ảnh gốc nhỏ hơn target → dùng kích thước gốc
+
+### 6.3 Supported Formats
+
+jpg, jpeg, png, gif, bmp, webp, tiff → WebP thumbnails
+
+---
+
+## 7. Logging (Serilog)
+
+### 7.1 Sinks
+
+| Sink | Output | Mô tả |
+|------|--------|-------|
+| Console | Structured text | `[HH:mm:ss LEV] SourceContext\n  Message` |
+| File | `logs/vah-{date}.log` | Rolling daily, 30-day retention |
+
+### 7.2 HTTP Request Logging
+
+```
+HTTP GET /api/Collections responded 200 in 12.345ms
+```
+
+- Error → LogEventLevel.Error
+- 500+ → LogEventLevel.Error
+- >3000ms → LogEventLevel.Warning
+- Default → LogEventLevel.Information
+
+### 7.3 Minimum Levels
+
+| Category | Level |
+|----------|-------|
+| Default | Information |
+| Microsoft.AspNetCore | Warning |
+| Microsoft.EntityFrameworkCore | Warning |
+
+---
+
+## 8. Troubleshooting
+
+### CORS Error
+
+**Triệu chứng:** Browser console hiện CORS errors  
+**Fix:** Kiểm tra `Cors:AllowedOrigins` trong `appsettings.json` có đúng origin của frontend
+
+### 401 Unauthorized
+
+**Triệu chứng:** Mọi API call trả 401  
+**Fix:** Đảm bảo đã đăng nhập, token còn hạn (24h). Token lưu ở `localStorage.vah_token`
+
+### SQLite Lock
+
+**Triệu chứng:** Database locked khi multiple write  
+**Fix:** Chuyển sang PostgreSQL cho multi-user (sửa `DatabaseProvider` trong appsettings)
+
+### SignalR Connection Failed
+
+**Triệu chứng:** Console log "SignalR connection failed"  
+**Fix:** 
+1. Kiểm tra CORS config có `AllowCredentials()`
+2. Kiểm tra JWT token hợp lệ
+3. Backend phải map hub: `app.MapHub<AssetHub>("/hubs/assets")`
+
+### Docker: Backend Cannot Connect to PostgreSQL
+
+**Triệu chứng:** Backend crash loop  
+**Fix:** PostgreSQL healthcheck chưa pass. Chờ hoặc kiểm tra `docker-compose logs postgres`
+
+### Upload Failed
+
+**Triệu chứng:** File upload returns error  
+**Check:**
+1. File size ≤ 50MB
+2. Extension trong whitelist (27 types)
+3. MIME type trong allowed prefixes (13 prefixes)
+4. Kestrel body limit 100MB
