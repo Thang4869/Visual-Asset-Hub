@@ -1,6 +1,6 @@
 # Visual Asset Hub — Báo cáo Thay đổi & Sửa lỗi
 
-> **Cập nhật lần cuối:** 28/02/2026 — Session #3
+> **Cập nhật lần cuối:** 28/02/2026 — Session #4
 
 ---
 
@@ -695,3 +695,205 @@ export const bulkMoveGroup = (assetIds, targetGroupId = null, insertBeforeId = n
 | `VAH.Frontend/src/App.jsx` | Wire `onMoveColorsToGroup` prop cho ColorBoard |
 | `VAH.Frontend/src/components/ColorBoard.jsx` | Click-to-copy, drag handle riêng, drop indicator, multi-select drag |
 | `VAH.Frontend/src/components/ColorBoard.css` | Styles: drag handle, color-code hover/copied, drop indicator line |
+
+---
+
+## Session #4 — Context Menu, Tree View, Clipboard, Shared-Collection Access & UX Polish (28/02/2026)
+
+### Tổng quan
+
+Session lớn nhất tính đến nay — bổ sung nhiều tính năng UX quan trọng và hoàn thiện hệ thống shared-collection access trên backend. Tổng cộng **~4,600 dòng thay đổi** trên 26 files (không kể log file và upload test files).
+
+### Các tính năng mới
+
+#### 1. Context Menu — Right-click toàn ứng dụng
+**Files mới:**
+- `VAH.Frontend/src/components/ContextMenu.jsx` (81 dòng) — Reusable context menu component
+- `VAH.Frontend/src/components/ContextMenu.css` — Dark theme, viewport-aware positioning
+
+**Tính năng:**
+- Right-click trên bất kỳ item (asset, folder, group, collection) → hiện menu ngữ cảnh
+- Menu items: Ghim, Xem chi tiết, Sao chép mã màu, Sao chép đường dẫn, Sao chép, Cắt, Dán, Đổi tên, Xóa
+- Keyboard shortcut labels hiển thị bên phải mỗi menu item
+- Auto-close khi click outside, Escape, hoặc scroll
+- Viewport boundary detection — tự điều chỉnh vị trí nếu tràn ra ngoài màn hình
+
+**Tích hợp:** `CollectionBrowser.jsx`, `ColorBoard.jsx`, `TreeViewPanel.jsx` — tất cả đều sử dụng shared `ContextMenu` component.
+
+---
+
+#### 2. ConfirmDialog — Thay thế hoàn toàn `window.confirm/prompt/alert`
+**Files mới:**
+- `VAH.Frontend/src/components/ConfirmDialog.jsx` (133 dòng) — Unified styled dialog
+- `VAH.Frontend/src/components/ConfirmDialog.css` — Animated overlay, 3 variants (danger/info/warning)
+- `VAH.Frontend/src/context/ConfirmContext.js` (121 dòng) — Promise-based Context Provider
+
+**3 chế độ:**
+| Mode | Input | Output | Thay thế |
+|------|-------|--------|----------|
+| `confirm` | Message + OK/Cancel | `boolean` | `window.confirm()` |
+| `prompt` | Message + Input + OK/Cancel | `string \| null` | `window.prompt()` |
+| `alert` | Message + OK | `void` | `window.alert()` |
+
+**API sử dụng:**
+```js
+const { confirm, prompt, alert } = useConfirm();
+const ok = await confirm({ message: 'Xóa?', variant: 'danger' });
+const name = await prompt({ message: 'Tên:', defaultValue: '...' });
+await alert('Hoàn tất!');
+```
+
+**Tích hợp:** Tất cả `window.confirm/prompt/alert` trong `useAssets.js`, `useBulkOperations.js`, `useCollections.js`, `AppContext.js` đã được thay thế. `ConfirmProvider` wraps toàn bộ `<Routes>` trong `App.jsx`.
+
+---
+
+#### 3. TreeViewPanel — Panel cấu trúc bên phải
+**Files mới:**
+- `VAH.Frontend/src/components/TreeViewPanel.jsx` (489 dòng) — Right sidebar tree view
+- `VAH.Frontend/src/components/TreeViewPanel.css` — Collapsible panel, indented tree nodes
+
+**Tính năng:**
+- Hiển thị cấu trúc phân cấp của collection hiện tại: sub-collections → folders → files
+- Expand/collapse từng node
+- Nút "Mở rộng tất cả" / "Thu gọn tất cả"
+- Click node → navigate đến collection/folder/asset
+- Right-click → context menu (Ghim, Sao chép, Cắt, Dán, Đổi tên, Xóa)
+- Color collections: hiển thị color groups → colors bên trong
+- Collapsible panel (toggle visibility via button)
+
+---
+
+#### 4. Clipboard System — Copy/Cut/Paste cho assets
+**State mới trong `AppContext.js`:**
+- `clipboard`: `{ item, type, action: 'copy' | 'cut' }` — lưu item đang copy/cut
+- Handlers: `handleCopy`, `handleCut`, `handlePaste`
+
+**Logic:**
+- **Copy** → Paste = Duplicate asset (gọi `POST /api/assets/{id}/duplicate`)
+- **Cut** → Paste = Move asset (gọi `PUT /api/assets/{id}` với `parentFolderId` hoặc `groupId` mới)
+- Paste vào folder → set `parentFolderId`
+- Paste vào color-group → set `groupId`
+- Paste vào area → clear parent (move to root)
+
+---
+
+#### 5. Pin System — Ghim items nhanh
+**State mới trong `AppContext.js`:**
+- `pinnedItems`: Array `{ item, type }` — lưu các item đã ghim
+- Persist qua `localStorage` key `vah_pinned`
+- Handler: `handlePinItem` (toggle), `handleNavigateToPinned` (click → navigate)
+
+**Hiển thị:** Pinned items hiện trong `AppSidebar.jsx` — click để navigate trực tiếp đến collection/folder/asset.
+
+---
+
+#### 6. Folder Multi-Select
+**State mới:** `selectedFolderIds: Set<number>` — cho phép Ctrl+click chọn nhiều thư mục
+- Bulk actions bar hiện tổng items selected (assets + folders)
+- Bulk delete xóa cả folders và assets cùng lúc
+
+---
+
+#### 7. Global Clipboard Paste (Ctrl+V images)
+**Thêm `useEffect` trong `AppLayout`:**
+- Paste từ clipboard hệ thống (ví dụ: screenshot) → tự động upload ảnh
+- Tạo file name: `paste-2026-02-28T12-00-00.png`
+- Chỉ khi focus không ở input/textarea
+- Chỉ khi đã chọn collection
+
+---
+
+#### 8. Shared-Collection Access Control (Backend)
+**Thay đổi lớn nhất session này** — hoàn thiện hệ thống shared-collection access trên backend.
+
+**`AssetService.cs` (280 → 421 dòng):**
+- Thêm injection `IPermissionService`
+- `FindAssetWithAccessAsync(id, userId, minimumRole)` — private helper kiểm tra quyền:
+  - Owner → full access
+  - Shared-collection permission → check role (`Viewer`, `Editor`)
+  - Không có quyền → throw `KeyNotFoundException`
+- `ResolveAssetOwnerAsync(collectionId, actingUserId)` — resolve ai sở hữu asset mới:
+  - Collection owner → asset thuộc owner (đảm bảo listing đúng)
+  - Shared editor → asset thuộc collection owner (không phải editor)
+- Tất cả CRUD operations dùng `FindAssetWithAccessAsync` thay vì `a.UserId == userId`
+- Upload: shared editor có thể upload vào collection người khác
+- Create folder/color/link: cũng kiểm tra shared-collection permission
+- `GetAssetsByGroupAsync`: viewer access cho shared assets
+- `ReorderAssetsAsync`: editor access cho shared assets
+
+**`BulkAssetService.cs` (149 → 238 dòng):**
+- Thêm injection `IPermissionService`
+- `FilterByAccessAsync(assets, userId, minimumRole)` — private helper lọc assets theo quyền
+- `BulkDeleteAsync`: lọc assets user có editor access
+- `BulkMoveAsync`: kiểm tra target collection access
+- `BulkMoveGroupAsync`: lọc assets + existing group items theo editor access
+- `BulkTagAsync`: lọc assets theo editor access
+
+**`PermissionService.cs`:**
+- Thêm injection `IDistributedCache`
+- `InvalidateUserCollectionCacheAsync(userId)` — xóa cache khi thay đổi permission
+- Gọi invalidation sau mỗi grant/update/revoke permission
+- Đảm bảo user thấy thay đổi permission ngay lập tức
+
+**`DuplicateAssetAsync` — Endpoint mới:**
+- `POST /api/assets/{id}/duplicate`
+- `DuplicateAssetDto`: `TargetFolderId` optional
+- Tạo clone với đúng TPH subtype (EF Core discriminator)
+- Clone tên: `"{originalName} (bản sao)"`
+- Clone thuộc cùng collection, có thể đặt vào folder khác
+- Gửi SignalR notification `AssetCreated`
+
+---
+
+#### 9. Breadcrumb Navigation Fix
+**`App.jsx`:**
+- Fix breadcrumb khi ở trong folder: click collection cuối cùng trong breadcrumb → quay về collection root (thay vì không làm gì)
+- Thêm class `current` cho breadcrumb item cuối khi ở root level
+
+---
+
+#### 10. API Bug Fix — permissionsApi.js
+**Vấn đề:** `permissionsApi.js` sử dụng full path `/api/collections/.../permissions` thay vì relative path, gây duplicate prefix `/api/api/...`.
+**Fix:** Đổi `_permPath()` sang `/collections/...` và `fetchSharedCollections()` sang `/shared-collections`.
+
+#### 11. API Client Error Logging
+**`client.js`:** Chỉ log server errors (5xx) vào console. Client errors (4xx) do callers xử lý — giảm noise trong console.
+
+---
+
+### Tóm tắt files đã chỉnh sửa (Session #4)
+
+| File | Thay đổi |
+|------|----------|
+| **Backend** | |
+| `Controllers/AssetsController.cs` | Thêm endpoint `POST api/assets/{id}/duplicate` |
+| `Models/DTOs.cs` | Thêm `DuplicateAssetDto` |
+| `Services/IAssetService.cs` | Thêm `DuplicateAssetAsync` interface |
+| `Services/AssetService.cs` | +141 dòng: `FindAssetWithAccessAsync`, `ResolveAssetOwnerAsync`, `DuplicateAssetAsync`, shared-collection access control cho tất cả CRUD |
+| `Services/BulkAssetService.cs` | +89 dòng: `FilterByAccessAsync`, shared-collection access control cho bulk ops |
+| `Services/PermissionService.cs` | +16 dòng: cache invalidation khi thay đổi permission |
+| **Frontend — Components mới** | |
+| `components/ContextMenu.jsx` | 81 dòng — Reusable context menu |
+| `components/ContextMenu.css` | Dark theme context menu styles |
+| `components/ConfirmDialog.jsx` | 133 dòng — Unified confirm/prompt/alert dialog |
+| `components/ConfirmDialog.css` | Animated dialog styles |
+| `components/TreeViewPanel.jsx` | 489 dòng — Right sidebar tree view |
+| `components/TreeViewPanel.css` | Collapsible tree panel styles |
+| `context/ConfirmContext.js` | 121 dòng — Promise-based dialog context |
+| **Frontend — Files sửa đổi** | |
+| `App.jsx` | +133 dòng: TreeViewPanel, ConfirmProvider, clipboard paste, breadcrumb fix, folder multi-select |
+| `App.css` | +57 dòng: tree view, clipboard, confirm styles |
+| `context/AppContext.js` | +161 dòng: clipboard, pin, folder selection, rename, delete handlers |
+| `hooks/useAssets.js` | Replace `window.confirm/prompt/alert` → `useConfirm()` |
+| `hooks/useBulkOperations.js` | Replace `window.confirm` → `useConfirm()` |
+| `hooks/useCollections.js` | Replace `window.confirm/prompt` → `useConfirm()` |
+| `hooks/useSharePermissions.js` | Minor: propagate confirm context |
+| `api/assetsApi.js` | Thêm `duplicateAsset()` method |
+| `api/client.js` | Chỉ log 5xx errors |
+| `api/permissionsApi.js` | Fix duplicate `/api/api/` prefix |
+| `components/AppSidebar.jsx` | Thêm pinned items, add collection button |
+| `components/CollectionBrowser.jsx` | Thêm context menu, folder selection, delete/rename handlers |
+| `components/CollectionBrowser.css` | +39 dòng: context menu integration, folder selection styles |
+| `components/ColorBoard.jsx` | +209 dòng: context menu, group drag-drop, folder/clipboard integration |
+| `components/ColorBoard.css` | +96 dòng: context menu, group drag styles |
+| `components/ShareDialog.jsx` | Minor: fix shared collection display |

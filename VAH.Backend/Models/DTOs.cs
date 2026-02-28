@@ -141,6 +141,13 @@ public class BulkTagDto
     public bool Remove { get; set; } = false;
 }
 
+// ──── Duplicate DTO ────
+
+public class DuplicateAssetDto
+{
+    public int? TargetFolderId { get; set; }
+}
+
 // ──── Position DTOs ────
 
 public class AssetPositionDto

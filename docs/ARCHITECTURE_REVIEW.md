@@ -1,7 +1,7 @@
 # Visual Asset Hub — Đánh giá Kiến trúc & Lộ trình Phát triển
 
 > **Cập nhật lần cuối:** 28/02/2026  
-> **Phiên bản:** 4.3 — Hoàn thành 4 giai đoạn phát triển + OOP refactoring 5/5 Phases (26/26 hạng mục + 23/23 OOP tasks)
+> **Phiên bản:** 5.0 — Hoàn thành 4 giai đoạn phát triển + OOP refactoring 5/5 Phases + Session #4 (Context Menu, TreeView, Clipboard, Shared-Collection Access)
 
 ---
 
@@ -34,8 +34,8 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 │  │  ExceptionHandler → CORS → Serilog → RateLimiter →          │   │
 │  │  StaticFiles → Auth → Controllers + SignalR Hub              │   │
 │  ├────────────────────────────────────────────────────────────┤   │
-│  │ 8 Controllers (43 endpoints):                               │   │
-│  │  Assets(16) • Auth(2) • Collections(5) • Search(1) •        │   │
+│  │ 8 Controllers (44 endpoints):                               │   │
+│  │  Assets(17) • Auth(2) • Collections(5) • Search(1) •        │   │
 │  │  Tags(10) • SmartCollections(2) • Permissions(6) • Health(1)│   │
 │  ├────────────────────────────────────────────────────────────┤   │
 │  │ 12 Services + Helpers:                                       │   │
@@ -200,7 +200,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **State management** | ✅ RESOLVED | `AppContext` + `AppProvider` (Context API). `useAppContext()` hook. App.jsx giảm từ 620→344 dòng. State centralised, không còn prop-drilling | Clean separation |
+| **State management** | ✅ RESOLVED | `AppContext` + `AppProvider` (Context API) + `ConfirmContext` (dialog). `useAppContext()` hook. App.jsx 477 dòng (thêm TreeView, clipboard paste, folder multi-select). State centralised, không còn prop-drilling | Clean separation |
 | **API abstraction** | ✅ RESOLVED | Class-based API layer: `BaseApiService` → 7 subclasses. `TokenManager` singleton. Barrel exports `api/index.js` | OOP-compliant, consistent, extensible |
 | **Data fetching** | 🟡 MEDIUM | Manual `useEffect` + `useState` pattern | Không cache, dedup, background refetch, stale-while-revalidate. Re-fetch toàn bộ khi navigate |
 | **Routing** | ✅ RESOLVED | React Router v7.13, URL sync qua useParams/useNavigate. 4 routes: /login, /, /collections/:id, /collections/:id/folder/:folderId | Shareable URLs, browser navigation works |
@@ -281,9 +281,9 @@ Chi tiết exception chỉ hiện ở Development environment.
 
 ---
 
-## 3. API Reference (43 Endpoints)
+## 3. API Reference (44 Endpoints)
 
-### 3.1 Assets — `api/Assets` [Authorize] (16 endpoints)
+### 3.1 Assets — `api/Assets` [Authorize] (17 endpoints)
 
 | # | Method | Route | Mô tả |
 |---|--------|-------|-------|
@@ -303,6 +303,7 @@ Chi tiết exception chỉ hiện ở Development environment.
 | 14 | POST | `/api/Assets/bulk-move` | Di chuyển hàng loạt |
 | 15 | POST | `/api/Assets/bulk-move-group` | Di chuyển màu giữa các group với vị trí chính xác |
 | 16 | POST | `/api/Assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
+| 17 | POST | `/api/Assets/{id}/duplicate` | Duplicate asset (clone + optional target folder) |
 
 ### 3.2 Auth — `api/Auth` [RateLimited]
 
@@ -392,7 +393,8 @@ VAH.Frontend/src/
 │   └── index.js                 # Barrel file — re-exports all singletons
 │
 ├── context/                     # State management (Context API)
-│   └── AppContext.js            # AppProvider + useAppContext() — centralised state
+│   ├── AppContext.js            # AppProvider + useAppContext() — centralised state (387 dòng)
+│   └── ConfirmContext.js        # ConfirmProvider + useConfirm() — promise-based confirm/prompt/alert (121 dòng)
 │
 ├── models/                      # Domain model classes
 │   └── index.js                 # Asset, Collection, Tag classes + mapping helpers
@@ -410,21 +412,24 @@ VAH.Frontend/src/
 │   ├── useSignalR.js            # Real-time connection + events
 │   └── useUndoRedo.js           # Command pattern (50 history)
 │
-└── components/                  # 14 components
+└── components/                  # 17 components
     ├── AppHeader.jsx            # Header bar (search, actions, notifications)
-    ├── AppSidebar.jsx           # Sidebar (collection tree, smart collections)
+    ├── AppSidebar.jsx           # Sidebar (collection tree, smart collections, pinned items)
     ├── DetailsPanel.jsx         # Right panel (preview, metadata, tags)
     ├── LoginPage.jsx            # Login/Register form
     ├── ErrorBoundary.jsx        # React error boundary (class component)
     ├── CollectionTree.jsx       # Sidebar tree navigation
-    ├── CollectionBrowser.jsx    # File browser (grid/list/masonry)
+    ├── CollectionBrowser.jsx    # File browser (grid/list/masonry, context menu)
     ├── AssetDisplayer.jsx       # Asset gallery + canvas
     ├── AssetGrid.jsx            # Simple card grid
     ├── UploadArea.jsx           # Drag-and-drop upload zone
-    ├── ColorBoard.jsx           # Color palette manager (drag-drop, multi-select, click-to-copy)
+    ├── ColorBoard.jsx           # Color palette manager (drag-drop, multi-select, context menu) (555 dòng)
     ├── SearchBar.jsx            # Search input
     ├── ShareDialog.jsx          # RBAC sharing dialog (presentational, logic in useSharePermissions)
-    └── DraggableAssetCanvas.jsx # Canvas drag-and-drop
+    ├── DraggableAssetCanvas.jsx # Canvas drag-and-drop
+    ├── ContextMenu.jsx          # Reusable right-click context menu (81 dòng)
+    ├── ConfirmDialog.jsx        # Unified styled confirm/prompt/alert dialog (133 dòng)
+    └── TreeViewPanel.jsx        # Right sidebar tree view — hierarchical structure (489 dòng)
 ```
 
 ### 4.2 Routing
@@ -605,19 +610,19 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng API endpoints | 43 |
+| Tổng API endpoints | 44 |
 | Backend services | 12 (11 interface-backed + AssetCleanupHelper) |
 | Frontend hooks | 11 |
-| Frontend components | 14 |
-| Frontend context | 1 (AppContext + AppProvider) |
+| Frontend components | 17 |
+| Frontend context | 2 (AppContext + ConfirmContext) |
 | Frontend models | 1 (Asset, Collection, Tag domain classes) |
 | API modules (frontend) | 11 (7 domain + BaseApiService + TokenManager + client + barrel) |
 | Database tables | 5 entity + Identity |
 | Database indexes | 22 |
 | Docker services | 4 |
 | EF Migrations | 5 (InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges) |
-| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor 5/5 Phases (23/23) + hotfixes** |
+| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor 5/5 Phases (23/23) + Session #4 UX features** |
 
 ---
 
-> *Tất cả 4 giai đoạn phát triển + 5 OOP refactoring phases đã hoàn thành (23/23 tasks). Hệ thống sẵn sàng deploy production qua Docker Compose với PostgreSQL, Redis, SignalR real-time, RBAC sharing, và non-root containers.*
+> *Tất cả 4 giai đoạn phát triển + 5 OOP refactoring phases đã hoàn thành (23/23 tasks). Session #4 bổ sung: Context Menu, TreeViewPanel, Clipboard System, Pin System, ConfirmDialog, Shared-Collection Access Control, Duplicate Asset API. Hệ thống sẵn sàng deploy production qua Docker Compose với PostgreSQL, Redis, SignalR real-time, RBAC sharing, và non-root containers.*

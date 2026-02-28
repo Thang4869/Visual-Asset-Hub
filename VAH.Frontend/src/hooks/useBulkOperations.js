@@ -6,12 +6,15 @@ import * as assetsApi from '../api/assetsApi';
  *
  * Depends on the multi-select state from useAssetSelection.
  */
-export default function useBulkOperations({ selectedAssetIds, setSelectedAssetIds, setSelectedAssetId, refreshItems }) {
+export default function useBulkOperations({ selectedAssetIds, setSelectedAssetIds, setSelectedAssetId, refreshItems, confirm: confirmFn, alert: alertFn }) {
+
+  const showAlert = async (msg) => { if (alertFn) await alertFn(msg); };
 
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedAssetIds);
-    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
-    if (!confirm(`Xóa ${ids.length} item?`)) return;
+    if (ids.length === 0) { await showAlert('Chọn ít nhất một item'); return; }
+    const ok = confirmFn ? await confirmFn({ message: `Xóa ${ids.length} item?`, confirmLabel: 'Xóa', variant: 'danger' }) : true;
+    if (!ok) return;
     try {
       await assetsApi.bulkDelete(ids);
       setSelectedAssetIds(new Set());
@@ -19,34 +22,34 @@ export default function useBulkOperations({ selectedAssetIds, setSelectedAssetId
       refreshItems();
     } catch (err) {
       console.error('Bulk delete error:', err);
-      alert('Lỗi khi xóa hàng loạt');
+      await showAlert('Lỗi khi xóa hàng loạt');
     }
-  }, [selectedAssetIds, setSelectedAssetIds, setSelectedAssetId, refreshItems]);
+  }, [selectedAssetIds, setSelectedAssetIds, setSelectedAssetId, refreshItems, confirmFn, alertFn]);
 
   const handleBulkMove = useCallback(async (targetCollectionId, targetFolderId, clearParentFolder = false) => {
     const ids = Array.from(selectedAssetIds);
-    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
+    if (ids.length === 0) { await showAlert('Chọn ít nhất một item'); return; }
     try {
       await assetsApi.bulkMove(ids, targetCollectionId, targetFolderId, clearParentFolder);
       setSelectedAssetIds(new Set());
       refreshItems();
     } catch (err) {
       console.error('Bulk move error:', err);
-      alert('Lỗi khi di chuyển hàng loạt');
+      await showAlert('Lỗi khi di chuyển hàng loạt');
     }
-  }, [selectedAssetIds, setSelectedAssetIds, refreshItems]);
+  }, [selectedAssetIds, setSelectedAssetIds, refreshItems, alertFn]);
 
   const handleBulkTag = useCallback(async (tagIds, remove = false) => {
     const ids = Array.from(selectedAssetIds);
-    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
+    if (ids.length === 0) { await showAlert('Chọn ít nhất một item'); return; }
     try {
       await assetsApi.bulkTag(ids, tagIds, remove);
       refreshItems();
     } catch (err) {
       console.error('Bulk tag error:', err);
-      alert('Lỗi khi gán tag hàng loạt');
+      await showAlert('Lỗi khi gán tag hàng loạt');
     }
-  }, [selectedAssetIds, refreshItems]);
+  }, [selectedAssetIds, refreshItems, alertFn]);
 
   const handleMoveColorsToGroup = useCallback(
     async (colorIds, targetGroupId, insertBeforeId = null) => {
@@ -57,10 +60,10 @@ export default function useBulkOperations({ selectedAssetIds, setSelectedAssetId
         refreshItems();
       } catch (err) {
         console.error('Error moving colors to group:', err);
-        alert('Lỗi khi di chuyển màu');
+        await showAlert('Lỗi khi di chuyển màu');
       }
     },
-    [setSelectedAssetIds, refreshItems],
+    [setSelectedAssetIds, refreshItems, alertFn],
   );
 
   return {

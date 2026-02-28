@@ -13,6 +13,7 @@ public class AssetService : IAssetService
     private readonly INotificationService _notifier;
     private readonly AssetCleanupHelper _cleanup;
     private readonly ILogger<AssetService> _logger;
+    private readonly IPermissionService _permissions;
 
     public AssetService(
         AppDbContext context,
@@ -21,7 +22,8 @@ public class AssetService : IAssetService
         IThumbnailService thumbnailService,
         INotificationService notifier,
         AssetCleanupHelper cleanup,
-        ILogger<AssetService> logger)
+        ILogger<AssetService> logger,
+        IPermissionService permissions)
     {
         _context = context;
         _storage = storage;
@@ -30,6 +32,47 @@ public class AssetService : IAssetService
         _notifier = notifier;
         _cleanup = cleanup;
         _logger = logger;
+        _permissions = permissions;
+    }
+
+    /// <summary>
+    /// Find an asset by ID, checking ownership first, then shared-collection permission.
+    /// Returns the asset if the user owns it OR has at least <paramref name="minimumRole"/> on its collection.
+    /// </summary>
+    private async Task<Asset> FindAssetWithAccessAsync(int id, string userId, string minimumRole)
+    {
+        var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == id)
+            ?? throw new KeyNotFoundException("Asset not found.");
+
+        // Owner always has full access
+        if (asset.UserId == userId) return asset;
+
+        // Check shared-collection permission
+        if (await _permissions.HasPermissionAsync(asset.CollectionId, userId, minimumRole))
+            return asset;
+
+        throw new KeyNotFoundException("Asset not found.");
+    }
+
+    /// <summary>
+    /// Resolve the owner userId for new assets in a collection.
+    /// For shared collections, assets must belong to the collection owner.
+    /// Also validates that the acting user has editor access.
+    /// </summary>
+    private async Task<string> ResolveAssetOwnerAsync(int collectionId, string actingUserId)
+    {
+        var collection = await _context.Collections.FindAsync(collectionId)
+            ?? throw new KeyNotFoundException($"Collection {collectionId} not found.");
+
+        // Owner or system collection
+        if (collection.UserId == actingUserId || collection.UserId == null)
+            return actingUserId;
+
+        // Shared collection — need editor role
+        if (await _permissions.HasPermissionAsync(collectionId, actingUserId, CollectionRoles.Editor))
+            return collection.UserId; // asset belongs to collection owner
+
+        throw new KeyNotFoundException($"Collection {collectionId} not found.");
     }
 
     public async Task<PagedResult<Asset>> GetAssetsAsync(PaginationParams pagination, string userId)
@@ -67,8 +110,17 @@ public class AssetService : IAssetService
 
     public async Task<Asset?> GetByIdAsync(int id, string userId)
     {
-        return await _context.Assets
-            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
+        var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == id);
+        if (asset == null) return null;
+
+        // Owner always has access
+        if (asset.UserId == userId) return asset;
+
+        // Shared-collection viewer access
+        if (await _permissions.HasPermissionAsync(asset.CollectionId, userId, CollectionRoles.Viewer))
+            return asset;
+
+        return null;
     }
 
     public async Task<Asset> CreateAssetAsync(Asset asset, string userId)
@@ -89,11 +141,17 @@ public class AssetService : IAssetService
         if (files.Count > _uploadConfig.MaxFilesPerRequest)
             throw new ArgumentException($"Maximum {_uploadConfig.MaxFilesPerRequest} files per request.");
 
-        // Validate collection exists and user has access (own or system)
-        var collectionExists = await _context.Collections
-            .AnyAsync(c => c.Id == collectionId && (c.UserId == userId || c.UserId == null));
-        if (!collectionExists)
+        // Validate collection exists and user has access (own, system, or shared-editor)
+        var collection = await _context.Collections.FindAsync(collectionId);
+        if (collection == null)
             throw new KeyNotFoundException($"Collection {collectionId} not found.");
+        bool hasAccess = collection.UserId == userId || collection.UserId == null
+            || await _permissions.HasPermissionAsync(collectionId, userId, CollectionRoles.Editor);
+        if (!hasAccess)
+            throw new KeyNotFoundException($"Collection {collectionId} not found.");
+
+        // For shared collections, assets must be owned by the collection owner so they appear in the listing
+        var assetOwner = collection.UserId ?? userId;
 
         var createdAssets = new List<Asset>();
 
@@ -125,8 +183,8 @@ public class AssetService : IAssetService
 
             // Create correct subtype based on MIME type
             var asset = file.ContentType?.StartsWith("image") == true
-                ? (Asset)AssetFactory.CreateImage(file.FileName, filePath, collectionId, userId, folderId)
-                : AssetFactory.CreateFile(file.FileName, filePath, collectionId, userId, folderId);
+                ? (Asset)AssetFactory.CreateImage(file.FileName, filePath, collectionId, assetOwner, folderId)
+                : AssetFactory.CreateFile(file.FileName, filePath, collectionId, assetOwner, folderId);
 
             _context.Assets.Add(asset);
             createdAssets.Add(asset);
@@ -164,9 +222,7 @@ public class AssetService : IAssetService
 
     public async Task<Asset> UpdatePositionAsync(int id, double positionX, double positionY, string userId)
     {
-        var asset = await _context.Assets
-            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
-            ?? throw new KeyNotFoundException("Asset not found.");
+        var asset = await FindAssetWithAccessAsync(id, userId, CollectionRoles.Editor);
 
         asset.UpdatePosition(positionX, positionY);
         await _context.SaveChangesAsync();
@@ -179,7 +235,8 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.FolderName))
             throw new ArgumentException("Folder name is required.");
 
-        var folder = AssetFactory.CreateFolder(dto.FolderName.Trim(), dto.CollectionId, userId, dto.ParentFolderId);
+        var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId);
+        var folder = AssetFactory.CreateFolder(dto.FolderName.Trim(), dto.CollectionId, ownerId, dto.ParentFolderId);
 
         _context.Assets.Add(folder);
         await _context.SaveChangesAsync();
@@ -196,8 +253,9 @@ public class AssetService : IAssetService
         if (!code.StartsWith('#') && System.Text.RegularExpressions.Regex.IsMatch(code, @"^[0-9A-Fa-f]{3,8}$"))
             code = "#" + code;
 
+        var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId);
         var color = AssetFactory.CreateColor(
-            code, dto.CollectionId, userId,
+            code, dto.CollectionId, ownerId,
             dto.ColorName, dto.GroupId, dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(color);
@@ -210,8 +268,9 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.GroupName))
             throw new ArgumentException("Group name is required.");
 
+        var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId);
         var group = AssetFactory.CreateColorGroup(
-            dto.GroupName.Trim(), dto.CollectionId, userId,
+            dto.GroupName.Trim(), dto.CollectionId, ownerId,
             dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(group);
@@ -231,8 +290,9 @@ public class AssetService : IAssetService
             (uri.Scheme != "http" && uri.Scheme != "https"))
             throw new ArgumentException("Invalid URL format. Must be http or https.");
 
+        var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId);
         var link = AssetFactory.CreateLink(
-            dto.Name.Trim(), dto.Url.Trim(), dto.CollectionId, userId, dto.ParentFolderId);
+            dto.Name.Trim(), dto.Url.Trim(), dto.CollectionId, ownerId, dto.ParentFolderId);
 
         _context.Assets.Add(link);
         await _context.SaveChangesAsync();
@@ -241,9 +301,7 @@ public class AssetService : IAssetService
 
     public async Task<Asset> UpdateAssetAsync(int id, UpdateAssetDto dto, string userId)
     {
-        var asset = await _context.Assets
-            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
-            ?? throw new KeyNotFoundException("Asset not found.");
+        var asset = await FindAssetWithAccessAsync(id, userId, CollectionRoles.Editor);
 
         asset.ApplyUpdate(dto);
 
@@ -253,9 +311,7 @@ public class AssetService : IAssetService
 
     public async Task<bool> DeleteAssetAsync(int id, string userId)
     {
-        var asset = await _context.Assets
-            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
-            ?? throw new KeyNotFoundException("Asset not found.");
+        var asset = await FindAssetWithAccessAsync(id, userId, CollectionRoles.Editor);
 
         // Clean up physical file and thumbnails via helper
         await _cleanup.CleanupFilesAsync(asset);
@@ -284,10 +340,18 @@ public class AssetService : IAssetService
         if (assetIds == null || assetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
 
-        // Batch fetch — only user's own assets
-        var assets = await _context.Assets
-            .Where(a => assetIds.Contains(a.Id) && a.UserId == userId)
+        // Batch fetch — user's own assets + shared-collection editor assets
+        var allAssets = await _context.Assets
+            .Where(a => assetIds.Contains(a.Id))
             .ToListAsync();
+
+        // Filter to assets the user can write (own or editor on collection)
+        var assets = new List<Asset>();
+        foreach (var a in allAssets)
+        {
+            if (a.UserId == userId || await _permissions.HasPermissionAsync(a.CollectionId, userId, CollectionRoles.Editor))
+                assets.Add(a);
+        }
 
         var assetMap = assets.ToDictionary(a => a.Id);
 
@@ -304,9 +368,54 @@ public class AssetService : IAssetService
 
     public async Task<List<Asset>> GetAssetsByGroupAsync(int groupId, string userId)
     {
-        return await _context.Assets
-            .Where(a => a.GroupId == groupId && a.UserId == userId)
+        var candidates = await _context.Assets
+            .Where(a => a.GroupId == groupId)
             .OrderBy(a => a.SortOrder)
             .ToListAsync();
+
+        // Return own assets, or assets the user can view via shared collection
+        var result = new List<Asset>();
+        foreach (var a in candidates)
+        {
+            if (a.UserId == userId || await _permissions.HasPermissionAsync(a.CollectionId, userId, CollectionRoles.Viewer))
+                result.Add(a);
+        }
+        return result;
+    }
+
+    public async Task<Asset> DuplicateAssetAsync(int id, int? targetFolderId, string userId)
+    {
+        var source = await FindAssetWithAccessAsync(id, userId, CollectionRoles.Editor);
+
+        // Must create the correct TPH subtype so EF Core sets the discriminator properly
+        Asset clone = source.ContentType switch
+        {
+            AssetContentType.Image => new ImageAsset(),
+            AssetContentType.Link => new LinkAsset(),
+            AssetContentType.Color => new ColorAsset(),
+            AssetContentType.ColorGroup => new ColorGroupAsset(),
+            AssetContentType.Folder => new FolderAsset(),
+            _ => new Asset(),
+        };
+
+        clone.FileName = source.FileName + " (bản sao)";
+        clone.FilePath = source.FilePath;
+        clone.Tags = source.Tags;
+        clone.CreatedAt = DateTime.UtcNow;
+        clone.CollectionId = source.CollectionId;
+        clone.ContentType = source.ContentType;
+        clone.GroupId = source.GroupId;
+        clone.ParentFolderId = targetFolderId ?? source.ParentFolderId;
+        clone.SortOrder = source.SortOrder + 1;
+        clone.IsFolder = source.IsFolder;
+        clone.UserId = userId;
+        clone.ThumbnailSm = source.ThumbnailSm;
+        clone.ThumbnailMd = source.ThumbnailMd;
+        clone.ThumbnailLg = source.ThumbnailLg;
+
+        _context.Assets.Add(clone);
+        await _context.SaveChangesAsync();
+        await _notifier.NotifyAsync(userId, "AssetCreated", new { clone.Id, clone.FileName });
+        return clone;
     }
 }

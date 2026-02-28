@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { staticUrl } from '../api/client';
+import ContextMenu from './ContextMenu';
 import './CollectionBrowser.css';
 
 const CollectionBrowser = ({
@@ -11,11 +12,132 @@ const CollectionBrowser = ({
   onSelectAsset,
   selectedAssetId,
   selectedAssetIds = new Set(),
+  selectedFolderIds = new Set(),
+  onSelectFolderItem,
+  onDeleteFolder,
+  onDeleteAsset,
+  onRenameAsset,
+  onRenameCollection,
+  onPinItem,
   onReorder,
   loading,
   searchTerm,
-  layoutMode
+  layoutMode,
+  clipboard,
+  onCut,
+  onCopy,
+  onPaste,
+  onViewDetail,
+  onCreateFolder,
+  onCreateLink,
+  onUpload,
+  pinnedItems = [],
 }) => {
+  const [contextMenu, setContextMenu] = useState(null);
+
+  const handleContextMenu = useCallback((e, item, type) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, item, type });
+  }, []);
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const getContextMenuItems = (item, type) => {
+    const items = [];
+    
+    items.push({
+      label: 'Ghim',
+      icon: '📌',
+      onClick: () => onPinItem && onPinItem(item, type),
+    });
+
+    if (type !== 'collection' && type !== 'folder') {
+      items.push({
+        label: 'Xem chi tiết',
+        icon: '🔍',
+        onClick: () => onViewDetail && onViewDetail(item),
+      });
+    }
+
+    items.push({ divider: true });
+
+    if (type === 'collection') {
+      items.push({
+        label: 'Sao chép đường dẫn',
+        icon: '🔗',
+        shortcut: '',
+        onClick: () => {
+          const path = `/collections/${item.id}`;
+          navigator.clipboard?.writeText(window.location.origin + path);
+        },
+      });
+    } else {
+      items.push({
+        label: 'Sao chép đường dẫn',
+        icon: '🔗',
+        onClick: () => {
+          const path = item.filePath || item.fileName || '';
+          navigator.clipboard?.writeText(path);
+        },
+      });
+    }
+
+    items.push({ divider: true });
+
+    items.push({
+      label: 'Sao chép',
+      icon: '📋',
+      shortcut: 'Ctrl+C',
+      onClick: () => onCopy && onCopy(item, type),
+    });
+
+    items.push({
+      label: 'Cắt',
+      icon: '✂️',
+      shortcut: 'Ctrl+X',
+      onClick: () => onCut && onCut(item, type),
+    });
+
+    items.push({
+      label: 'Dán',
+      icon: '📥',
+      shortcut: 'Ctrl+V',
+      disabled: !clipboard,
+      onClick: () => onPaste && onPaste(item, type),
+    });
+
+    items.push({ divider: true });
+
+    items.push({
+      label: 'Đổi tên',
+      icon: '✏️',
+      shortcut: 'F2',
+      onClick: () => {
+        if (type === 'collection') {
+          onRenameCollection && onRenameCollection(item);
+        } else {
+          onRenameAsset && onRenameAsset(item);
+        }
+      },
+    });
+
+    if (type === 'folder') {
+      items.push({
+        label: 'Xóa thư mục',
+        icon: '🗑️',
+        onClick: () => onDeleteFolder && onDeleteFolder(item.id),
+      });
+    } else if (type !== 'collection') {
+      items.push({
+        label: 'Xóa',
+        icon: '🗑️',
+        onClick: () => onDeleteAsset && onDeleteAsset(item.id),
+      });
+    }
+
+    return items;
+  };
   if (loading) {
     return <div className="loading">Đang tải...</div>;
   }
@@ -35,6 +157,16 @@ const CollectionBrowser = ({
   const filteredFiles = fileAssets.filter(a =>
     a.fileName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Sort pinned items to the top
+  const pinnedIds = new Set(pinnedItems.map(p => p.item?.id).filter(Boolean));
+  const sortByPinned = (a, b) => {
+    const aP = pinnedIds.has(a.id) ? 0 : 1;
+    const bP = pinnedIds.has(b.id) ? 0 : 1;
+    return aP - bP;
+  };
+  filteredFolders.sort(sortByPinned);
+  filteredFiles.sort(sortByPinned);
 
   const isEmpty = filteredSubCollections.length === 0 && filteredFolders.length === 0 && filteredFiles.length === 0;
   const canReorder = layoutMode === 'list' && !searchTerm;
@@ -67,7 +199,21 @@ const CollectionBrowser = ({
   };
 
   return (
-    <div className="collection-browser">
+    <div className="collection-browser"
+      onContextMenu={(e) => {
+        if (e.target.closest('.browser-item')) return;
+        e.preventDefault();
+        const areaMenuItems = [];
+        if (clipboard) {
+          areaMenuItems.push({ label: 'Dán vào đây', icon: '📥', shortcut: 'Ctrl+V', onClick: () => onPaste && onPaste({ id: null }, 'area') });
+          areaMenuItems.push({ divider: true });
+        }
+        if (onCreateFolder) areaMenuItems.push({ label: 'Thư mục mới', icon: '📁', onClick: () => onCreateFolder() });
+        if (onCreateLink) areaMenuItems.push({ label: 'Liên kết mới', icon: '🔗', onClick: () => onCreateLink() });
+        if (onUpload) areaMenuItems.push({ label: 'Tải lên', icon: '📤', onClick: () => document.querySelector('.upload-area')?.click() });
+        if (areaMenuItems.length > 0) setContextMenu({ x: e.clientX, y: e.clientY, item: null, type: 'area', menuItems: areaMenuItems });
+      }}
+    >
       {/* Folders Section */}
       {(filteredSubCollections.length > 0 || filteredFolders.length > 0) && (
         <section className="browser-section">
@@ -78,6 +224,7 @@ const CollectionBrowser = ({
                 key={`collection-${collection.id}`}
                 className="browser-item folder-item"
                 onClick={() => onSelectCollection(collection)}
+                onContextMenu={(e) => handleContextMenu(e, collection, 'collection')}
               >
                 <div className="item-icon">🗂️</div>
                 <div className="item-name">{collection.name}</div>
@@ -89,8 +236,17 @@ const CollectionBrowser = ({
             {filteredFolders.map(folder => (
               <div
                 key={`folder-${folder.id}`}
-                className="browser-item folder-item"
-                onClick={() => onSelectFolder && onSelectFolder(folder)}
+                className={`browser-item folder-item ${selectedFolderIds.has(folder.id) ? 'multi-selected' : ''} ${pinnedIds.has(folder.id) ? 'pinned' : ''}`}
+                onClick={(e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    // Ctrl+click = multi-select folder
+                    onSelectFolderItem && onSelectFolderItem(folder.id, e);
+                  } else {
+                    // Single click = open folder
+                    onSelectFolder && onSelectFolder(folder);
+                  }
+                }}
+                onContextMenu={(e) => handleContextMenu(e, folder, 'folder')}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => handleDropOnFolder(e, folder)}
               >
@@ -113,10 +269,11 @@ const CollectionBrowser = ({
             {filteredFiles.map((asset, index) => (
               <div
                 key={asset.id}
-                className={`browser-item file-item ${selectedAssetId === asset.id ? 'selected' : ''} ${selectedAssetIds.has(asset.id) ? 'multi-selected' : ''}`}
+                className={`browser-item file-item ${selectedAssetId === asset.id ? 'selected' : ''} ${selectedAssetIds.has(asset.id) ? 'multi-selected' : ''} ${pinnedIds.has(asset.id) ? 'pinned' : ''}`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, asset)}
                 onClick={(e) => onSelectAsset && onSelectAsset(asset.id, e)}
+                onContextMenu={(e) => handleContextMenu(e, asset, asset.contentType)}
               >
                 {asset.contentType === 'image' && (
                   <div className="file-preview">
@@ -186,6 +343,16 @@ const CollectionBrowser = ({
           <p>Thư mục này trống</p>
           {searchTerm && <p className="search-hint">Không tìm thấy "{searchTerm}"</p>}
         </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.menuItems || getContextMenuItems(contextMenu.item, contextMenu.type)}
+          onClose={closeContextMenu}
+        />
       )}
     </div>
   );

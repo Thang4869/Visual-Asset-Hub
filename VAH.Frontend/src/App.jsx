@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './components/LoginPage';
@@ -11,10 +11,15 @@ import UploadArea from './components/UploadArea';
 import CollectionBrowser from './components/CollectionBrowser';
 import ColorBoard from './components/ColorBoard';
 import ShareDialog from './components/ShareDialog';
+import TreeViewPanel from './components/TreeViewPanel';
+import { ConfirmProvider } from './context/ConfirmContext';
+import { useConfirm } from './context/ConfirmContext';
+import * as assetsApiDirect from './api/assetsApi';
 import './App.css';
 
 /** Main authenticated layout — consumes state from AppContext */
 function AppLayout() {
+  const { confirm, prompt: showPrompt, alert: showAlert } = useConfirm();
   const {
     isAuthenticated, user, logout,
     // View
@@ -40,8 +45,15 @@ function AppLayout() {
     handleSelectSmartCollection, clearSmartCollection,
     // Share
     showShareDialog, setShowShareDialog,
+    // Clipboard & Pin
+    clipboard, pinnedItems, selectedFolderIds, setSelectedFolderIds, treeViewCollapsed,
     // Cross-concern
     handleSelectCollection, handleOpenFolder,
+    handleSelectFolderItem, handleDeleteFolder, handleDeleteAsset,
+    handleRenameAsset, handleRenameCollection,
+    handleCopy, handleCut, handlePaste, handlePinItem, handleToggleTreeView,
+    handleViewDetail, handleUngroupColor,
+    handleNavigateToPinned,
   } = useAppContext();
 
   // ---- Auth gate (MUST be after all hooks) ----
@@ -49,8 +61,49 @@ function AppLayout() {
 
   // ------- derived flags -------
   const isColorCollection = selectedCollection?.type === 'color';
-  const showFolderActions = selectedCollection && (selectedCollection.type === 'image' || selectedCollection.type === 'default');
+  const showFolderActions = selectedCollection && (selectedCollection.type === 'image' || selectedCollection.type === 'default' || selectedCollection.type === 'link' || selectedCollection.type === 'color');
   const showLinkAction = selectedCollection && (selectedCollection.type === 'link' || selectedCollection.type === 'default');
+
+  // Wrapper: prompt for collection name then delegate
+  const handleAddCollectionWithPrompt = async () => {
+    const name = await showPrompt({ message: 'Tên collection:', placeholder: 'Nhập tên...' });
+    if (name) handleCreateCollection(name);
+  };
+
+  // ── Global clipboard paste: allow pasting images from external sources ──
+  useEffect(() => {
+    const handlePaste = (e) => {
+      // Skip if user is typing in an input/textarea
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (!selectedCollection) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files = [];
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            // Give a meaningful name since clipboard images come as "image.png"
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const ext = file.type.split('/')[1] || 'png';
+            const named = new File([file], `paste-${ts}.${ext}`, { type: file.type });
+            files.push(named);
+          }
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        handleUpload(files);
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [selectedCollection, handleUpload]);
 
   return (
     <div className="app">
@@ -74,6 +127,10 @@ function AppLayout() {
           onCreateCollection={handleCreateCollection}
           onDeleteCollection={handleDeleteCollection}
           onSelectSmartCollection={handleSelectSmartCollection}
+          onAddCollection={handleAddCollectionWithPrompt}
+          pinnedItems={pinnedItems}
+          onPinItem={handlePinItem}
+          onNavigateToPinned={handleNavigateToPinned}
         />
 
         {/* ====== MAIN CONTENT AREA ====== */}
@@ -90,25 +147,24 @@ function AppLayout() {
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                     Trang chủ
                   </button>
-                  {breadcrumbPath.map((collection) => (
+                  {breadcrumbPath.map((collection, idx) => (
                     <React.Fragment key={collection.id}>
                       <span className="breadcrumb-separator">›</span>
                       <button 
-                        className="breadcrumb-item"
-                        onClick={() => breadcrumbClick(collection)}
+                        className={`breadcrumb-item ${idx === breadcrumbPath.length - 1 && folderPath.length === 0 ? 'current' : ''}`}
+                        onClick={() => {
+                          if (folderPath.length > 0 && idx === breadcrumbPath.length - 1) {
+                            // Last breadcrumb when inside a folder — go back to collection root
+                            folderBreadcrumbRoot();
+                          } else {
+                            breadcrumbClick(collection);
+                          }
+                        }}
                       >
                         {collection.name}
                       </button>
                     </React.Fragment>
                   ))}
-                  {folderPath.length > 0 && (
-                    <>
-                      <span className="breadcrumb-separator">›</span>
-                      <button className="breadcrumb-item" onClick={folderBreadcrumbRoot}>
-                        {selectedCollection.name}
-                      </button>
-                    </>
-                  )}
                   {folderPath.map((folder, idx) => (
                     <React.Fragment key={folder.id}>
                       <span className="breadcrumb-separator">›</span>
@@ -183,17 +239,37 @@ function AppLayout() {
               </div>
 
               {/* Bulk Actions Bar (when multi-select) */}
-              {selectedAssetIds.size > 0 && (
+              {(selectedAssetIds.size > 0 || selectedFolderIds.size > 0) && (
                 <div className="bulk-actions-bar">
-                  <span className="bulk-count">{selectedAssetIds.size} item đã chọn</span>
+                  <span className="bulk-count">
+                    {selectedAssetIds.size + selectedFolderIds.size} item đã chọn
+                    {selectedFolderIds.size > 0 && ` (${selectedFolderIds.size} thư mục)`}
+                  </span>
                   <button className="btn-secondary" onClick={selectAllAssets}>Chọn tất cả</button>
-                  <button className="btn-secondary" onClick={clearSelection}>Bỏ chọn</button>
-                  <button className="btn-danger" onClick={handleBulkDelete}>
+                  <button className="btn-secondary" onClick={() => { clearSelection(); setSelectedFolderIds && setSelectedFolderIds(new Set()); }}>Bỏ chọn</button>
+                  <button className="btn-danger" onClick={async () => {
+                    const ok = await confirm({ message: `Xóa ${selectedAssetIds.size + selectedFolderIds.size} item?`, confirmLabel: 'Xóa', variant: 'danger' });
+                    if (!ok) return;
+                    // Delete selected folders first
+                    if (selectedFolderIds.size > 0) {
+                      for (const fId of selectedFolderIds) {
+                        try { await assetsApiDirect.deleteAsset(fId); } catch(e) { console.error(e); }
+                      }
+                      setSelectedFolderIds(new Set());
+                    }
+                    // Delete selected assets
+                    if (selectedAssetIds.size > 0) {
+                      handleBulkDelete();
+                    } else {
+                      // Only folders were deleted, refresh
+                      refreshItems && refreshItems();
+                    }
+                  }}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     Xóa
                   </button>
-                  <button className="btn-secondary" onClick={() => {
-                    const target = prompt('Nhập ID collection đích:');
+                  <button className="btn-secondary" onClick={async () => {
+                    const target = await showPrompt({ message: 'Nhập ID collection đích:', placeholder: 'ID...' });
                     if (target) handleBulkMove(parseInt(target), null);
                   }}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
@@ -211,7 +287,23 @@ function AppLayout() {
                     onCreateGroup={handleCreateColorGroup}
                     onSelectAsset={toggleSelectAsset}
                     onMoveColorsToGroup={handleMoveColorsToGroup}
+                    onMoveAsset={handleMoveAsset}
                     selectedAssetIds={selectedAssetIds}
+                    onCreateFolder={handleCreateFolder}
+                    onOpenFolder={handleOpenFolder}
+                    clipboard={clipboard}
+                    onCopy={handleCopy}
+                    onCut={handleCut}
+                    onPaste={handlePaste}
+                    onPinItem={handlePinItem}
+                    onRenameAsset={handleRenameAsset}
+                    onDeleteAsset={handleDeleteAsset}
+                    onDeleteFolder={handleDeleteFolder}
+                    refreshItems={refreshItems}
+                    onViewDetail={handleViewDetail}
+                    onUngroupColor={handleUngroupColor}
+                    pinnedItems={pinnedItems}
+                    showPrompt={showPrompt}
                   />
                 ) : viewMode === 'browser' ? (
                   <CollectionBrowser
@@ -223,6 +315,21 @@ function AppLayout() {
                     onSelectAsset={toggleSelectAsset}
                     selectedAssetId={selectedAssetId}
                     selectedAssetIds={selectedAssetIds}
+                    selectedFolderIds={selectedFolderIds}
+                    onSelectFolderItem={handleSelectFolderItem}
+                    onDeleteFolder={handleDeleteFolder}
+                    onDeleteAsset={handleDeleteAsset}
+                    onRenameAsset={handleRenameAsset}
+                    onRenameCollection={handleRenameCollection}
+                    onPinItem={handlePinItem}
+                    clipboard={clipboard}
+                    onCut={handleCut}
+                    onCopy={handleCopy}
+                    onPaste={handlePaste}
+                    onViewDetail={handleViewDetail}
+                    onCreateFolder={handleCreateFolder}
+                    onCreateLink={handleCreateLink}
+                    pinnedItems={pinnedItems}
                     loading={loading}
                     searchTerm={debouncedSearch}
                     layoutMode={layoutMode}
@@ -300,6 +407,30 @@ function AppLayout() {
           )}
         </main>
 
+        {/* ====== RIGHT TREE VIEW PANEL ====== */}
+        {selectedCollection && !selectedAsset && (
+          <TreeViewPanel
+            collection={selectedCollection}
+            subCollections={collectionItems.subCollections}
+            items={collectionItems.items}
+            selectedAssetId={selectedAssetId}
+            onSelectAsset={(id) => toggleSelectAsset(id)}
+            onSelectFolder={handleOpenFolder}
+            onSelectCollection={navigateToCollection}
+            collapsed={treeViewCollapsed}
+            onToggleCollapsed={handleToggleTreeView}
+            clipboard={clipboard}
+            onCopy={handleCopy}
+            onCut={handleCut}
+            onPaste={handlePaste}
+            onPinItem={handlePinItem}
+            onRenameAsset={handleRenameAsset}
+            onRenameCollection={handleRenameCollection}
+            onDeleteFolder={handleDeleteFolder}
+            onDeleteAsset={handleDeleteAsset}
+          />
+        )}
+
         {/* ====== RIGHT DETAILS PANEL ====== */}
         {selectedAsset && (
           <DetailsPanel
@@ -328,16 +459,18 @@ function App() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
-      />
-      <Route path="/" element={<AppProvider><AppLayout /></AppProvider>} />
-      <Route path="/collections/:collectionId" element={<AppProvider><AppLayout /></AppProvider>} />
-      <Route path="/collections/:collectionId/folder/:folderId" element={<AppProvider><AppLayout /></AppProvider>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <ConfirmProvider>
+      <Routes>
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+        />
+        <Route path="/" element={<AppProvider><AppLayout /></AppProvider>} />
+        <Route path="/collections/:collectionId" element={<AppProvider><AppLayout /></AppProvider>} />
+        <Route path="/collections/:collectionId/folder/:folderId" element={<AppProvider><AppLayout /></AppProvider>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ConfirmProvider>
   );
 }
 

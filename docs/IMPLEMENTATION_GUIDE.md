@@ -56,7 +56,8 @@ npm run dev
 4. Ctrl+click / Shift+click để multi-select → bulk actions bar
 5. Chi tiết panel bên phải: xem metadata, quản lý tags
 6. Nút "Chia sẻ" → cấp quyền cho user khác bằng email
-
+7. Right-click bất kỳ item → context menu (copy, cut, paste, rename, delete, pin)
+8. Ctrl+V → paste ảnh từ clipboard hệ thống (ảnh chụp màn hình)
 ---
 
 ## 2. Chạy bằng Docker Compose (Production-like)
@@ -117,9 +118,9 @@ docker-compose logs -f frontend
 │   ├── Dockerfile              # Multi-stage .NET build
 │   ├── appsettings.json        # Configuration
 │   ├── appsettings.Development.json
-│   ├── Controllers/            # 9 controllers (43 endpoints)
+│   ├── Controllers/            # 9 controllers (44 endpoints)
 │   │   ├── BaseApiController.cs    # Abstract base (GetUserId())
-│   │   ├── AssetsController.cs     # 16 endpoints
+│   │   ├── AssetsController.cs     # 17 endpoints
 │   │   ├── AuthController.cs
 │   │   ├── CollectionsController.cs
 │   │   ├── HealthController.cs
@@ -152,7 +153,7 @@ docker-compose logs -f frontend
 │   │   ├── CollectionPermission.cs # Permission + Roles + DTOs
 │   │   ├── AuthDTOs.cs
 │   │   ├── Common.cs           # PagedResult, PaginationParams, FileUploadConfig
-│   │   └── DTOs.cs             # Asset/Tag/Bulk DTOs (incl. BulkMoveGroupDto)
+│   │   └── DTOs.cs             # Asset/Tag/Bulk DTOs (incl. BulkMoveGroupDto, DuplicateAssetDto)
 │   ├── Data/
 │   │   └── AppDbContext.cs     # EF Core context, 5 DbSets, fluent config, 242 lines
 │   ├── Hubs/
@@ -179,9 +180,9 @@ docker-compose logs -f frontend
         │   ├── index.js           # Barrel exports
         │   └── *Api.js            # 7 domain API service classes
         ├── hooks/              # 11 custom hooks
-        ├── context/            # State management (AppContext)
+        ├── context/            # State management (AppContext + ConfirmContext)
         ├── models/             # Domain model classes (Asset, Collection, Tag)
-        └── components/         # 14 components
+        └── components/         # 17 components
 ```
 
 ---

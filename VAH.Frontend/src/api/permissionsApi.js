@@ -14,7 +14,7 @@ class PermissionApiService extends BaseApiService {
 
   /** @private Build the permissions base path for a collection */
   _permPath(collectionId) {
-    return `/api/collections/${collectionId}/permissions`;
+    return `/collections/${collectionId}/permissions`;
   }
 
   /** List all permissions for a collection. */
@@ -45,7 +45,7 @@ class PermissionApiService extends BaseApiService {
 
   /** Get all collections shared with the current user. */
   fetchSharedCollections() {
-    return this._get('/api/shared-collections');
+    return this._get('/shared-collections');
   }
 }
 

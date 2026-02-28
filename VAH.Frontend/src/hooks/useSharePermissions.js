@@ -34,7 +34,10 @@ export default function useSharePermissions(collectionId) {
       await grantPermission(collectionId, { userEmail: email.trim(), role });
       await loadPermissions();
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data || 'Lỗi khi cấp quyền.');
+      const data = err.response?.data;
+      const msg = typeof data === 'string' ? data
+        : data?.detail || data?.title || data?.message || 'Lỗi khi cấp quyền.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -50,7 +53,7 @@ export default function useSharePermissions(collectionId) {
   }, [collectionId, loadPermissions]);
 
   const revoke = useCallback(async (permId) => {
-    if (!confirm('Bạn có chắc muốn thu hồi quyền này?')) return;
+    // No confirmation gate here — caller should confirm before invoking
     try {
       await revokePermission(collectionId, permId);
       await loadPermissions();

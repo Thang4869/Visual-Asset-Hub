@@ -17,5 +17,6 @@ public interface IAssetService
     Task<bool> DeleteAssetAsync(int id, string userId);
     Task ReorderAssetsAsync(List<int> assetIds, string userId);
     Task<List<Asset>> GetAssetsByGroupAsync(int groupId, string userId);
+    Task<Asset> DuplicateAssetAsync(int id, int? targetFolderId, string userId);
 
 }

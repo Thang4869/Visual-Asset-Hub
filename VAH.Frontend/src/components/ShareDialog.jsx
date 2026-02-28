@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import useSharePermissions from '../hooks/useSharePermissions';
+import { useConfirm } from '../context/ConfirmContext';
 import './ShareDialog.css';
 
 const ROLES = [
@@ -11,6 +12,7 @@ const ROLES = [
 export default function ShareDialog({ collectionId, collectionName, onClose }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
+  const { confirm } = useConfirm();
   const { permissions, loading, error, grant, updateRole, revoke } = useSharePermissions(collectionId);
 
   const handleGrant = async (e) => {
@@ -18,6 +20,12 @@ export default function ShareDialog({ collectionId, collectionName, onClose }) {
     await grant(email, role);
     setEmail('');
     setRole('viewer');
+  };
+
+  const handleRevoke = async (permId) => {
+    const ok = await confirm({ message: 'Bạn có chắc muốn thu hồi quyền này?', confirmLabel: 'Thu hồi', variant: 'danger' });
+    if (!ok) return;
+    revoke(permId);
   };
 
   return (
@@ -66,7 +74,7 @@ export default function ShareDialog({ collectionId, collectionName, onClose }) {
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
-              <button className="share-revoke-btn" onClick={() => revoke(p.id)} title="Thu hồi">
+              <button className="share-revoke-btn" onClick={() => handleRevoke(p.id)} title="Thu hồi">
                 ✕
               </button>
             </div>

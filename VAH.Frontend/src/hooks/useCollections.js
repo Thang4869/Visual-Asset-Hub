@@ -11,7 +11,7 @@ import useCollectionNavigation from './useCollectionNavigation';
  *
  * Keeps: fetch, URL param sync, CRUD (create/delete), refresh.
  */
-export default function useCollections() {
+export default function useCollections({ confirm, prompt: showPrompt, alert: showAlert } = {}) {
   const { collectionId: urlCollectionId, folderId: urlFolderId } = useParams();
   const navigate = useNavigate();
 
@@ -93,7 +93,19 @@ export default function useCollections() {
 
   const handleCreateCollection = useCallback(
     async (name, parentId = null) => {
-      const typeInput = prompt('Type (image/link/color/default):', 'default');
+      const typeInput = showPrompt
+        ? await showPrompt({
+            message: 'Loại collection:',
+            inputType: 'select',
+            defaultValue: 'default',
+            selectOptions: [
+              { value: 'default', label: 'Mặc định' },
+              { value: 'image', label: 'Hình ảnh' },
+              { value: 'link', label: 'Liên kết' },
+              { value: 'color', label: 'Màu sắc' },
+            ],
+          })
+        : 'default';
       const type = (typeInput || 'default').toLowerCase();
       try {
         await collectionsApi.createCollection({
@@ -107,15 +119,18 @@ export default function useCollections() {
         await fetchCollections();
       } catch (err) {
         console.error('Error creating collection:', err);
-        alert('Lỗi khi tạo collection');
+        if (showAlert) await showAlert('Lỗi khi tạo collection');
       }
     },
-    [collections.length, fetchCollections],
+    [collections.length, fetchCollections, showPrompt, showAlert],
   );
 
   const handleDeleteCollection = useCallback(
     async (collectionId) => {
-      if (!window.confirm('Bạn có chắc chắn muốn xóa collection này?')) return;
+      const ok = confirm
+        ? await confirm({ message: 'Bạn có chắc chắn muốn xóa collection này?', confirmLabel: 'Xóa', variant: 'danger' })
+        : true;
+      if (!ok) return;
       try {
         await collectionsApi.deleteCollection(collectionId);
         const data = await fetchCollections();
@@ -129,10 +144,10 @@ export default function useCollections() {
         }
       } catch (err) {
         console.error('Error deleting collection:', err);
-        alert('Lỗi khi xóa collection');
+        if (showAlert) await showAlert('Lỗi khi xóa collection');
       }
     },
-    [fetchCollections, nav.selectedCollection, navigate],
+    [fetchCollections, nav.selectedCollection, navigate, confirm, showAlert],
   );
 
   // ------- refresh helper -------
