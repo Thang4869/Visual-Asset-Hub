@@ -316,3 +316,25 @@
 2026-03-01 03:28:49.794 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 11.520ms
 2026-03-01 03:37:06.529 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
 2026-03-01 03:37:06.540 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 496862.434ms
+2026-03-01 06:18:53.581 +07:00 [INF] () Starting VAH Backend...
+2026-03-01 06:18:54.612 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-03-01 06:18:56.324 +07:00 [INF] (Microsoft.Hosting.Lifetime) Now listening on: http://localhost:5027
+2026-03-01 06:18:56.328 +07:00 [INF] (Microsoft.Hosting.Lifetime) Application started. Press Ctrl+C to shut down.
+2026-03-01 06:18:56.329 +07:00 [INF] (Microsoft.Hosting.Lifetime) Hosting environment: Development
+2026-03-01 06:18:56.330 +07:00 [INF] (Microsoft.Hosting.Lifetime) Content root path: B:\1A\VAH.Backend
+2026-03-01 06:20:39.159 +07:00 [INF] () Starting VAH Backend...
+2026-03-01 06:20:39.318 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-03-01 06:20:40.199 +07:00 [INF] (Microsoft.Hosting.Lifetime) Now listening on: http://localhost:5027
+2026-03-01 06:20:40.204 +07:00 [INF] (Microsoft.Hosting.Lifetime) Application started. Press Ctrl+C to shut down.
+2026-03-01 06:20:40.206 +07:00 [INF] (Microsoft.Hosting.Lifetime) Hosting environment: Development
+2026-03-01 06:20:40.206 +07:00 [INF] (Microsoft.Hosting.Lifetime) Content root path: B:\1A\VAH.Backend
+2026-03-01 06:20:44.810 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET / responded 404 in 1079.099ms
+2026-03-01 06:20:48.122 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.html responded 200 in 64.261ms
+2026-03-01 06:20:48.147 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui.css responded 304 in 8.209ms
+2026-03-01 06:20:48.147 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.css responded 304 in 8.181ms
+2026-03-01 06:20:48.147 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui-bundle.js responded 304 in 8.578ms
+2026-03-01 06:20:48.257 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui-standalone-preset.js responded 304 in 22.980ms
+2026-03-01 06:20:48.257 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.js responded 304 in 0.537ms
+2026-03-01 06:20:48.606 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/v1/swagger.json responded 200 in 127.331ms
+2026-03-01 06:20:50.966 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/favicon-32x32.png responded 304 in 0.574ms
+2026-03-01 06:22:50.227 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET / responded 404 in 2.082ms

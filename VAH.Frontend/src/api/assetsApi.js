@@ -84,9 +84,12 @@ class AssetApiService extends BaseApiService {
     return this._post('/bulk-tag', { assetIds, tagIds, remove });
   }
 
-  /** Duplicate an asset */
+  /** Duplicate an asset (in-place or to a target folder) */
   duplicateAsset(id, targetFolderId = null) {
-    return this.client.post(`${this.endpoint}/${id}/duplicate`, { targetFolderId });
+    const url = targetFolderId
+      ? `${this.endpoint}/${id}/duplicate-to-folder/${targetFolderId}`
+      : `${this.endpoint}/${id}/duplicate`;
+    return this.client.post(url);
   }
 }
 

@@ -219,13 +219,6 @@ public class UpdateCollectionDto
     public LayoutType? LayoutType { get; set; }
 }
 
-// ──── Duplicate DTO ────
-
-public class DuplicateAssetDto
-{
-    public int? TargetFolderId { get; set; }
-}
-
 // ──── Position DTOs ────
 
 public class AssetPositionDto
