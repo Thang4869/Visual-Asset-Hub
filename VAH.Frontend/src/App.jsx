@@ -1,13 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './components/LoginPage';
-import useCollections from './hooks/useCollections';
-import useAssets from './hooks/useAssets';
-import useTags from './hooks/useTags';
-import useSignalR from './hooks/useSignalR';
-import useUndoRedo from './hooks/useUndoRedo';
-import useSmartCollections from './hooks/useSmartCollections';
+import { AppProvider, useAppContext } from './context/AppContext';
 import AppHeader from './components/AppHeader';
 import AppSidebar from './components/AppSidebar';
 import DetailsPanel from './components/DetailsPanel';
@@ -18,117 +13,36 @@ import ColorBoard from './components/ColorBoard';
 import ShareDialog from './components/ShareDialog';
 import './App.css';
 
-/** Main authenticated layout — renders for /, /collections/:id, /collections/:id/folder/:folderId */
+/** Main authenticated layout — consumes state from AppContext */
 function AppLayout() {
-  const { isAuthenticated, user, logout } = useAuth();
-  const [viewMode, setViewMode] = useState('browser');
-  const [layoutMode, setLayoutMode] = useState('grid');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const debounceRef = useRef(null);
-
-  // Debounce search input (300ms)
-  const handleSearchChange = (value) => {
-    setSearchTerm(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300);
-  };
-
-  useEffect(() => {
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, []);
-
-  // ------- collection state & actions -------
   const {
-    collections,
-    selectedCollection,
-    collectionItems,
-    loading,
-    breadcrumbPath,
-    folderPath,
-    currentFolderId,
-    selectCollection,
-    breadcrumbClick,
+    isAuthenticated, user, logout,
+    // View
+    viewMode, layoutMode, setLayoutMode,
+    searchTerm, debouncedSearch, handleSearchChange,
+    // Collections
+    collections, selectedCollection, collectionItems, loading,
+    breadcrumbPath, folderPath,
+    breadcrumbClick, folderBreadcrumbClick, folderBreadcrumbRoot,
     navigateToCollection,
-    openFolder,
-    folderBreadcrumbClick,
-    folderBreadcrumbRoot,
-    handleCreateCollection,
-    handleDeleteCollection,
-    refreshItems,
-  } = useCollections();
-
-  // ------- asset state & actions -------
-  const {
-    selectedAssetId,
-    setSelectedAssetId,
-    selectedAsset,
-    selectedAssetIds,
-    toggleSelectAsset,
-    selectAllAssets,
-    clearSelection,
-    handleUpload,
-    handleCreateFolder,
-    handleCreateLink,
-    handleCreateColorGroup,
-    handleCreateColor,
-    handleMoveAsset,
-    handleMoveSelected,
-    handleReorderAssets,
-    handleMoveColorsToGroup,
-    handleBulkDelete,
-    handleBulkMove,
-    handleBulkTag,
-    handleDeleteAsset,
-  } = useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems });
-
-  // ------- tags -------
-  const { tags, createTag, deleteTag, getAssetTags, setAssetTags } = useTags();
-
-  // ------- smart collections -------
-  const {
-    smartCollections,
-    activeSmartCollection,
-    smartItems,
-    handleSelectSmartCollection,
-    clearSmartCollection,
-  } = useSmartCollections(isAuthenticated);
-
-  // ------- smart collection item fetch -------
-  // (handled inside useSmartCollections hook)
-
-  // ------- real-time sync -------
-  const signalRHandlers = useMemo(() => ({
-    AssetsUploaded: () => refreshItems(),
-    AssetCreated: () => refreshItems(),
-    AssetDeleted: () => refreshItems(),
-    AssetsBulkDeleted: () => refreshItems(),
-    AssetsBulkMoved: () => refreshItems(),
-    CollectionCreated: () => refreshItems(),
-    CollectionUpdated: () => refreshItems(),
-    CollectionDeleted: () => refreshItems(),
-    TagsChanged: () => refreshItems(),
-  }), [refreshItems]);
-
-  useSignalR(signalRHandlers, isAuthenticated);
-
-  // ------- undo/redo -------
-  const { execute: executeCmd, undo, redo, canUndo, canRedo } = useUndoRedo();
-
-  // ------- share dialog -------
-  const [showShareDialog, setShowShareDialog] = useState(false);
-
-  // Keyboard shortcuts: Ctrl+Z / Ctrl+Shift+Z
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) { redo(); } else { undo(); }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+    handleCreateCollection, handleDeleteCollection, refreshItems,
+    // Assets
+    selectedAssetId, setSelectedAssetId, selectedAsset, selectedAssetIds,
+    toggleSelectAsset, selectAllAssets, clearSelection,
+    handleUpload, handleCreateFolder, handleCreateLink,
+    handleCreateColorGroup, handleCreateColor,
+    handleMoveAsset, handleMoveSelected, handleReorderAssets, handleMoveColorsToGroup,
+    handleBulkDelete, handleBulkMove,
+    // Tags
+    handleAddTag,
+    // Smart
+    smartCollections, activeSmartCollection, smartItems,
+    handleSelectSmartCollection, clearSmartCollection,
+    // Share
+    showShareDialog, setShowShareDialog,
+    // Cross-concern
+    handleSelectCollection, handleOpenFolder,
+  } = useAppContext();
 
   // ---- Auth gate (MUST be after all hooks) ----
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -137,30 +51,6 @@ function AppLayout() {
   const isColorCollection = selectedCollection?.type === 'color';
   const showFolderActions = selectedCollection && (selectedCollection.type === 'image' || selectedCollection.type === 'default');
   const showLinkAction = selectedCollection && (selectedCollection.type === 'link' || selectedCollection.type === 'default');
-
-  const handleSelectCollection = (collection, path = []) => {
-    selectCollection(collection, path);
-    setSelectedAssetId(null);
-    setSearchTerm('');
-    setDebouncedSearch('');
-  };
-
-  const handleOpenFolder = (folder) => {
-    openFolder(folder);
-    setSelectedAssetId(null);
-  };
-
-  const handleAddTag = async (assetId) => {
-    const tagName = prompt('Nhập tên tag:');
-    if (!tagName) return;
-    try {
-      const tag = await createTag(tagName);
-      await setAssetTags(assetId, [tag.id]);
-      refreshItems();
-    } catch (e) {
-      console.error('Tag error:', e);
-    }
-  };
 
   return (
     <div className="app">
@@ -433,7 +323,7 @@ function AppLayout() {
   );
 }
 
-/** Root App component — defines routes */
+/** Root App component — defines routes, wraps layout with AppProvider */
 function App() {
   const { isAuthenticated } = useAuth();
 
@@ -443,9 +333,9 @@ function App() {
         path="/login"
         element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
       />
-      <Route path="/" element={<AppLayout />} />
-      <Route path="/collections/:collectionId" element={<AppLayout />} />
-      <Route path="/collections/:collectionId/folder/:folderId" element={<AppLayout />} />
+      <Route path="/" element={<AppProvider><AppLayout /></AppProvider>} />
+      <Route path="/collections/:collectionId" element={<AppProvider><AppLayout /></AppProvider>} />
+      <Route path="/collections/:collectionId/folder/:folderId" element={<AppProvider><AppLayout /></AppProvider>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

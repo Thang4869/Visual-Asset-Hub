@@ -273,11 +273,11 @@
 ### Phase 5: Frontend Component Architecture ✅
 > Hoàn tất 2026-02-28.
 
-- [x] 5.1 Tách `App.jsx` (620→454 dòng): `AppHeader`, `AppSidebar`, `DetailsPanel` components + `useSmartCollections` hook
+- [x] 5.1 Tách `App.jsx` (620→344 dòng): `AppHeader`, `AppSidebar`, `DetailsPanel` components + `useSmartCollections` hook
 - [x] 5.2 Tách `useAssets.js`: `useAssetSelection` (multi-select) + `useBulkOperations` (bulk delete/move/tag)
 - [x] 5.3 Tách `useCollections.js`: `useCollectionNavigation` (URL sync, breadcrumbs, folder path)
-- [ ] 5.4 Thiết lập state management pattern (Context API hoặc Zustand)
-- [ ] 5.5 Extract business logic từ `ShareDialog` ra hook riêng
+- [x] 5.4 `AppContext` + `AppProvider` — centralised state management (Context API), `useAppContext()` hook
+- [x] 5.5 `useSharePermissions` hook — extracted CRUD logic từ `ShareDialog`
 
 ---
 
@@ -303,11 +303,11 @@
 | 4.1 | Frontend domain classes | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `Asset`, `Collection`, `Tag` classes trong `models/index.js`. Computed: `isImage`, `thumbnailUrl`, `tagList`, `contentTypeLabel`, `badgeStyle`, etc. |
 | 4.2 | Computed properties/validation | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | Kết hợp trong 4.1. Mỗi class có `isValid` getter. `Tag` có private `#contrastColor()`. |
 | 4.3 | API → Domain mapping | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `toAsset/toAssets`, `toCollection/toCollections`, `toTag/toTags` helpers. Idempotent (skip nếu đã là instance). |
-| 5.1 | Tách App.jsx | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | 620→454 dòng. `AppHeader`, `AppSidebar`, `DetailsPanel` components + `useSmartCollections` hook extracted. |
+| 5.1 | Tách App.jsx | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | 620→344 dòng. `AppHeader`, `AppSidebar`, `DetailsPanel` components + `useSmartCollections` hook + `AppContext` extracted. |
 | 5.2 | Tách useAssets.js | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `useAssetSelection` (selection state, toggle, range, selectAll). `useBulkOperations` (bulk delete/move/tag/moveGroup). `useAssets` giờ compose 2 hooks. |
 | 5.3 | Tách useCollections.js | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `useCollectionNavigation` (URL push, breadcrumbs, folder nav, syncFromUrl/syncInitial). `useCollections` compose hook + keeps fetch/CRUD. |
-| 5.4 | State management pattern | ⬜ Chưa bắt đầu | | | |
-| 5.5 | Extract ShareDialog logic | ⬜ Chưa bắt đầu | | | |
+| 5.4 | State management pattern | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `AppContext` + `AppProvider` (Context API). `useAppContext()` hook. Tất cả domain hooks composed trong Provider, `AppLayout` chỉ destructure từ context. |
+| 5.5 | Extract ShareDialog logic | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `useSharePermissions` hook: `grant`, `updateRole`, `revoke`, `permissions`, `loading`, `error`. `ShareDialog` giờ chỉ là presentational component. |
 
 ---
 
