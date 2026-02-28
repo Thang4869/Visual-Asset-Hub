@@ -1,36 +1,61 @@
-import client from './client';
+import BaseApiService from './BaseApiService';
 
-/** List all permissions for a collection. */
-export async function fetchPermissions(collectionId) {
-  const res = await client.get(`/api/collections/${collectionId}/permissions`);
-  return res.data;
+/**
+ * PermissionApiService — handles collection permission endpoints.
+ *
+ * Note: These endpoints use slightly different URL patterns
+ * (/api/collections/:id/permissions) which are relative to the apiClient baseURL.
+ */
+class PermissionApiService extends BaseApiService {
+  constructor() {
+    // No fixed endpoint — paths are built per-collection
+    super('');
+  }
+
+  /** @private Build the permissions base path for a collection */
+  _permPath(collectionId) {
+    return `/api/collections/${collectionId}/permissions`;
+  }
+
+  /** List all permissions for a collection. */
+  fetchPermissions(collectionId) {
+    return this._get(this._permPath(collectionId));
+  }
+
+  /** Grant permission to a user by email. */
+  grantPermission(collectionId, { userEmail, role }) {
+    return this._post(this._permPath(collectionId), { userEmail, role });
+  }
+
+  /** Update an existing permission role. */
+  updatePermission(collectionId, permissionId, { role }) {
+    return this._put(`${this._permPath(collectionId)}/${permissionId}`, { role });
+  }
+
+  /** Revoke a permission. */
+  async revokePermission(collectionId, permissionId) {
+    await this.client.delete(`${this._permPath(collectionId)}/${permissionId}`);
+  }
+
+  /** Get current user's role for a collection. */
+  async getMyRole(collectionId) {
+    const res = await this.client.get(`${this._permPath(collectionId)}/my-role`);
+    return res.data.role;
+  }
+
+  /** Get all collections shared with the current user. */
+  fetchSharedCollections() {
+    return this._get('/api/shared-collections');
+  }
 }
 
-/** Grant permission to a user by email. */
-export async function grantPermission(collectionId, { userEmail, role }) {
-  const res = await client.post(`/api/collections/${collectionId}/permissions`, { userEmail, role });
-  return res.data;
-}
+const permissionApiService = new PermissionApiService();
 
-/** Update an existing permission role. */
-export async function updatePermission(collectionId, permissionId, { role }) {
-  const res = await client.put(`/api/collections/${collectionId}/permissions/${permissionId}`, { role });
-  return res.data;
-}
-
-/** Revoke a permission. */
-export async function revokePermission(collectionId, permissionId) {
-  await client.delete(`/api/collections/${collectionId}/permissions/${permissionId}`);
-}
-
-/** Get current user's role for a collection. */
-export async function getMyRole(collectionId) {
-  const res = await client.get(`/api/collections/${collectionId}/permissions/my-role`);
-  return res.data.role;
-}
-
-/** Get all collections shared with the current user. */
-export async function fetchSharedCollections() {
-  const res = await client.get('/api/shared-collections');
-  return res.data;
-}
+// ── Backward-compatible named exports ──
+export const fetchPermissions = (...args) => permissionApiService.fetchPermissions(...args);
+export const grantPermission = (...args) => permissionApiService.grantPermission(...args);
+export const updatePermission = (...args) => permissionApiService.updatePermission(...args);
+export const revokePermission = (...args) => permissionApiService.revokePermission(...args);
+export const getMyRole = (...args) => permissionApiService.getMyRole(...args);
+export const fetchSharedCollections = (...args) => permissionApiService.fetchSharedCollections(...args);
+export default permissionApiService;

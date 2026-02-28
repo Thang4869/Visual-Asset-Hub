@@ -1,21 +1,39 @@
-import apiClient from './client';
+import BaseApiService from './BaseApiService';
 
-const ENDPOINT = '/Collections';
+/**
+ * CollectionApiService — handles collection CRUD operations.
+ */
+class CollectionApiService extends BaseApiService {
+  constructor() {
+    super('/Collections');
+  }
 
-/** Get all collections */
-export const fetchAllCollections = () =>
-  apiClient.get(ENDPOINT).then(r => r.data);
+  /** Get all collections */
+  fetchAll() {
+    return this._get();
+  }
 
-/** Get items in a collection (+ sub-collections) */
-export const fetchCollectionItems = (collectionId, folderId = null) =>
-  apiClient
-    .get(`${ENDPOINT}/${collectionId}/items`, { params: { folderId } })
-    .then(r => r.data);
+  /** Get items in a collection (+ sub-collections) */
+  fetchItems(collectionId, folderId = null) {
+    return this._get(`/${collectionId}/items`, { folderId });
+  }
 
-/** Create a new collection */
-export const createCollection = (payload) =>
-  apiClient.post(ENDPOINT, payload).then(r => r.data);
+  /** Create a new collection */
+  create(payload) {
+    return this._post('', payload);
+  }
 
-/** Delete a collection */
-export const deleteCollection = (id) =>
-  apiClient.delete(`${ENDPOINT}/${id}`);
+  /** Delete a collection */
+  delete(id) {
+    return this._delete(`/${id}`);
+  }
+}
+
+const collectionApiService = new CollectionApiService();
+
+// ── Backward-compatible named exports ──
+export const fetchAllCollections = (...args) => collectionApiService.fetchAll(...args);
+export const fetchCollectionItems = (...args) => collectionApiService.fetchItems(...args);
+export const createCollection = (...args) => collectionApiService.create(...args);
+export const deleteCollection = (...args) => collectionApiService.delete(...args);
+export default collectionApiService;

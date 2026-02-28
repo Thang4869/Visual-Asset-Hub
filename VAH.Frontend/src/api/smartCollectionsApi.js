@@ -1,11 +1,27 @@
-import apiClient from './client';
+import BaseApiService from './BaseApiService';
 
-const ENDPOINT = '/SmartCollections';
+/**
+ * SmartCollectionApiService — handles smart (auto-generated) collection endpoints.
+ */
+class SmartCollectionApiService extends BaseApiService {
+  constructor() {
+    super('/SmartCollections');
+  }
 
-/** Get all smart collection definitions */
-export const fetchSmartCollections = () =>
-  apiClient.get(ENDPOINT).then(r => r.data);
+  /** Get all smart collection definitions */
+  fetchAll() {
+    return this._get();
+  }
 
-/** Get items in a smart collection */
-export const fetchSmartCollectionItems = (id, page = 1, pageSize = 50) =>
-  apiClient.get(`${ENDPOINT}/${id}/items`, { params: { page, pageSize } }).then(r => r.data);
+  /** Get items in a smart collection */
+  fetchItems(id, page = 1, pageSize = 50) {
+    return this._get(`/${id}/items`, { page, pageSize });
+  }
+}
+
+const smartCollectionApiService = new SmartCollectionApiService();
+
+// ── Backward-compatible named exports ──
+export const fetchSmartCollections = (...args) => smartCollectionApiService.fetchAll(...args);
+export const fetchSmartCollectionItems = (...args) => smartCollectionApiService.fetchItems(...args);
+export default smartCollectionApiService;
