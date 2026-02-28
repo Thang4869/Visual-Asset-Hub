@@ -1,7 +1,7 @@
 # Bản Đánh Giá OOP - Visual Asset Hub (VAH)
 
 > **Ngày tạo:** 2026-02-27  
-> **Cập nhật lần cuối:** 2026-02-28  
+> **Cập nhật lần cuối:** 2026-02-28 (Session #4)  
 > **Mục đích:** Đánh giá mức độ áp dụng OOP trong toàn bộ dự án, làm cơ sở cho quá trình refactor.  
 > **Trạng thái:** ✅ Tất cả 5 Phase hoàn tất (23/23 tasks)
 
@@ -45,15 +45,15 @@
 
 | File | Trạng thái | Vấn đề |
 |------|-----------|--------|
-| `IAssetService` / `AssetService` | 🟢 Refactored | **[Task 2.1,2.2]** Tách bulk ops → `IBulkAssetService`/`BulkAssetService`. Cleanup logic → `AssetCleanupHelper`. AssetService giờ ~280 dòng. |
-| `IBulkAssetService` / `BulkAssetService` | 🟢 Mới | **[Task 2.1]** 4 bulk methods (delete, move, moveGroup, tag). ISP: tách khỏi IAssetService. |
+| `IAssetService` / `AssetService` | 🟢 Refactored | **[Task 2.1,2.2]** Tách bulk ops → `IBulkAssetService`/`BulkAssetService`. Cleanup logic → `AssetCleanupHelper`. **[Session #4]** Thêm `IPermissionService` injection, `FindAssetWithAccessAsync`, `ResolveAssetOwnerAsync`, `DuplicateAssetAsync`. Shared-collection access control toàn bộ CRUD. AssetService giờ ~421 dòng. |
+| `IBulkAssetService` / `BulkAssetService` | 🟢 Mới | **[Task 2.1]** 4 bulk methods (delete, move, moveGroup, tag). ISP: tách khỏi IAssetService. **[Session #4]** Thêm `IPermissionService` injection + `FilterByAccessAsync` helper. Shared-collection access control. ~238 dòng. |
 | `AssetCleanupHelper` | 🟢 Mới | **[Task 2.2]** SRP: file + thumbnail cleanup. Dùng trong cả AssetService và BulkAssetService. |
 | `IAuthService` / `AuthService` | 🟢 Tốt | Đúng abstraction, đúng SRP. Dùng DI tốt. |
 | `ICollectionService` / `CollectionService` | 🟢 Tốt | DI, caching (IDistributedCache), delegation tốt. |
 | `IStorageService` / `LocalStorageService` | 🟢 Tốt | **Tốt nhất project** — abstraction rõ ràng, dễ thay bằng S3/Azure implementation. Đúng OCP. |
 | `IThumbnailService` / `ThumbnailService` | 🟢 Tốt | SRP, interface-based, clean. |
 | `ITagService` / `TagService` | 🟡 Cần cải thiện | Hơi lớn (281 dòng), xử lý cả CRUD tag lẫn asset-tag junction logic. |
-| `IPermissionService` / `PermissionService` | 🟢 Tốt | Logic rõ ràng, SRP. |
+| `IPermissionService` / `PermissionService` | 🟢 Tốt | Logic rõ ràng, SRP. **[Session #4]** Thêm `IDistributedCache` injection + cache invalidation khi thay đổi permission. |
 | `ISmartCollectionService` / `SmartCollectionService` | 🟢 Refactored | **[Task 2.4]** Strategy pattern: `ISmartCollectionFilter` interface + 5 concrete strategies (`RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`). OCP: thêm filter mới không cần sửa service. |
 | `INotificationService` / `NotificationService` | 🟢 Tốt | SRP, abstraction tốt. |
 
@@ -167,7 +167,7 @@
 | File | Trạng thái | Ghi chú |
 |------|-----------|---------|
 | `ErrorBoundary.jsx` | 🟢 Class Component | **Duy nhất dùng class** — React bắt buộc cho Error Boundary. OOP đúng cách. |
-| `App.jsx` | 🟢 Refactored | **[Task 5.1, 5.4]** 620→344 dòng. Tách header/sidebar/details + `AppContext` state management. |
+| `App.jsx` | 🟢 Refactored | **[Task 5.1, 5.4]** → 477 dòng. Tách header/sidebar/details + `AppContext` state management. **[Session #4]** Thêm TreeViewPanel, ConfirmProvider, clipboard paste, folder multi-select, context menu integration. |
 | `AppHeader.jsx` | 🟢 Mới | **[Task 5.1]** Header bar component (search, actions, notifications). |
 | `AppSidebar.jsx` | 🟢 Mới | **[Task 5.1]** Sidebar component (collection tree, smart collections). |
 | `DetailsPanel.jsx` | 🟢 Mới | **[Task 5.1]** Right panel (asset preview, metadata, tags). |
@@ -181,18 +181,22 @@
 | `SearchBar.jsx` | 🟢 OK | Rất nhỏ, presentational. |
 | `ShareDialog.jsx` | 🟢 Refactored | **[Task 5.5]** Giờ là presentational component. Logic CRUD → `useSharePermissions` hook. |
 | `UploadArea.jsx` | 🟢 OK | Clean, dùng `react-dropzone` đúng cách. |
+| `ContextMenu.jsx` | 🟢 Mới | **[Session #4]** Reusable right-click context menu (81 dòng). Viewport-aware, keyboard support. |
+| `ConfirmDialog.jsx` | 🟢 Mới | **[Session #4]** Unified styled dialog thay thế window.confirm/prompt/alert (133 dòng). 3 modes, 3 variants. |
+| `TreeViewPanel.jsx` | 🟢 Mới | **[Session #4]** Right sidebar tree view — hierarchical structure (489 dòng). Expand/collapse, context menu. |
 
 ### 4. Context & Models — Mới ✅
 
 | File | Trạng thái | Ghi chú |
 |------|-----------|---------|
-| `context/AppContext.js` | 🟢 Mới | **[Task 5.4]** `AppProvider` + `useAppContext()`. Compose tất cả domain hooks. Centralised state management. |
+| `context/AppContext.js` | 🟢 Refactored | **[Task 5.4]** `AppProvider` + `useAppContext()`. Compose tất cả domain hooks. Centralised state management. **[Session #4]** Thêm clipboard, pin, folder selection, rename, delete, ungroup handlers. 387 dòng. |
+| `context/ConfirmContext.js` | 🟢 Mới | **[Session #4]** `ConfirmProvider` + `useConfirm()`. Promise-based confirm/prompt/alert (121 dòng). Thay thế hoàn toàn `window.confirm/prompt/alert`. |
 | `models/index.js` | 🟢 Mới | **[Task 4.1-4.3]** `Asset`, `Collection`, `Tag` domain classes. Computed properties, validation, mapping helpers (`toAsset`, `toCollection`, `toTag`). |
 
 **Vấn đề đã giải quyết:**
-- [x] **~~App.jsx là God Component (615 dòng)~~**: ✅ **[Task 5.1, 5.4]** Tách `AppHeader`, `AppSidebar`, `DetailsPanel` + `AppContext`. App.jsx giờ 344 dòng.
-- [x] **~~Không có state management pattern~~**: ✅ **[Task 5.4]** `AppContext` + `AppProvider` (Context API). `useAppContext()` hook. Consistent với existing `AuthProvider` pattern.
-- [x] **~~Thiếu component hierarchy rõ ràng~~**: ✅ **[Task 5.1]** AppLayout → AppHeader + AppSidebar + MainContent + DetailsPanel. Route-level `AppProvider` wrapping.
+- [x] **~~App.jsx là God Component (615 dòng)~~**: ✅ **[Task 5.1, 5.4]** Tách `AppHeader`, `AppSidebar`, `DetailsPanel` + `AppContext`. **[Session #4]** Thêm TreeViewPanel, ConfirmProvider, context menu. App.jsx giờ 477 dòng (thêm tính năng, không phải thêm logic).
+- [x] **~~Không có state management pattern~~**: ✅ **[Task 5.4]** `AppContext` + `AppProvider` (Context API). **[Session #4]** Thêm `ConfirmContext`. Consistent với existing `AuthProvider` pattern.
+- [x] **~~Thiếu component hierarchy rõ ràng~~**: ✅ **[Task 5.1]** AppLayout → AppHeader + AppSidebar + MainContent + DetailsPanel + TreeViewPanel. Route-level `ConfirmProvider` + `AppProvider` wrapping.
 
 ---
 
@@ -255,6 +259,11 @@
 | **Custom Hook Extraction (FE)** | `useAssetSelection`, `useBulkOperations`, `useCollectionNavigation`, `useSmartCollections`, `useSharePermissions` | Task 5.1-5.5 |
 | **Presentational Component (FE)** | `ShareDialog` giờ chỉ render UI, logic trong `useSharePermissions` hook | Task 5.5 |
 | **Component Decomposition (FE)** | `AppHeader`, `AppSidebar`, `DetailsPanel` tách từ App.jsx (620→344 dòng) | Task 5.1 |
+| **Promise-based Dialog (FE)** | `ConfirmContext` + `ConfirmProvider` — async confirm/prompt/alert replacing native browser dialogs | Session #4 |
+| **Reusable Context Menu (FE)** | `ContextMenu` component — shared by ColorBoard, CollectionBrowser, TreeViewPanel | Session #4 |
+| **Clipboard Pattern (FE)** | Copy/Cut/Paste state in `AppContext` — Copy→Duplicate API, Cut→Move API | Session #4 |
+| **Permission-Aware Access (BE)** | `FindAssetWithAccessAsync`, `ResolveAssetOwnerAsync`, `FilterByAccessAsync` — shared-collection CRUD | Session #4 |
+| **Cache Invalidation (BE)** | `PermissionService.InvalidateUserCollectionCacheAsync` — auto-clear cache on permission change | Session #4 |
 
 ---
 
@@ -344,6 +353,9 @@
 | 3 | **`IEntityTypeConfiguration<T>`** | 🟡 Thấp | `AppDbContext.OnModelCreating` lớn — tách thành configuration classes riêng |
 | 4 | **Unit tests** | 🔴 Cao | Chưa có test project. Service layer + domain methods cần unit tests |
 | 5 | **N+1 query review** | 🟡 Trung bình | Một số services có thể thiếu `.Include()` hoặc load thừa data |
+| 6 | **Rename Collection** | 🟡 Trung bình | Handler tạo rồi nhưng chưa có API call (hiện chỉ hiện alert "đang phát triển") |
+| 7 | **TreeViewPanel lazy-load** | 🟢 Thấp | Hiện load tất cả items vào tree — có thể lazy-load cho collections lớn |
+| 8 | **Keyboard shortcuts** | 🟢 Thấp | Clipboard Ctrl+C/X/V chỉ qua context menu, chưa qua global keyboard |
 
 ---
 

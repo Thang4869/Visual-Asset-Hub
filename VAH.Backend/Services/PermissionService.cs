@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using VAH.Backend.Data;
 using VAH.Backend.Models;
 
@@ -10,12 +11,21 @@ public class PermissionService : IPermissionService
     private readonly AppDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<PermissionService> _logger;
+    private readonly IDistributedCache _cache;
 
-    public PermissionService(AppDbContext context, UserManager<ApplicationUser> userManager, ILogger<PermissionService> logger)
+    public PermissionService(AppDbContext context, UserManager<ApplicationUser> userManager, ILogger<PermissionService> logger, IDistributedCache cache)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
+        _cache = cache;
+    }
+
+    /// <summary>Invalidate a user's cached collection list so they see permission changes immediately.</summary>
+    private async Task InvalidateUserCollectionCacheAsync(string userId)
+    {
+        try { await _cache.RemoveAsync($"collections:all:{userId}"); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Failed to invalidate collection cache for user {UserId}", userId); }
     }
 
     /// <inheritdoc/>
@@ -81,6 +91,7 @@ public class PermissionService : IPermissionService
             existing.GrantedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             _logger.LogInformation("Updated permission for user {TargetUserId} on collection {CollectionId} to {Role}", targetUser.Id, collectionId, dto.Role);
+            await InvalidateUserCollectionCacheAsync(targetUser.Id);
             return existing;
         }
 
@@ -97,6 +108,7 @@ public class PermissionService : IPermissionService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Granted {Role} permission to user {TargetUserId} on collection {CollectionId}", dto.Role, targetUser.Id, collectionId);
+        await InvalidateUserCollectionCacheAsync(targetUser.Id);
         return permission;
     }
 
@@ -116,6 +128,7 @@ public class PermissionService : IPermissionService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Updated permission {PermissionId} to role {Role}", permissionId, dto.Role);
+        await InvalidateUserCollectionCacheAsync(permission.UserId);
         return permission;
     }
 
@@ -132,6 +145,7 @@ public class PermissionService : IPermissionService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Revoked permission {PermissionId} from user {UserId} on collection {CollectionId}", permissionId, permission.UserId, permission.CollectionId);
+        await InvalidateUserCollectionCacheAsync(permission.UserId);
         return true;
     }
 

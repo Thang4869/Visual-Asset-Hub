@@ -855,6 +855,63 @@
   flex-direction: column;
 }
 
+/* ── Pinned Items Section ── */
+.pinned-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pinned-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pinned-item:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.pinned-icon {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.pinned-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pinned-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.pinned-item:hover .pinned-remove {
+  opacity: 1;
+}
+
+.pinned-remove:hover {
+  color: #e74c3c;
+}
+
 .smart-collection-view .main-content {
   flex: 1;
   overflow-y: auto;

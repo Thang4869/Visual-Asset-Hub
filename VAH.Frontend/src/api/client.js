@@ -32,8 +32,12 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status, data } = error.response;
-      const message = data?.detail || data?.title || error.message;
-      console.error(`[API ${status}]`, message);
+
+      // Only log server errors (5xx) — client errors (4xx) are handled by callers
+      if (status >= 500) {
+        const message = data?.detail || data?.title || error.message;
+        console.error(`[API ${status}]`, message);
+      }
 
       // If 401 and we had a token, it's expired — clear & reload
       if (status === 401 && tokenManager.hasToken()) {

@@ -802,11 +802,11 @@ Permission CRUD extracted từ ShareDialog. `grant(email, role)`, `updateRole(pe
 |---|---|---|
 | **TỔNG DỰ ÁN** | **~99+ files** | **~7,439+** |
 
-#### API Endpoints (43 total)
+#### API Endpoints (44 total)
 
 | Controller | Endpoints | Methods |
 |------------|-----------|---------|  
-| Assets | 16 | GET(2), POST(8), PUT(2), DELETE(1), total bulk ops(3) |
+| Assets | 17 | GET(2), POST(9), PUT(2), DELETE(1), bulk ops(3) |
 | Collections | 5 | GET(2), POST(1), PUT(1), DELETE(1) |
 | Auth | 2 | POST(2) |
 | Tags | 10 | GET(3), POST(3), PUT(2), DELETE(1), POST migrate(1) |
@@ -845,7 +845,7 @@ frontend:
 
 ### 9.8 KẾT LUẬN
 
-Dự án Visual Asset Hub đã trải qua **4 giai đoạn phát triển** và **OOP Refactoring 5/5 Phases** hoàn chỉnh (23/23 tasks). Backend hiện có:
+Dự án Visual Asset Hub đã trải qua **4 giai đoạn phát triển**, **OOP Refactoring 5/5 Phases** hoàn chỉnh (23/23 tasks), và **Session #4** bổ sung UX features. Backend hiện có:
 - **TPH Inheritance** (Asset → 5 subtypes) với virtual behavior properties
 - **Factory Pattern** (AssetFactory) cho type-safe creation với ContentType được set đúng
 - **Rich Domain Model** (domain methods trên 4 entities)
@@ -856,13 +856,22 @@ Dự án Visual Asset Hub đã trải qua **4 giai đoạn phát triển** và *
 - **BulkAssetService** tách khỏi AssetService (ISP)
 - **AssetCleanupHelper** encapsulate cleanup logic (SRP)
 - **Strategy Pattern** cho SmartCollectionService (5 filter strategies, OCP)
+- **Shared-Collection Access Control**: Tất cả CRUD operations kiểm tra permission qua `IPermissionService`
+- **Duplicate Asset API**: `POST /api/assets/{id}/duplicate` — clone với đúng TPH subtype
+- **Permission Cache Invalidation**: Tự động xóa cache khi thay đổi permission
 - **Class-based Frontend API** layer (BaseApiService → 7 subclasses + TokenManager singleton)
 
 Frontend hiện có:
 - **Domain Model Classes**: `Asset`, `Collection`, `Tag` với computed properties và validation
-- **AppContext + AppProvider**: Centralised state management (Context API)
-- **Component Decomposition**: `AppHeader`, `AppSidebar`, `DetailsPanel` tách từ App.jsx (620→344 dòng)
-- **Hook Composition**: 11 hooks chuyên biệt (`useAssetSelection`, `useBulkOperations`, `useCollectionNavigation`, `useSmartCollections`, `useSharePermissions`)
-- **Presentational Components**: ShareDialog giờ chỉ render UI, logic trong hook
+- **AppContext + AppProvider**: Centralised state management (Context API, 387 dòng)
+- **ConfirmContext + ConfirmProvider**: Promise-based confirm/prompt/alert thay thế `window.confirm/prompt/alert`
+- **Component Decomposition**: `AppHeader`, `AppSidebar`, `DetailsPanel` tách từ App.jsx
+- **17 Components** bao gồm 3 mới: `ContextMenu` (right-click), `ConfirmDialog` (styled dialogs), `TreeViewPanel` (right sidebar tree)
+- **Hook Composition**: 11 hooks chuyên biệt
+- **Clipboard System**: Copy/Cut/Paste cho assets (Duplicate hoặc Move)
+- **Pin System**: Ghim items nhanh vào sidebar, persist localStorage
+- **Folder Multi-Select**: Ctrl+click chọn nhiều thư mục + bulk delete
+- **Global Image Paste**: Ctrl+V paste ảnh từ clipboard hệ thống → auto-upload
+- **Context Menu**: Right-click trên mọi item với menu ngữ cảnh đầy đủ
 
 **Tất cả phases đã hoàn tất. Không còn OOP tasks pending.**

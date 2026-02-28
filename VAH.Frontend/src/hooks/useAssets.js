@@ -12,7 +12,7 @@ import useBulkOperations from './useBulkOperations';
  *
  * Keeps CRUD operations (upload, create, delete, move, reorder) here.
  */
-export default function useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems }) {
+export default function useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems, confirm, prompt: showPrompt, alert: showAlert }) {
   // ── Composed hooks ──
   const selection = useAssetSelection(collectionItems);
   const bulk = useBulkOperations({
@@ -20,13 +20,15 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     setSelectedAssetIds: selection.setSelectedAssetIds,
     setSelectedAssetId: selection.setSelectedAssetId,
     refreshItems,
+    confirm,
+    alert: showAlert,
   });
 
   // ------- Upload -------
   const handleUpload = useCallback(
     async (files) => {
       if (!selectedCollection) {
-        alert('Vui lòng chọn một collection trước khi upload');
+        await showAlert('Vui lòng chọn một collection trước khi upload');
         return;
       }
       try {
@@ -34,16 +36,16 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
         refreshItems();
       } catch (err) {
         console.error('Error uploading files:', err);
-        alert('Lỗi khi upload file');
+        await showAlert('Lỗi khi upload file');
       }
     },
-    [selectedCollection, currentFolderId, refreshItems],
+    [selectedCollection, currentFolderId, refreshItems, showAlert],
   );
 
   // ------- Folder -------
   const handleCreateFolder = useCallback(async () => {
     if (!selectedCollection) return;
-    const name = prompt('Folder name:');
+    const name = await showPrompt({ message: 'Tên thư mục:', placeholder: 'Nhập tên...' });
     if (!name) return;
     try {
       await assetsApi.createFolder({
@@ -54,16 +56,16 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
       refreshItems();
     } catch (err) {
       console.error('Error creating folder:', err);
-      alert('Lỗi khi tạo folder');
+      await showAlert('Lỗi khi tạo folder');
     }
-  }, [selectedCollection, currentFolderId, refreshItems]);
+  }, [selectedCollection, currentFolderId, refreshItems, showPrompt, showAlert]);
 
   // ------- Link -------
   const handleCreateLink = useCallback(async () => {
     if (!selectedCollection) return;
-    const name = prompt('Link name:');
+    const name = await showPrompt({ message: 'Tên liên kết:', placeholder: 'Nhập tên...' });
     if (!name) return;
-    const url = prompt('Link URL:');
+    const url = await showPrompt({ message: 'URL liên kết:', placeholder: 'https://...' });
     if (!url) return;
     try {
       await assetsApi.createLink({
@@ -75,14 +77,14 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
       refreshItems();
     } catch (err) {
       console.error('Error creating link:', err);
-      alert('Lỗi khi tạo link');
+      await showAlert('Lỗi khi tạo link');
     }
-  }, [selectedCollection, currentFolderId, refreshItems]);
+  }, [selectedCollection, currentFolderId, refreshItems, showPrompt, showAlert]);
 
   // ------- Color Group -------
   const handleCreateColorGroup = useCallback(async () => {
     if (!selectedCollection) return;
-    const name = prompt('Group name:');
+    const name = await showPrompt({ message: 'Tên nhóm:', placeholder: 'Nhập tên nhóm...' });
     if (!name) return;
     try {
       await assetsApi.createColorGroup({
@@ -93,9 +95,9 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
       refreshItems();
     } catch (err) {
       console.error('Error creating color group:', err);
-      alert('Lỗi khi tạo color group');
+      await showAlert('Lỗi khi tạo color group');
     }
-  }, [selectedCollection, currentFolderId, refreshItems]);
+  }, [selectedCollection, currentFolderId, refreshItems, showPrompt, showAlert]);
 
   // ------- Color -------
   const handleCreateColor = useCallback(
@@ -111,27 +113,28 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
         refreshItems();
       } catch (err) {
         console.error('Error creating color:', err);
-        alert('Lỗi khi tạo color');
+        await showAlert('Lỗi khi tạo color');
       }
     },
-    [selectedCollection, currentFolderId, refreshItems],
+    [selectedCollection, currentFolderId, refreshItems, showAlert],
   );
 
   // ------- Delete single asset -------
   const handleDeleteAsset = useCallback(
     async (assetId) => {
       if (!assetId) return;
-      if (!confirm('Bạn có chắc muốn xóa item này?')) return;
+      const ok = await confirm({ message: 'Bạn có chắc muốn xóa item này?', confirmLabel: 'Xóa', variant: 'danger' });
+      if (!ok) return;
       try {
         await assetsApi.deleteAsset(assetId);
         if (selection.selectedAssetId === assetId) selection.setSelectedAssetId(null);
         refreshItems();
       } catch (err) {
         console.error('Error deleting asset:', err);
-        alert('Lỗi khi xóa item');
+        await showAlert('Lỗi khi xóa item');
       }
     },
-    [selection.selectedAssetId, refreshItems],
+    [selection.selectedAssetId, refreshItems, confirm, showAlert],
   );
 
   // ------- Move -------
@@ -143,23 +146,23 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
         refreshItems();
       } catch (err) {
         console.error('Error moving asset:', err);
-        alert('Lỗi khi di chuyển item');
+        await showAlert('Lỗi khi di chuyển item');
       }
     },
-    [selectedCollection, refreshItems],
+    [selectedCollection, refreshItems, showAlert],
   );
 
   const handleMoveSelected = useCallback(async () => {
     if (!selection.selectedAssetId) {
-      alert('Chọn một item để di chuyển');
+      await showAlert('Chọn một item để di chuyển');
       return;
     }
     const folders = collectionItems.items.filter((i) => i.isFolder);
     if (folders.length === 0) {
-      alert('Không có folder trong thư mục hiện tại');
+      await showAlert('Không có folder trong thư mục hiện tại');
       return;
     }
-    const targetName = prompt('Nhập tên folder (hoặc gõ "root" để đưa ra ngoài):');
+    const targetName = await showPrompt({ message: 'Nhập tên folder (hoặc gõ "root" để đưa ra ngoài):', placeholder: 'Tên folder...' });
     if (!targetName) return;
 
     if (targetName.toLowerCase() === 'root') {
@@ -168,18 +171,18 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
         refreshItems();
       } catch (err) {
         console.error('Error moving asset to root:', err);
-        alert('Lỗi khi di chuyển item');
+        await showAlert('Lỗi khi di chuyển item');
       }
       return;
     }
 
     const folder = folders.find((f) => f.fileName.toLowerCase() === targetName.toLowerCase());
     if (!folder) {
-      alert('Không tìm thấy folder tên đó');
+      await showAlert('Không tìm thấy folder tên đó');
       return;
     }
     handleMoveAsset(selection.selectedAssetId, folder.id);
-  }, [selection.selectedAssetId, collectionItems, refreshItems, handleMoveAsset]);
+  }, [selection.selectedAssetId, collectionItems, refreshItems, handleMoveAsset, showPrompt, showAlert]);
 
   // ------- Reorder -------
   const handleReorderAssets = useCallback(
@@ -190,10 +193,10 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
         refreshItems();
       } catch (err) {
         console.error('Error reordering assets:', err);
-        alert('Lỗi khi sắp xếp item');
+        await showAlert('Lỗi khi sắp xếp item');
       }
     },
-    [selectedCollection, refreshItems],
+    [selectedCollection, refreshItems, showAlert],
   );
 
   // Return merged: selection + bulk + CRUD ops (backward-compatible API)

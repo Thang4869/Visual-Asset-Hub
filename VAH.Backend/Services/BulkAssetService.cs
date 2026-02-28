@@ -14,17 +14,32 @@ public class BulkAssetService : IBulkAssetService
     private readonly AssetCleanupHelper _cleanup;
     private readonly INotificationService _notifier;
     private readonly ILogger<BulkAssetService> _logger;
+    private readonly IPermissionService _permissions;
 
     public BulkAssetService(
         AppDbContext context,
         AssetCleanupHelper cleanup,
         INotificationService notifier,
-        ILogger<BulkAssetService> logger)
+        ILogger<BulkAssetService> logger,
+        IPermissionService permissions)
     {
         _context = context;
         _cleanup = cleanup;
         _notifier = notifier;
         _logger = logger;
+        _permissions = permissions;
+    }
+
+    /// <summary>Filter a list of assets to those the user can access (own or shared-collection permission).</summary>
+    private async Task<List<Asset>> FilterByAccessAsync(List<Asset> assets, string userId, string minimumRole)
+    {
+        var result = new List<Asset>();
+        foreach (var a in assets)
+        {
+            if (a.UserId == userId || await _permissions.HasPermissionAsync(a.CollectionId, userId, minimumRole))
+                result.Add(a);
+        }
+        return result;
     }
 
     public async Task<int> BulkDeleteAsync(List<int> assetIds, string userId)
@@ -32,9 +47,10 @@ public class BulkAssetService : IBulkAssetService
         if (assetIds == null || assetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
 
-        var assets = await _context.Assets
-            .Where(a => assetIds.Contains(a.Id) && a.UserId == userId)
+        var allAssets = await _context.Assets
+            .Where(a => assetIds.Contains(a.Id))
             .ToListAsync();
+        var assets = await FilterByAccessAsync(allAssets, userId, CollectionRoles.Editor);
 
         foreach (var asset in assets)
         {
@@ -65,15 +81,17 @@ public class BulkAssetService : IBulkAssetService
         if (dto.AssetIds == null || dto.AssetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
 
-        var assets = await _context.Assets
-            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
+        var allMoveAssets = await _context.Assets
+            .Where(a => dto.AssetIds.Contains(a.Id))
             .ToListAsync();
+        var assets = await FilterByAccessAsync(allMoveAssets, userId, CollectionRoles.Editor);
 
         // Validate target collection exists if specified
         if (dto.TargetCollectionId.HasValue)
         {
-            var collExists = await _context.Collections
-                .AnyAsync(c => c.Id == dto.TargetCollectionId.Value && (c.UserId == userId || c.UserId == null));
+            var coll = await _context.Collections.FindAsync(dto.TargetCollectionId.Value);
+            var collExists = coll != null && (coll.UserId == userId || coll.UserId == null
+                || await _permissions.HasPermissionAsync(dto.TargetCollectionId.Value, userId, CollectionRoles.Editor));
             if (!collExists)
                 throw new KeyNotFoundException($"Target collection {dto.TargetCollectionId.Value} not found.");
         }
@@ -102,9 +120,10 @@ public class BulkAssetService : IBulkAssetService
             throw new ArgumentException("Asset IDs are required.");
 
         // Fetch the colors being moved
-        var movedAssets = await _context.Assets
-            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
+        var allMoveGroupAssets = await _context.Assets
+            .Where(a => dto.AssetIds.Contains(a.Id))
             .ToListAsync();
+        var movedAssets = await FilterByAccessAsync(allMoveGroupAssets, userId, CollectionRoles.Editor);
 
         if (movedAssets.Count == 0) return 0;
 
@@ -116,12 +135,13 @@ public class BulkAssetService : IBulkAssetService
 
         // Get all existing colors in the target group (excluding the ones being moved)
         var targetGroupId = dto.TargetGroupId;
-        var existingInGroup = await _context.Assets
-            .Where(a => a.GroupId == targetGroupId && a.UserId == userId
+        var allExisting = await _context.Assets
+            .Where(a => a.GroupId == targetGroupId
                         && a.ContentType == AssetContentType.Color
                         && !dto.AssetIds.Contains(a.Id))
             .OrderBy(a => a.SortOrder)
             .ToListAsync();
+        var existingInGroup = await FilterByAccessAsync(allExisting, userId, CollectionRoles.Editor);
 
         // Build final ordered list
         List<Asset> finalOrder;
@@ -168,10 +188,11 @@ public class BulkAssetService : IBulkAssetService
         if (dto.TagIds == null || dto.TagIds.Count == 0)
             throw new ArgumentException("Tag IDs are required.");
 
-        // Verify all assets belong to user
-        var assets = await _context.Assets
-            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
+        // Verify all assets the user can access
+        var allTagAssets = await _context.Assets
+            .Where(a => dto.AssetIds.Contains(a.Id))
             .ToListAsync();
+        var assets = await FilterByAccessAsync(allTagAssets, userId, CollectionRoles.Editor);
 
         // Verify tags belong to user
         var validTagIds = await _context.Tags

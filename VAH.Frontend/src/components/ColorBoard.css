@@ -239,4 +239,100 @@
   margin-left: auto;
 }
 
+/* ── Folder Section ── */
+.color-folders-section {
+  margin-bottom: 20px;
+}
 
+.color-section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #8892b0);
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+
+.color-folders-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.color-folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-card, #1e2a3a);
+  border: 1px solid var(--border-color, #2a3a4a);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  min-width: 120px;
+}
+
+.color-folder-item:hover {
+  background: var(--bg-card-hover, #253245);
+  border-color: var(--accent, #64ffda);
+}
+
+.color-folder-item.drag-over {
+  border-color: var(--accent, #64ffda);
+  background: rgba(100, 255, 218, 0.08);
+  box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.2);
+}
+
+.color-folder-icon {
+  font-size: 1.2rem;
+}
+
+.color-folder-name {
+  font-size: 0.85rem;
+  color: var(--text-primary, #ccd6f6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+/* ── Group Drag Handle & States ── */
+.group-drag-handle {
+  cursor: grab;
+  opacity: 0.4;
+  font-size: 1rem;
+  padding: 0 4px;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+
+.group-drag-handle:hover {
+  opacity: 0.8;
+}
+
+.group-drag-handle:active {
+  cursor: grabbing;
+}
+
+.color-group.group-dragging {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.color-group.group-drag-over {
+  border-color: var(--accent, #64ffda);
+  box-shadow: 0 0 0 2px rgba(100, 255, 218, 0.25);
+}
+
+/* ── Tree View Color Swatch ── */
+.tree-color-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  margin-right: 2px;
+}

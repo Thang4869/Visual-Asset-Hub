@@ -150,4 +150,12 @@ public class AssetsController : BaseApiController
         var count = await _bulkService.BulkTagAsync(dto, GetUserId());
         return Ok(new { affected = count });
     }
+
+    // POST: api/assets/{id}/duplicate
+    [HttpPost("{id}/duplicate")]
+    public async Task<ActionResult<Asset>> DuplicateAsset(int id, [FromBody] DuplicateAssetDto? dto = null)
+    {
+        var clone = await _assetService.DuplicateAssetAsync(id, dto?.TargetFolderId, GetUserId());
+        return Ok(clone);
+    }
 }

@@ -83,6 +83,11 @@ class AssetApiService extends BaseApiService {
   bulkTag(assetIds, tagIds, remove = false) {
     return this._post('/bulk-tag', { assetIds, tagIds, remove });
   }
+
+  /** Duplicate an asset */
+  duplicateAsset(id, targetFolderId = null) {
+    return this.client.post(`${this.endpoint}/${id}/duplicate`, { targetFolderId });
+  }
 }
 
 const assetApiService = new AssetApiService();
@@ -101,4 +106,5 @@ export const bulkDelete = (...args) => assetApiService.bulkDelete(...args);
 export const bulkMove = (...args) => assetApiService.bulkMove(...args);
 export const bulkMoveGroup = (...args) => assetApiService.bulkMoveGroup(...args);
 export const bulkTag = (...args) => assetApiService.bulkTag(...args);
+export const duplicateAsset = (...args) => assetApiService.duplicateAsset(...args);
 export default assetApiService;
