@@ -139,7 +139,7 @@
 | `PositionX` | double | | `0` | Vị trí X trên canvas |
 | `PositionY` | double | | `0` | Vị trí Y trên canvas |
 | `CollectionId` | int | FK→Collections | `1` | |
-| `ContentType` | string | MaxLength(50) | `"image"` | image/link/color/folder/file |
+| `ContentType` | `AssetContentType` enum | EF Core value conversion (DB lưu string) | `File` | `Image`, `Link`, `Color`, `Folder`, `ColorGroup`. TPH discriminator |
 | `GroupId` | int? | | null | Nhóm màu (color collections) |
 | `ParentFolderId` | int? | | null | Thư mục cha (self-ref) |
 | `SortOrder` | int | | `0` | Thứ tự hiển thị |

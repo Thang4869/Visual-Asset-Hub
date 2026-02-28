@@ -4,7 +4,7 @@
 
 ![.NET 9](https://img.shields.io/badge/.NET-9.0-purple)
 ![React 19](https://img.shields.io/badge/React-19.2-blue)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue)
 ![Redis](https://img.shields.io/badge/Redis-7-red)
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue)
 ![SignalR](https://img.shields.io/badge/SignalR-10.0-green)
@@ -35,7 +35,7 @@
 |-------|-----------|
 | Backend | ASP.NET Core 9.0, EF Core 9, JWT + Identity |
 | Frontend | React 19.2, Vite 7.3, React Router 7.13 |
-| Database | SQLite (dev) / PostgreSQL 16 (prod) |
+| Database | SQLite (dev) / PostgreSQL 17 (prod) |
 | Cache | Redis 7 |
 | Real-time | SignalR 10.0 |
 | Thumbnails | SixLabors.ImageSharp 3.x |
@@ -50,7 +50,7 @@
 
 ```bash
 git clone https://github.com/Thang4869/Visual-Asset-Hub.git
-cd 1A
+cd Visual-Asset-Hub   # thư mục gốc chứa docker-compose.yml
 docker-compose up --build -d
 ```
 
@@ -80,77 +80,82 @@ npm run dev
 
 ---
 
-## API Endpoints (38 total)
+## API Endpoints (43 total)
 
-### Auth (4)
+### Auth — 2 endpoints [RateLimited]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| POST | `/api/Auth/register` | Đăng ký |
+| POST | `/api/Auth/register` | Đăng ký → JWT |
 | POST | `/api/Auth/login` | Đăng nhập → JWT |
-| GET | `/api/Auth/profile` | Thông tin user |
-| POST | `/api/Auth/change-password` | Đổi mật khẩu |
 
-### Assets (10)
+### Assets — 16 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | GET | `/api/Assets` | List (paged, sorted) |
-| GET | `/api/Assets/{id}` | Chi tiết |
-| POST | `/api/Assets` | Upload/Create |
-| PUT | `/api/Assets/{id}` | Cập nhật |
-| DELETE | `/api/Assets/{id}` | Xóa |
-| POST | `/api/Assets/reorder` | Sắp xếp lại |
+| POST | `/api/Assets` | Tạo asset mới |
+| POST | `/api/Assets/upload` | Upload multi-file (validation: size, ext, MIME) |
+| PUT | `/api/Assets/{id}/position` | Vị trí canvas |
+| POST | `/api/Assets/create-folder` | Tạo thư mục |
+| POST | `/api/Assets/create-color` | Tạo asset màu sắc |
+| POST | `/api/Assets/create-color-group` | Tạo nhóm màu |
+| POST | `/api/Assets/create-link` | Tạo liên kết (URL validation) |
+| PUT | `/api/Assets/{id}` | Cập nhật asset |
+| DELETE | `/api/Assets/{id}` | Xóa asset + file + thumbnails |
+| POST | `/api/Assets/reorder` | Sắp xếp lại thứ tự |
+| GET | `/api/Assets/group/{groupId}` | Assets theo nhóm |
 | POST | `/api/Assets/bulk-delete` | Xóa hàng loạt |
 | POST | `/api/Assets/bulk-move` | Di chuyển hàng loạt |
-| PUT | `/api/Assets/{id}/position` | Vị trí canvas |
-| POST | `/api/Assets/add-link` | Thêm link |
+| POST | `/api/Assets/bulk-move-group` | Di chuyển màu giữa các group |
+| POST | `/api/Assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
 
-### Collections (5)
+### Collections — 5 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/Collections` | List (tree) |
-| GET | `/api/Collections/{id}` | Chi tiết |
+| GET | `/api/Collections` | List (own + system + shared) |
+| GET | `/api/Collections/{id}/items` | Items + sub-collections |
 | POST | `/api/Collections` | Tạo mới |
 | PUT | `/api/Collections/{id}` | Cập nhật |
-| DELETE | `/api/Collections/{id}` | Xóa |
+| DELETE | `/api/Collections/{id}` | Xóa (owner only) |
 
-### Tags (7)
+### Tags — 10 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | GET | `/api/Tags` | List tags |
-| POST | `/api/Tags` | Tạo tag |
+| GET | `/api/Tags/{id}` | Chi tiết tag |
+| POST | `/api/Tags` | Tạo tag (dedup normalized) |
+| PUT | `/api/Tags/{id}` | Cập nhật tag |
 | DELETE | `/api/Tags/{id}` | Xóa tag |
 | GET | `/api/Tags/asset/{assetId}` | Tags của asset |
 | PUT | `/api/Tags/asset/{assetId}` | Set tags (replace) |
 | POST | `/api/Tags/asset/{assetId}/add` | Thêm tags |
-| POST | `/api/Tags/migrate` | Migrate legacy |
+| POST | `/api/Tags/asset/{assetId}/remove` | Gỡ tags |
+| POST | `/api/Tags/migrate` | Migrate legacy → M2M |
 
-### Smart Collections (2)
+### Smart Collections — 2 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/SmartCollections` | Danh sách |
-| GET | `/api/SmartCollections/{id}/assets` | Assets trong SC |
+| GET | `/api/SmartCollections` | Danh sách (8 built-in + per-tag) |
+| GET | `/api/SmartCollections/{id}/items` | Items phân trang |
 
-### Search (2)
+### Search — 1 endpoint [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/Search` | Tìm kiếm assets |
-| GET | `/api/Search/suggestions` | Gợi ý search |
+| GET | `/api/Search` | Tìm kiếm assets + collections |
 
-### Permissions (5)
+### Permissions — 6 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/Permissions/collection/{id}` | List permissions |
-| POST | `/api/Permissions/grant` | Cấp quyền |
-| DELETE | `/api/Permissions/revoke` | Thu hồi |
-| GET | `/api/Permissions/shared-with-me` | Collections được chia sẻ |
-| GET | `/api/Permissions/my-role/{collectionId}` | Role hiện tại |
+| GET | `.../permissions` | List permissions |
+| POST | `.../permissions` | Cấp quyền (owner only, by email) |
+| PUT | `.../permissions/{permissionId}` | Cập nhật role |
+| DELETE | `.../permissions/{permissionId}` | Thu hồi |
+| GET | `.../permissions/my-role` | Role hiện tại |
+| GET | `/api/shared-collections` | Collections được chia sẻ |
 
-### Health (3)
+### Health — 1 endpoint [No Auth]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/Health` | Quick check |
-| GET | `/api/Health/detailed` | DB + Redis status |
-| GET | `/api/Health/version` | App version |
+| GET | `/api/Health` | DB + Storage checks, env info |
 
 ---
 
@@ -161,20 +166,20 @@ npm run dev
 ├── docker-compose.yml
 ├── VAH.sln
 ├── README.md
-├── docs/                       # 4 tài liệu
+├── docs/                       # 6 tài liệu
 ├── VAH.Backend/                # .NET 9 API
-│   ├── Controllers/            # 8 controllers
-│   ├── Services/               # 9 services
-│   ├── Models/                 # 6 entities + DTOs
+│   ├── Controllers/            # 9 controllers (incl. abstract base)
+│   ├── Services/               # 24 service files (interfaces + implementations)
+│   ├── Models/                 # 11 entities + DTOs + enums
 │   ├── Data/                   # EF Core DbContext
 │   ├── Hubs/                   # SignalR
 │   ├── Middleware/             # Exception handling
-│   └── Migrations/             # 4 migrations
+│   └── Migrations/             # 5 migrations
 └── VAH.Frontend/               # React 19 SPA
     └── src/
-        ├── api/                # 7 API modules
-        ├── hooks/              # 6 custom hooks
-        └── components/         # 12 components
+        ├── api/                # 11 API files (class-based)
+        ├── hooks/              # 11 custom hooks
+        └── components/         # 14 components
 ```
 
 ---
@@ -187,6 +192,8 @@ npm run dev
 | [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) | Tài liệu kỹ thuật chi tiết (models, services, APIs) |
 | [docs/IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) | Hướng dẫn cài đặt, sử dụng, troubleshooting |
 | [docs/FIX_REPORT_20260227.md](docs/FIX_REPORT_20260227.md) | Lịch sử phát triển & sửa lỗi |
+| [docs/OOP_ASSESSMENT.md](docs/OOP_ASSESSMENT.md) | Đánh giá OOP, design patterns, tiến trình refactor |
+| [docs/PHASE1_REPORT.md](docs/PHASE1_REPORT.md) | Báo cáo Phase 1 (historical snapshot) |
 
 ---
 

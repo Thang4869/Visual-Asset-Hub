@@ -1,5 +1,7 @@
 # BÁO CÁO HOÀN THÀNH PHASE 1 — OOP REFACTORING
 
+> **⚠️ Historical Snapshot** — Đây là báo cáo tại thời điểm hoàn thành Phase 1 (15/23 tasks, 65%). Trạng thái hiện tại: **23/23 tasks hoàn tất (100%)** — xem [OOP_ASSESSMENT.md](OOP_ASSESSMENT.md) để biết chi tiết.
+
 > **Dự án:** Visual Asset Hub (VAH)  
 > **Ngày hoàn thành:** 2026-02-27  
 > **Phạm vi:** Phase 1 — Backend Models + 3 tasks Phase 2  
@@ -189,7 +191,7 @@ Phase 1 refactoring đã chuyển đổi backend từ **Anemic Domain Model** sa
 - [x] 3.3 TokenManager class (singleton, private #storageKey)
 - [x] 3.4 Thống nhất code style (all class methods, consistent)
 
-### Tổng: **15/23 tasks hoàn thành (65%)**
+### Tổng: **15/23 tasks hoàn thành (65%)** *(tại thời điểm báo cáo — hiện đã 23/23)*
 
 ---
 

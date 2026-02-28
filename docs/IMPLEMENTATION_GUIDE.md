@@ -21,7 +21,7 @@
 
 ```bash
 git clone https://github.com/Thang4869/Visual-Asset-Hub.git
-cd 1A
+cd Visual-Asset-Hub   # thư mục gốc chứa docker-compose.yml
 ```
 
 ### 1.3 Chạy Backend (SQLite mode)
@@ -64,7 +64,7 @@ npm run dev
 ### 2.1 Khởi động
 
 ```bash
-cd 1A
+cd Visual-Asset-Hub   # thư mục gốc chứa docker-compose.yml
 docker-compose up --build -d
 ```
 
