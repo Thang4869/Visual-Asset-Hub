@@ -3,7 +3,7 @@
 > **Ngày tạo:** 2026-02-27  
 > **Cập nhật lần cuối:** 2026-02-28  
 > **Mục đích:** Đánh giá mức độ áp dụng OOP trong toàn bộ dự án, làm cơ sở cho quá trình refactor.  
-> **Trạng thái:** ✅ Phase 1, 2, 3 hoàn tất (15/23 tasks) — Phase 4, 5 chưa bắt đầu
+> **Trạng thái:** ✅ Tất cả 5 Phase hoàn tất (23/23 tasks)
 
 ---
 
@@ -24,11 +24,11 @@
 
 | File | Trạng thái | Vấn đề |
 |------|-----------|--------|
-| `Models/Asset.cs` | � Refactored | **[Task #3]** `ContentType` đã chuyển sang enum `AssetContentType`. **[Task #6]** TPH inheritance: `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`. Virtual behavior: `HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup`. |
-| `Models/Collection.cs` | � Refactored | **[Task #3]** Enums. **[Task #7]** Domain methods: `IsOwnedBy()`, `IsAccessibleBy()`, `ApplyUpdate()`. **[Task #8]** Navigation: `Assets`, `Parent`, `Children`. |
-| `Models/Tag.cs` + `AssetTag.cs` | � Refactored | **[Task #7]** Domain methods: `SetName()` (auto-normalize), `UpdateFrom()`, `IsOwnedBy()`. |
+| `Models/Asset.cs` | 🟢 Refactored | **[Task #3]** `ContentType` đã chuyển sang enum `AssetContentType`. **[Task #6]** TPH inheritance: `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`. Virtual behavior: `HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup`. |
+| `Models/Collection.cs` | 🟢 Refactored | **[Task #3]** Enums. **[Task #7]** Domain methods: `IsOwnedBy()`, `IsAccessibleBy()`, `ApplyUpdate()`. **[Task #8]** Navigation: `Assets`, `Parent`, `Children`. |
+| `Models/Tag.cs` + `AssetTag.cs` | 🟢 Refactored | **[Task #7]** Domain methods: `SetName()` (auto-normalize), `UpdateFrom()`, `IsOwnedBy()`. |
 | `Models/ApplicationUser.cs` | 🟡 Anemic | Kế thừa `IdentityUser` (OOP ✅), nhưng không mở rộng behavior nào. |
-| `Models/CollectionPermission.cs` | � Refactored | **[Task #7]** Domain methods: `CanWrite`, `CanManage` (computed properties), `SetRole()` (validation). |
+| `Models/CollectionPermission.cs` | 🟢 Refactored | **[Task #7]** Domain methods: `CanWrite`, `CanManage` (computed properties), `SetRole()` (validation). |
 | `Models/Common.cs` | 🟢 OK | `PagedResult<T>` dùng generics tốt. `PaginationParams` có encapsulation (MaxPageSize). `FileUploadConfig` là config object hợp lý. |
 | `Models/DTOs.cs` | 🟢 OK | DTO đúng chức năng — chỉ mang data, không cần behavior. |
 | `Models/AuthDTOs.cs` | 🟢 OK | DTO thuần túy, phù hợp. |
@@ -54,7 +54,7 @@
 | `IThumbnailService` / `ThumbnailService` | 🟢 Tốt | SRP, interface-based, clean. |
 | `ITagService` / `TagService` | 🟡 Cần cải thiện | Hơi lớn (281 dòng), xử lý cả CRUD tag lẫn asset-tag junction logic. |
 | `IPermissionService` / `PermissionService` | 🟢 Tốt | Logic rõ ràng, SRP. |
-| `ISmartCollectionService` / `SmartCollectionService` | � Refactored | **[Task 2.4]** Strategy pattern: `ISmartCollectionFilter` interface + 5 concrete strategies (`RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`). OCP: thêm filter mới không cần sửa service. |
+| `ISmartCollectionService` / `SmartCollectionService` | 🟢 Refactored | **[Task 2.4]** Strategy pattern: `ISmartCollectionFilter` interface + 5 concrete strategies (`RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`). OCP: thêm filter mới không cần sửa service. |
 | `INotificationService` / `NotificationService` | 🟢 Tốt | SRP, abstraction tốt. |
 
 **Điểm tốt (đã OOP):**
@@ -79,7 +79,7 @@
 | `TagsController` | 🟢 Tốt | Clean, RESTful. |
 | `PermissionsController` | 🟢 Tốt | Clean. |
 | `SmartCollectionsController` | 🟢 Tốt | Clean, thin. |
-| `SearchController` | � Refactored | **[Task #4]** Business logic đã move vào `SearchService`. Controller giờ chỉ delegate 1 dòng. |
+| `SearchController` | 🟢 Refactored | **[Task #4]** Business logic đã move vào `SearchService`. Controller giờ chỉ delegate 1 dòng. |
 | `HealthController` | 🟡 Chấp nhận | Logic health check đơn giản, có thể chấp nhận trong controller. |
 
 **Vấn đề đã giải quyết:**
@@ -137,28 +137,40 @@
 - [x] **~~Token management là loose functions~~**: ✅ **[Task 3.3]** `TokenManager` class with private fields + singleton.
 - [ ] **Thiếu error handling chung**: Có thể thêm vào `BaseApiService` nếu cần (Phase sau).
 
-### 2. Hooks — Functional (React idiom) 🟡
+### 2. Hooks — Refactored ✅
+
+> **Phase 4-5 hoàn tất:** Hooks đã được tách nhỏ, domain models và state management pattern đã thêm.
 
 | File | Trạng thái | Ghi chú |
-|------|-----------|---------|
-| `hooks/useAuth.js` | 🟡 OK | `AuthProvider` + `useAuth` context pattern. Đúng React convention. Nhưng `persistUser` là nested function, nên là method của auth service. |
-| `hooks/useAssets.js` | 🟡 Cần cải thiện | 276 dòng — quá lớn. Gom quá nhiều operations (upload, create folder/link/color/colorGroup, move, reorder, bulk ops, selection). |
-| `hooks/useCollections.js` | 🟡 Cần cải thiện | 264 dòng — lớn. Gom fetch, select, navigate, create, delete, URL sync. |
+|------|-----------|-------|
+| `hooks/useAuth.js` | 🟢 OK | `AuthProvider` + `useAuth` context pattern. Đúng React convention. |
+| `hooks/useAssets.js` | 🟢 Refactored | **[Task 5.2]** Giảm từ 276→216 dòng. Tách `useAssetSelection` + `useBulkOperations`. |
+| `hooks/useAssetSelection.js` | 🟢 Mới | **[Task 5.2]** Multi-select state: toggle, range, selectAll, clearSelection. |
+| `hooks/useBulkOperations.js` | 🟢 Mới | **[Task 5.2]** Bulk delete/move/tag/moveGroup operations. |
+| `hooks/useCollections.js` | 🟢 Refactored | **[Task 5.3]** Giảm từ 264→167 dòng. Tách `useCollectionNavigation`. |
+| `hooks/useCollectionNavigation.js` | 🟢 Mới | **[Task 5.3]** URL sync, breadcrumbs, folder path navigation. |
+| `hooks/useSmartCollections.js` | 🟢 Mới | **[Task 5.1]** Smart collection fetch + state. |
+| `hooks/useSharePermissions.js` | 🟢 Mới | **[Task 5.5]** Permission CRUD: grant, updateRole, revoke. Extracted từ ShareDialog. |
 | `hooks/useTags.js` | 🟢 OK | Vừa phải, SRP tốt. |
 | `hooks/useSignalR.js` | 🟢 OK | Clean, focused. |
 | `hooks/useUndoRedo.js` | 🟢 Tốt | **Ví dụ tốt nhất FE** — Command pattern (OOP design pattern). Mỗi command có `execute()` và `undo()`. |
 
-**Vấn đề chính:**
-- [ ] **useAssets.js quá lớn**: Nên tách thành nhiều hooks chuyên biệt (`useAssetSelection`, `useAssetUpload`, `useAssetBulkOps`...).
-- [ ] **useCollections.js quá lớn**: Tương tự, nên tách (`useCollectionCRUD`, `useCollectionNavigation`).
-- [ ] **Không có domain model/class ở FE**: Data từ API được dùng trực tiếp dạng plain object. Không có class `Asset`, `Collection`, `Tag` ở frontend → thiếu type safety, thiếu computed properties, thiếu validation.
+**Vấn đề đã giải quyết:**
+- [x] **~~useAssets.js quá lớn~~**: ✅ **[Task 5.2]** Tách `useAssetSelection` (multi-select) + `useBulkOperations` (bulk ops). useAssets giờ 216 dòng.
+- [x] **~~useCollections.js quá lớn~~**: ✅ **[Task 5.3]** Tách `useCollectionNavigation` (URL sync, breadcrumbs). useCollections giờ 167 dòng.
+- [x] **~~Không có domain model/class ở FE~~**: ✅ **[Task 4.1-4.3]** Tạo `Asset`, `Collection`, `Tag` classes trong `models/index.js` với computed properties, validation, mapping helpers.
 
-### 3. Components — Mostly Functional 🟡
+### 3. Components — Refactored ✅
+
+> **Phase 5 hoàn tất:** App.jsx tách nhỏ, component hierarchy rõ ràng, state management qua Context API.
 
 | File | Trạng thái | Ghi chú |
 |------|-----------|---------|
 | `ErrorBoundary.jsx` | 🟢 Class Component | **Duy nhất dùng class** — React bắt buộc cho Error Boundary. OOP đúng cách. |
-| `App.jsx` | 🔴 God Component | 615 dòng — chứa gần như toàn bộ app logic. Quá nhiều state, quá nhiều handlers. Vi phạm SRP. |
+| `App.jsx` | 🟢 Refactored | **[Task 5.1, 5.4]** 620→344 dòng. Tách header/sidebar/details + `AppContext` state management. |
+| `AppHeader.jsx` | 🟢 Mới | **[Task 5.1]** Header bar component (search, actions, notifications). |
+| `AppSidebar.jsx` | 🟢 Mới | **[Task 5.1]** Sidebar component (collection tree, smart collections). |
+| `DetailsPanel.jsx` | 🟢 Mới | **[Task 5.1]** Right panel (asset preview, metadata, tags). |
 | `AssetDisplayer.jsx` | 🟢 OK | Functional component, nhỏ, focused. |
 | `AssetGrid.jsx` | 🟢 OK | Nhỏ, presentational. |
 | `CollectionBrowser.jsx` | 🟡 OK | 168 dòng, hơi lớn nhưng chấp nhận. |
@@ -167,13 +179,20 @@
 | `DraggableAssetCanvas.jsx` | 🟡 OK | Logic drag-n-drop inline, có thể extract. |
 | `LoginPage.jsx` | 🟢 OK | Clean, focused. |
 | `SearchBar.jsx` | 🟢 OK | Rất nhỏ, presentational. |
-| `ShareDialog.jsx` | 🟡 OK | Có side effects trong component, nên move logic ra hook. |
+| `ShareDialog.jsx` | 🟢 Refactored | **[Task 5.5]** Giờ là presentational component. Logic CRUD → `useSharePermissions` hook. |
 | `UploadArea.jsx` | 🟢 OK | Clean, dùng `react-dropzone` đúng cách. |
 
-**Vấn đề chính:**
-- [ ] **App.jsx là God Component (615 dòng)**: Chứa state management, business logic, layout, routing logic tất cả trong 1 file. Cần tách thành nhiều component + context.
-- [ ] **Không có state management pattern**: Không dùng Redux, Zustand, hay Context API (ngoài Auth). Toàn bộ state gom ở App.jsx rồi prop-drill xuống.
-- [ ] **Thiếu component hierarchy rõ ràng**: Không có Layout component, không có Page component pattern.
+### 4. Context & Models — Mới ✅
+
+| File | Trạng thái | Ghi chú |
+|------|-----------|---------|
+| `context/AppContext.js` | 🟢 Mới | **[Task 5.4]** `AppProvider` + `useAppContext()`. Compose tất cả domain hooks. Centralised state management. |
+| `models/index.js` | 🟢 Mới | **[Task 4.1-4.3]** `Asset`, `Collection`, `Tag` domain classes. Computed properties, validation, mapping helpers (`toAsset`, `toCollection`, `toTag`). |
+
+**Vấn đề đã giải quyết:**
+- [x] **~~App.jsx là God Component (615 dòng)~~**: ✅ **[Task 5.1, 5.4]** Tách `AppHeader`, `AppSidebar`, `DetailsPanel` + `AppContext`. App.jsx giờ 344 dòng.
+- [x] **~~Không có state management pattern~~**: ✅ **[Task 5.4]** `AppContext` + `AppProvider` (Context API). `useAppContext()` hook. Consistent với existing `AuthProvider` pattern.
+- [x] **~~Thiếu component hierarchy rõ ràng~~**: ✅ **[Task 5.1]** AppLayout → AppHeader + AppSidebar + MainContent + DetailsPanel. Route-level `AppProvider` wrapping.
 
 ---
 
@@ -181,8 +200,8 @@
 
 | Nguyên tắc | Backend | Frontend | Ghi chú |
 |------------|---------|----------|---------|
-| **Encapsulation** | 🟢 Tốt | 🟡 Cải thiện | BE: Domain methods, private/virtual behavior, factory pattern. FE: `TokenManager` private fields, class-based API services |
-| **Abstraction** | 🟢 Tốt | 🟡 Cải thiện | BE: Interface-based DI. FE: `BaseApiService` abstraction layer |
+| **Encapsulation** | 🟢 Tốt | 🟢 Tốt | BE: Domain methods, private/virtual behavior, factory pattern. FE: `TokenManager` private fields, domain model classes, `AppContext` encapsulated state |
+| **Abstraction** | 🟢 Tốt | 🟢 Tốt | BE: Interface-based DI. FE: `BaseApiService` abstraction layer, domain models, Context API |
 | **Inheritance** | 🟢 Tốt | 🟢 Tốt | BE: TPH hierarchy, BaseApiController. FE: `BaseApiService` → 7 subclasses |
 | **Polymorphism** | 🟢 Tốt | 🟡 Cơ bản | BE: IStorageService, virtual behavior. FE: Override `_get/_post/_put/_delete` khi cần |
 
@@ -190,11 +209,11 @@
 
 | Nguyên tắc | Backend | Frontend |
 |------------|---------|----------|
-| **S** - Single Responsibility | � | 🔴 (App.jsx, useAssets.js, useCollections.js) |
-| **O** - Open/Closed | 🟢 | � (BaseApiService extensible) |
+| **S** - Single Responsibility | ✅ | 🟢 (App.jsx tách→344 dòng, useAssets/useCollections tách nhỏ, AppContext centralise state) |
+| **O** - Open/Closed | 🟢 | ✅ (BaseApiService extensible, domain model classes extensible) |
 | **L** - Liskov Substitution | 🟢 | 🟢 (API subclasses substitutable) |
-| **I** - Interface Segregation | � (IBulkAssetService tách) | 🟡 (mỗi API service focus 1 domain) |
-| **D** - Dependency Inversion | 🟢 | 🟡 (singleton services, nhưng chưa có DI container) |
+| **I** - Interface Segregation | ✅ (IBulkAssetService tách) | 🟢 (mỗi API service focus 1 domain, hooks tách chuyên biệt) |
+| **D** - Dependency Inversion | 🟢 | 🟢 (Context API cho state injection, singleton services) |
 
 ### Design Patterns Đã Dùng
 
@@ -231,6 +250,11 @@
 | **Strategy Pattern** | `ISmartCollectionFilter` + 5 concrete strategies (`RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`) | Task 2.4 |
 | **Helper/Utility Class** | `AssetCleanupHelper` — encapsulate file + thumbnail cleanup | Task 2.2 |
 | **Interface Segregation** | `IBulkAssetService` tách khỏi `IAssetService` | Task 2.1 |
+| **Domain Model (FE)** | `Asset`, `Collection`, `Tag` classes — computed properties, validation, mapping | Task 4.1-4.3 |
+| **Context/Provider (FE)** | `AppContext` + `AppProvider` — centralised state management (Context API) | Task 5.4 |
+| **Custom Hook Extraction (FE)** | `useAssetSelection`, `useBulkOperations`, `useCollectionNavigation`, `useSmartCollections`, `useSharePermissions` | Task 5.1-5.5 |
+| **Presentational Component (FE)** | `ShareDialog` giờ chỉ render UI, logic trong `useSharePermissions` hook | Task 5.5 |
+| **Component Decomposition (FE)** | `AppHeader`, `AppSidebar`, `DetailsPanel` tách từ App.jsx (620→344 dòng) | Task 5.1 |
 
 ---
 

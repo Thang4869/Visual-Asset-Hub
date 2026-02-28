@@ -178,8 +178,10 @@ docker-compose logs -f frontend
         │   ├── client.js          # Axios instance + interceptors
         │   ├── index.js           # Barrel exports
         │   └── *Api.js            # 7 domain API service classes
-        ├── hooks/              # 6 custom hooks
-        └── components/         # 11 components
+        ├── hooks/              # 11 custom hooks
+        ├── context/            # State management (AppContext)
+        ├── models/             # Domain model classes (Asset, Collection, Tag)
+        └── components/         # 14 components
 ```
 
 ---
