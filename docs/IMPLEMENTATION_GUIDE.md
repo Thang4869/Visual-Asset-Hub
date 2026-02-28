@@ -1,6 +1,6 @@
 # Visual Asset Hub — Hướng dẫn Triển khai & Phát triển
 
-> **Cập nhật:** 27/02/2026
+> **Cập nhật:** 28/02/2026
 
 ---
 
@@ -107,7 +107,9 @@ docker-compose logs -f frontend
 │   ├── ARCHITECTURE_REVIEW.md  # Kiến trúc + roadmap
 │   ├── PROJECT_DOCUMENTATION.md # Tài liệu kỹ thuật chi tiết
 │   ├── IMPLEMENTATION_GUIDE.md # Hướng dẫn này
-│   └── FIX_REPORT_20260227.md  # Lịch sử thay đổi
+│   ├── FIX_REPORT_20260227.md  # Lịch sử thay đổi
+│   ├── OOP_ASSESSMENT.md      # Đánh giá OOP + refactoring progress
+│   └── PHASE1_REPORT.md       # Báo cáo Phase 1 refactoring
 │
 ├── VAH.Backend/
 │   ├── Program.cs              # Entry point + DI + middleware
@@ -115,8 +117,9 @@ docker-compose logs -f frontend
 │   ├── Dockerfile              # Multi-stage .NET build
 │   ├── appsettings.json        # Configuration
 │   ├── appsettings.Development.json
-│   ├── Controllers/            # 8 controllers (38 endpoints)
-│   │   ├── AssetsController.cs
+│   ├── Controllers/            # 9 controllers (43 endpoints)
+│   │   ├── BaseApiController.cs    # Abstract base (GetUserId())
+│   │   ├── AssetsController.cs     # 16 endpoints
 │   │   ├── AuthController.cs
 │   │   ├── CollectionsController.cs
 │   │   ├── HealthController.cs
@@ -124,8 +127,10 @@ docker-compose logs -f frontend
 │   │   ├── TagsController.cs
 │   │   ├── SmartCollectionsController.cs
 │   │   └── PermissionsController.cs
-│   ├── Services/               # 9 services (interface + implementation)
+│   ├── Services/               # 24 files (10 interfaces + 12 impls + 2 helpers)
 │   │   ├── IAssetService.cs / AssetService.cs
+│   │   ├── IBulkAssetService.cs / BulkAssetService.cs  # NEW: bulk ops
+│   │   ├── AssetCleanupHelper.cs                      # NEW: cleanup utility
 │   │   ├── ICollectionService.cs / CollectionService.cs
 │   │   ├── IAuthService.cs / AuthService.cs
 │   │   ├── IStorageService.cs / LocalStorageService.cs
@@ -133,23 +138,28 @@ docker-compose logs -f frontend
 │   │   ├── ITagService.cs / TagService.cs
 │   │   ├── INotificationService.cs / NotificationService.cs
 │   │   ├── ISmartCollectionService.cs / SmartCollectionService.cs
+│   │   ├── SmartCollectionFilters.cs  # NEW: ISmartCollectionFilter + 5 strategies
+│   │   ├── ISearchService.cs / SearchService.cs
 │   │   └── IPermissionService.cs / PermissionService.cs
-│   ├── Models/                 # 6 entity classes + DTOs
-│   │   ├── Asset.cs
-│   │   ├── Collection.cs
-│   │   ├── ApplicationUser.cs
-│   │   ├── Tag.cs              # Tag + AssetTag
+│   ├── Models/                 # 11 entity classes + DTOs
+│   │   ├── Asset.cs            # TPH base class (domain methods, virtual behavior)
+│   │   ├── AssetTypes.cs       # TPH subtypes: ImageAsset, LinkAsset, ColorAsset, etc.
+│   │   ├── AssetFactory.cs     # Factory pattern (6 Create methods, sets ContentType)
+│   │   ├── Enums.cs            # AssetContentType, CollectionType, LayoutType
+│   │   ├── Collection.cs       # Collection (domain methods, nav props)
+│   │   ├── ApplicationUser.cs  # Identity user
+│   │   ├── Tag.cs              # Tag + AssetTag (domain methods)
 │   │   ├── CollectionPermission.cs # Permission + Roles + DTOs
 │   │   ├── AuthDTOs.cs
 │   │   ├── Common.cs           # PagedResult, PaginationParams, FileUploadConfig
-│   │   └── DTOs.cs             # Asset/Tag/Bulk DTOs
+│   │   └── DTOs.cs             # Asset/Tag/Bulk DTOs (incl. BulkMoveGroupDto)
 │   ├── Data/
-│   │   └── AppDbContext.cs     # EF Core context, 5 DbSets, fluent config
+│   │   └── AppDbContext.cs     # EF Core context, 5 DbSets, fluent config, 242 lines
 │   ├── Hubs/
 │   │   └── AssetHub.cs         # SignalR hub
 │   ├── Middleware/
 │   │   └── ExceptionHandlingMiddleware.cs
-│   ├── Migrations/             # 4 migrations
+│   ├── Migrations/             # 5 migrations
 │   └── wwwroot/uploads/        # File storage + thumbnails
 │
 └── VAH.Frontend/
@@ -162,9 +172,14 @@ docker-compose logs -f frontend
         ├── main.jsx            # Entry point
         ├── App.jsx             # Main layout + routes
         ├── App.css             # Dark Navy theme
-        ├── api/                # 7 API modules
+        ├── api/                # 11 API files (class-based architecture)
+        │   ├── BaseApiService.js  # Abstract base class
+        │   ├── TokenManager.js    # JWT token singleton
+        │   ├── client.js          # Axios instance + interceptors
+        │   ├── index.js           # Barrel exports
+        │   └── *Api.js            # 7 domain API service classes
         ├── hooks/              # 6 custom hooks
-        └── components/         # 12 components
+        └── components/         # 11 components
 ```
 
 ---
@@ -179,6 +194,7 @@ docker-compose logs -f frontend
 | 2 | `AddThumbnailColumns` | ThumbnailSm, ThumbnailMd, ThumbnailLg |
 | 3 | `AddTagSystem` | Tags, AssetTags (M2M junction) |
 | 4 | `AddCollectionPermissions` | CollectionPermissions (RBAC) |
+| 5 | `SyncModelChanges` | FK_Assets_Assets_ParentFolderId (self-ref FK) |
 
 ### 4.2 Tạo migration mới
 
@@ -226,7 +242,7 @@ dotnet ef database update
 - **Upload:** Kéo thả file vào upload zone, hoặc click để chọn
 - **Multi-upload:** Hỗ trợ tối đa 20 file/lần, mỗi file tối đa 50MB
 - **Thư mục:** Nhấn "Thư mục mới" → tổ chức file phân cấp
-- **Liên kết:** Nhấn "Tải xuống" → nhập URL → lưu dưới dạng link asset
+- **Liên kết:** Nhấn "Liên kết mới" → nhập URL → lưu dưới dạng link asset
 - **Xóa:** Chọn asset → delete (xóa cả file vật lý + thumbnails)
 - **Reorder:** List mode → dùng nút ▲/▼ hoặc POST /api/Assets/reorder
 

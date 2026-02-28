@@ -9,9 +9,17 @@
 ### 2.1 Cấu hình dự án (`VAH.Backend.csproj`)
 
 - **Target:** .NET 9.0 (`net9.0`), Nullable enabled, ImplicitUsings enabled
-- **NuGet packages:**
+- **NuGet packages (11):**
+  - `Microsoft.AspNetCore.Authentication.JwtBearer` 9.*
+  - `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 9.*
   - `Microsoft.EntityFrameworkCore.Design` 9.*
   - `Microsoft.EntityFrameworkCore.Sqlite` 9.*
+  - `Microsoft.Extensions.Caching.StackExchangeRedis` 10.0.3
+  - `Npgsql.EntityFrameworkCore.PostgreSQL` 9.*
+  - `Serilog.AspNetCore` 10.0.0
+  - `Serilog.Sinks.Console` 6.1.1
+  - `Serilog.Sinks.File` 7.0.0
+  - `SixLabors.ImageSharp` 3.1.12
   - `Swashbuckle.AspNetCore` 10.1.4 (Swagger)
 
 ### 2.2 Cấu hình ứng dụng (`appsettings.json`)
@@ -108,7 +116,12 @@
 ### 2.6 Database Context (`Data/AppDbContext.cs`)
 
 - Kế thừa `IdentityDbContext<ApplicationUser>` (ASP.NET Identity)
-- **DbSets:** `Assets`, `Collections` (Identity tables được quản lý bởi base class)
+- **242 dòng**, Fluent API configuration
+- **5 DbSets:** `Assets`, `Collections`, `Tags`, `AssetTags`, `CollectionPermissions` (Identity tables được quản lý bởi base class)
+- TPH discriminator config cho 6 Asset subtypes
+- Seed data: 3 default collections (Images, Links, Colors)
+- Dual-dialect SQL (PostgreSQL + SQLite) qua `DatabaseProviderInfo`
+- 22 indexes cho tất cả entity tables
 
 ---
 
@@ -237,6 +250,7 @@
 |-----|--------|
 | `BulkDeleteDto` | AssetIds (List\<int\>, Required) |
 | `BulkMoveDto` | AssetIds (Required), TargetCollectionId?, TargetFolderId?, ClearParentFolder? |
+| `BulkMoveGroupDto` | AssetIds (List\<int\>, Required), TargetGroupId (int?), InsertBeforeId (int?) |
 | `BulkTagDto` | AssetIds (Required), TagIds (Required), Remove (bool, default false) |
 
 ### Permission DTOs
@@ -260,7 +274,7 @@
 
 ## 4. Services
 
-### 4.1 AssetService (518 lines)
+### 4.1 AssetService (~280 lines)
 
 **Dependencies:** AppDbContext, IStorageService, FileUploadConfig, IThumbnailService, INotificationService, ILogger
 
@@ -269,21 +283,41 @@
 | `GetAssetsAsync(PaginationParams, userId)` | `PagedResult<Asset>` | Phân trang, sắp xếp, user-scoped |
 | `GetByIdAsync(id, userId)` | `Asset?` | |
 | `CreateAssetAsync(Asset, userId)` | `Asset` | + SignalR notify |
-| `UploadFilesAsync(files, collectionId, folderId, userId)` | `List<Asset>` | Validate size/ext/MIME, thumbnail gen |
-| `UpdatePositionAsync(id, x, y, userId)` | `Asset` | Canvas position |
-| `CreateFolderAsync(dto, userId)` | `Asset` | |
-| `CreateColorAsync(dto, userId)` | `Asset` | Auto-prepend `#` cho hex codes |
-| `CreateColorGroupAsync(dto, userId)` | `Asset` | |
-| `CreateLinkAsync(dto, userId)` | `Asset` | URL validation (http/https) |
-| `UpdateAssetAsync(id, dto, userId)` | `Asset` | Partial update |
-| `DeleteAssetAsync(id, userId)` | `bool` | Xóa file + thumbnails, orphan prevention |
+| `UploadFilesAsync(files, collectionId, folderId, userId)` | `List<Asset>` | Validate size/ext/MIME, AssetFactory, thumbnail gen |
+| `UpdatePositionAsync(id, x, y, userId)` | `Asset` | Canvas position (domain method) |
+| `CreateFolderAsync(dto, userId)` | `Asset` | AssetFactory.CreateFolder |
+| `CreateColorAsync(dto, userId)` | `Asset` | Auto-prepend `#` cho hex codes, AssetFactory.CreateColor |
+| `CreateColorGroupAsync(dto, userId)` | `Asset` | AssetFactory.CreateColorGroup |
+| `CreateLinkAsync(dto, userId)` | `Asset` | URL validation (http/https), AssetFactory.CreateLink |
+| `UpdateAssetAsync(id, dto, userId)` | `Asset` | Partial update (domain method ApplyUpdate) |
+| `DeleteAssetAsync(id, userId)` | `bool` | AssetCleanupHelper for file + thumbnails |
 | `ReorderAssetsAsync(ids, userId)` | `void` | Batch SortOrder |
 | `GetAssetsByGroupAsync(groupId, userId)` | `List<Asset>` | |
-| `BulkDeleteAsync(ids, userId)` | `int` | Bulk cleanup |
-| `BulkMoveAsync(dto, userId)` | `int` | Validate target collection |
-| `BulkTagAsync(dto, userId)` | `int` | Add/remove tags batch |
+| `BulkMoveGroupAsync(dto, userId)` | `int` | Move colors to group with positional insert |
 
-### 4.2 CollectionService (264 lines)
+### 4.2 BulkAssetService (NEW)
+
+**Dependencies:** AppDbContext, AssetCleanupHelper, INotificationService, ILogger
+
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `BulkDeleteAsync(ids, userId)` | `int` | Bulk delete files + thumbnails via AssetCleanupHelper |
+| `BulkMoveAsync(dto, userId)` | `int` | Validate target collection, batch move |
+| `BulkTagAsync(dto, userId)` | `int` | Add/remove tags batch |
+| `BulkMoveGroupAsync(dto, userId)` | `int` | Move colors between groups with positional insert |
+
+### 4.3 AssetCleanupHelper (NEW)
+
+**Dependencies:** IStorageService, IWebHostEnvironment, ILogger
+
+| Method | Return | Mô tả |
+|--------|--------|-------|
+| `CleanupFilesAsync(asset)` | `void` | Xóa file vật lý nếu `RequiresFileCleanup` |
+| `CleanupThumbnailsAsync(asset)` | `void` | Xóa 3 thumbnail sizes |
+
+Dùng trong cả `AssetService` và `BulkAssetService` (DRY principle).
+
+### 4.4 CollectionService (264 lines)
 
 **Dependencies:** AppDbContext, ILogger, IDistributedCache, INotificationService, IPermissionService
 
@@ -349,12 +383,24 @@
 |--------|--------|-------|
 | `NotifyAsync(userId, eventType, payload)` | `void` | Gửi tới group `user:{userId}`, silent error |
 
-### 4.8 SmartCollectionService (198 lines)
+### 4.10 SmartCollectionService (198 lines)
+
+> **Refactored:** Sử dụng Strategy pattern qua `ISmartCollectionFilter` interface.
 
 | Method | Return | Mô tả |
 |--------|--------|-------|
 | `GetDefinitionsAsync(userId)` | `List<SmartCollectionDefinition>` | 8 built-in + top 10 per-tag |
-| `GetItemsAsync(id, params, userId)` | `PagedResult<Asset>` | Dynamic LINQ filter |
+| `GetItemsAsync(id, params, userId)` | `PagedResult<Asset>` | Delegate tới ISmartCollectionFilter strategies |
+
+**Strategy classes (trong SmartCollectionFilters.cs):**
+
+| Strategy | Loại | Mô tả |
+|----------|------|-------|
+| `RecentDaysFilter` | Built-in | Assets tạo trong N ngày qua |
+| `ContentTypeFilter` | Built-in | Assets theo content type (image/link/color) |
+| `UntaggedFilter` | Built-in | Assets chưa gắn tag |
+| `WithThumbnailsFilter` | Built-in | Assets có thumbnail |
+| `TagFilter` | Dynamic | Assets theo tag cụ thể |
 
 **Built-in smart collections:**
 
@@ -406,6 +452,7 @@ POST   /reorder               → 200                  (ReorderAssetsDto)
 GET    /group/{groupId}       → List<Asset>
 POST   /bulk-delete            → {deleted: int}       (BulkDeleteDto)
 POST   /bulk-move              → {moved: int}         (BulkMoveDto)
+POST   /bulk-move-group        → {moved: int}         (BulkMoveGroupDto)
 POST   /bulk-tag               → {affected: int}      (BulkTagDto)
 ```
 
@@ -511,35 +558,42 @@ GET    /                      → List<Collection>
 │   │   └── TagsController.cs        # Tag CRUD — 85 dòng
 │   ├── Extensions/
 │   │   └── ServiceCollectionExtensions.cs  # DI registration (6 methods) — 182 dòng
-│   ├── Services/                    # 22 files (11 interfaces + 11 implementations), ~1,674 dòng tổng
-│   │   ├── IAssetService.cs / AssetService.cs        # Asset CRUD — 369 dòng (dùng AssetFactory + domain methods)
-│   │   ├── IAuthService.cs / AuthService.cs          # Authentication — 90 dòng
-│   │   ├── ICollectionService.cs / CollectionService.cs  # Collection CRUD — 177 dòng
-│   │   ├── IPermissionService.cs / PermissionService.cs  # Permission management — 149 dòng
-│   │   ├── ISearchService.cs / SearchService.cs      # Search (extracted from controller) — 71 dòng
-│   │   ├── ISmartCollectionService.cs / SmartCollectionService.cs  # Smart queries — 178 dòng
-│   │   ├── ITagService.cs / TagService.cs            # Tag management — 224 dòng
-│   │   ├── IThumbnailService.cs / ThumbnailService.cs  # Thumbnail gen — 92 dòng
-│   │   ├── IStorageService.cs / LocalStorageService.cs  # File storage — 61 dòng
-│   │   └── INotificationService.cs / NotificationService.cs  # SignalR — 27 dòng
-│   ├── Models/                      # 11 files, ~703 dòng tổng
-│   │   ├── Asset.cs                 # TPH base class — 94 dòng (enums, virtual behavior, domain methods, nav props)
-│   │   ├── AssetTypes.cs            # TPH subtypes: ImageAsset, LinkAsset, ColorAsset, ColorGroupAsset, FolderAsset — 32 dòng
-│   │   ├── AssetFactory.cs          # Factory pattern — 6 static Create methods — 74 dòng
-│   │   ├── Enums.cs                 # AssetContentType, CollectionType, LayoutType + EnumMappings — 99 dòng
-│   │   ├── Collection.cs            # Collection model (domain methods, nav props) — 54 dòng
-│   │   ├── CollectionPermission.cs  # Computed (CanWrite, CanManage) + SetRole — 68 dòng
-│   │   ├── Tag.cs                   # Domain methods (SetName, UpdateFrom, IsOwnedBy) — 54 dòng
-│   │   ├── ApplicationUser.cs       # Identity user — 10 dòng
-│   │   ├── DTOs.cs                  # Data Transfer Objects — 140 dòng
-│   │   ├── AuthDTOs.cs              # Auth request/response DTOs — 26 dòng
-│   │   └── Common.cs                # PagedResult, PaginationParams, FileUploadConfig — 52 dòng
+│   ├── Services/                    # 24 files (10 interfaces + 12 implementations + 2 helpers), ~1,800 dòng tổng
+│   │   ├── IAssetService.cs / AssetService.cs        # Asset CRUD — ~280 dòng (dùng AssetFactory + domain methods)
+│   │   ├── IBulkAssetService.cs / BulkAssetService.cs # Bulk delete/move/tag — NEW (tách từ AssetService)
+│   │   ├── AssetCleanupHelper.cs                    # File + thumbnail cleanup utility — NEW
+│   │   ├── IAuthService.cs / AuthService.cs          # Authentication — ~90 dòng
+│   │   ├── ICollectionService.cs / CollectionService.cs  # Collection CRUD — ~264 dòng
+│   │   ├── IPermissionService.cs / PermissionService.cs  # Permission management — ~228 dòng
+│   │   ├── ISearchService.cs / SearchService.cs      # Search (extracted from controller) — ~71 dòng
+│   │   ├── ISmartCollectionService.cs / SmartCollectionService.cs  # Smart queries — ~198 dòng
+│   │   ├── SmartCollectionFilters.cs                # ISmartCollectionFilter + 5 Strategy classes — ~191 dòng NEW
+│   │   ├── ITagService.cs / TagService.cs            # Tag management — ~281 dòng
+│   │   ├── IThumbnailService.cs / ThumbnailService.cs  # Thumbnail gen — ~113 dòng
+│   │   ├── IStorageService.cs / LocalStorageService.cs  # File storage — ~82 dòng
+│   │   └── INotificationService.cs / NotificationService.cs  # SignalR — ~35 dòng
+│   ├── Models/                      # 11 files, ~750 dòng tổng
+│   │   ├── Asset.cs                 # TPH base class — ~94 dòng (enums, virtual behavior, domain methods, nav props)
+│   │   ├── AssetTypes.cs            # TPH subtypes: ImageAsset, LinkAsset, ColorAsset, ColorGroupAsset, FolderAsset — ~32 dòng
+│   │   ├── AssetFactory.cs          # Factory pattern — 6 static Create methods (ContentType được set) — ~74 dòng
+│   │   ├── Enums.cs                 # AssetContentType, CollectionType, LayoutType + EnumMappings — ~99 dòng
+│   │   ├── Collection.cs            # Collection model (domain methods, nav props) — ~54 dòng
+│   │   ├── CollectionPermission.cs  # Computed (CanWrite, CanManage) + SetRole — ~68 dòng
+│   │   ├── Tag.cs                   # Domain methods (SetName, UpdateFrom, IsOwnedBy) — ~54 dòng
+│   │   ├── ApplicationUser.cs       # Identity user — ~10 dòng
+│   │   ├── DTOs.cs                  # Data Transfer Objects (incl. BulkMoveGroupDto) — ~191 dòng
+│   │   ├── AuthDTOs.cs              # Auth request/response DTOs — ~26 dòng
+│   │   └── Common.cs                # PagedResult, PaginationParams, FileUploadConfig — ~52 dòng
 │   ├── Data/
 │   │   └── AppDbContext.cs          # EF Core DbContext + Fluent API config
 │   ├── Middleware/
 │   │   └── ExceptionHandlingMiddleware.cs  # Global exception handler (RFC 7807)
-│   ├── Migrations/                  # EF Core migration files
-│   │   ├── *_InitialCreate.cs       # Initial schema migration
+│   ├── Migrations/                  # 5 EF Core migrations
+│   │   ├── *_InitialCreate.cs       # Assets, Collections, Identity tables
+│   │   ├── *_AddThumbnailColumns.cs  # ThumbnailSm, ThumbnailMd, ThumbnailLg
+│   │   ├── *_AddTagSystem.cs        # Tags, AssetTags (M2M junction)
+│   │   ├── *_AddCollectionPermissions.cs # CollectionPermissions (RBAC)
+│   │   ├── *_SyncModelChanges.cs    # FK_Assets_Assets_ParentFolderId
 │   │   └── AppDbContextModelSnapshot.cs
 │   ├── Properties/
 │   │   └── launchSettings.json      # Cấu hình chạy
@@ -550,28 +604,41 @@ GET    /                      → List<Collection>
     ├── vite.config.js               # Vite configuration
     ├── index.html                   # HTML entry point
     └── src/
-        ├── main.jsx                 # React entry point
-        ├── App.jsx                  # Component chính (state, routing, layout)
-        ├── App.css                  # Design system & layout styles
+        ├── main.jsx                 # StrictMode → ErrorBoundary → BrowserRouter → AuthProvider → App
+        ├── App.jsx                  # AppLayout + Routes (615 lines)
+        ├── App.css                  # Dark Navy theme (24 CSS variables)
         ├── index.css                # Global reset & base styles
-        ├── api/
-        │   ├── client.js            # Axios instance + interceptors
-        │   ├── assetsApi.js         # API functions cho assets
-        │   ├── collectionsApi.js     # API functions cho collections
-        │   └── searchApi.js          # API function cho search
-        ├── hooks/
-        │   ├── useCollections.js     # Collections state + CRUD
-        │   └── useAssets.js          # Assets state + CRUD
-        └── components/
-            ├── CollectionTree.jsx/css     # Cây thư mục sidebar
-            ├── CollectionBrowser.jsx/css  # Trình duyệt file chính
+        ├── api/                     # 11 files (class-based OOP architecture)
+        │   ├── BaseApiService.js    # Abstract base class (_get/_post/_put/_delete)
+        │   ├── TokenManager.js      # JWT token singleton (private #storageKey)
+        │   ├── client.js            # Axios instance + JWT interceptor + staticUrl
+        │   ├── assetsApi.js         # AssetApiService extends BaseApiService (16 methods)
+        │   ├── authApi.js           # AuthApiService extends BaseApiService
+        │   ├── collectionsApi.js    # CollectionApiService extends BaseApiService
+        │   ├── searchApi.js         # SearchApiService extends BaseApiService
+        │   ├── tagsApi.js           # TagApiService extends BaseApiService (10 methods)
+        │   ├── smartCollectionsApi.js # SmartCollectionApiService extends BaseApiService
+        │   ├── permissionsApi.js    # PermissionApiService extends BaseApiService
+        │   └── index.js             # Barrel file — re-exports all service singletons
+        ├── hooks/                   # 6 custom hooks
+        │   ├── useAuth.js           # AuthProvider context + login/register/logout
+        │   ├── useAssets.js         # CRUD + multi-select + bulk operations
+        │   ├── useCollections.js    # State + URL sync + CRUD
+        │   ├── useTags.js           # Tag CRUD + asset-tag M2M
+        │   ├── useSignalR.js        # Real-time connection + events
+        │   └── useUndoRedo.js       # Command pattern (50 history)
+        └── components/              # 11 components (10 with CSS pairs)
+            ├── LoginPage.jsx/css          # Login/Register form
+            ├── ErrorBoundary.jsx          # React error boundary (class component)
+            ├── CollectionTree.jsx/css     # Sidebar tree navigation
+            ├── CollectionBrowser.jsx/css  # File browser (grid/list/masonry)
             ├── AssetDisplayer.jsx/css     # Gallery / Canvas view
             ├── AssetGrid.jsx/css          # Lưới thumbnail cơ bản
-            ├── SearchBar.jsx/css          # Thanh tìm kiếm (phụ)
+            ├── SearchBar.jsx/css          # Thanh tìm kiếm
             ├── UploadArea.jsx/css         # Vùng upload kéo thả
-            ├── ColorBoard.jsx/css         # Bảng quản lý màu
-            ├── DraggableAssetCanvas.jsx/css # Canvas kéo thả tự do
-            └── ErrorBoundary.jsx          # Error boundary component
+            ├── ColorBoard.jsx/css         # Bảng màu (drag-drop, copy, multi-select)
+            ├── ShareDialog.jsx/css        # RBAC sharing dialog
+            └── DraggableAssetCanvas.jsx/css # Canvas kéo thả tự do
 ```
 
 ---
@@ -652,7 +719,7 @@ Auto-fetch on mount.
 | `AssetDisplayer` | assets, subCollections, viewMode, onSelectCollection, loading | Gallery + canvas mode |
 | `AssetGrid` | assets | Simple card grid |
 | `UploadArea` | onUpload | react-dropzone file drop zone |
-| `ColorBoard` | items, onCreateColor, onCreateGroup, onSelectAsset, onMoveColorsToGroup, selectedAssetIds | Color palette manager: group columns, click-to-copy code, drag-drop reorder with positional insert, multi-select drag |
+| `ColorBoard` | items, onCreateColor, onCreateGroup, onSelectAsset, onMoveColorsToGroup, selectedAssetIds | Color palette manager: group columns, click-to-copy hex code, drag-drop reorder with positional insert indicator, multi-select drag, drag handle (⠣) |
 | `SearchBar` | onSearch | Search input |
 | `ShareDialog` | collectionId, collectionName, onClose | RBAC sharing modal: grant/update/revoke by email |
 | `DraggableAssetCanvas` | (internal) | Canvas drag-and-drop cho images |
@@ -665,43 +732,42 @@ Auto-fetch on mount.
 
 #### Quy mô code — Backend
 
-| Thành phần | Files | Dòng code (chính xác) |
-|------------|-------|----------------------|
-| Controllers | 9 | 485 |
-| Services (interfaces + impl) | 22 (11+11) | 1,674 |
-| Models / DTOs | 11 | 703 |
-| Extensions | 1 | 182 |
-| Data (AppDbContext) | 1 | 203 |
-| Middleware | 1 | 71 |
-| Hubs (SignalR) | 1 | 52 |
-| Program.cs | 1 | 97 |
-| **Tổng Backend** | **~47 files** | **~3,467** |
+| Thành phần | Files | Dòng code |
+|------------|-------|----------|
+| Controllers | 9 | ~500 |
+| Services (interfaces + impl + helpers) | 24 (10 interfaces + 12 impls + 2 helpers) | ~1,800 |
+| Models / DTOs | 11 | ~750 |
+| Extensions | 1 | ~182 |
+| Data (AppDbContext) | 1 | ~242 |
+| Middleware | 1 | ~71 |
+| Hubs (SignalR) | 1 | ~52 |
+| Program.cs | 1 | ~148 |
+| **Tổng Backend** | **~49 files** | **~3,745** |
 
-#### Quy mô code — Frontend (chưa refactor)
+#### Quy mô code — Frontend
 
 | Thành phần | Files | Dòng code (ước tính) |
 |------------|-------|---------------------|
-| Frontend Components | 9 (.jsx) | ~644 |
-| Frontend Hooks | 2 | ~364 |
-| Frontend API | 4 | ~115 |
-| Frontend App | 1 | ~395 |
-| Frontend Styles | 10+ (.css) | ~800+ |
-| **Tổng Frontend** | **~26+ files** | **~2,318+** |
+| Frontend Components | 11 (.jsx) + 10 (.css) | ~700 + ~800 |
+| Frontend Hooks | 6 | ~500 |
+| Frontend API (class-based) | 11 (7 domain + BaseApiService + TokenManager + client + barrel) | ~350 |
+| Frontend App | 1 (App.jsx) + 1 (App.css) | ~615 + ~400 |
+| **Tổng Frontend** | **~40+ files** | **~3,365+** |
 
 | | | |
 |---|---|---|
-| **TỔNG DỰ ÁN** | **~73+ files** | **~5,785+** |
+| **TỔNG DỰ ÁN** | **~89+ files** | **~7,110+** |
 
-#### API Endpoints
+#### API Endpoints (43 total)
 
 | Controller | Endpoints | Methods |
-|------------|-----------|---------|
-| Assets | 12 | GET(2), POST(6), PUT(2), DELETE(1), PATCH(1) |
+|------------|-----------|---------|  
+| Assets | 16 | GET(2), POST(8), PUT(2), DELETE(1), total bulk ops(3) |
 | Collections | 5 | GET(2), POST(1), PUT(1), DELETE(1) |
 | Auth | 2 | POST(2) |
-| Tags | 5 | GET(2), POST(1), PUT(1), DELETE(1) |
-| Permissions | 3 | GET(1), POST(1), DELETE(1) |
-| SmartCollections | 1 | POST(1) |
+| Tags | 10 | GET(3), POST(3), PUT(2), DELETE(1), POST migrate(1) |
+| Permissions | 6 | GET(3), POST(1), PUT(1), DELETE(1) |
+| SmartCollections | 2 | GET(2) |
 | Search | 1 | GET(1) |
 | Health | 1 | GET(1) |
 
@@ -735,15 +801,17 @@ frontend:
 
 ### 9.8 KẾT LUẬN
 
-Dự án Visual Asset Hub đã trải qua **Phase 1 OOP Refactoring** hoàn chỉnh (8 tasks). Backend hiện có:
+Dự án Visual Asset Hub đã trải qua **4 giai đoạn phát triển** và **OOP Refactoring Phases 1-3** hoàn chỉnh (15/23 tasks). Backend hiện có:
 - **TPH Inheritance** (Asset → 5 subtypes) với virtual behavior properties
-- **Factory Pattern** (AssetFactory) cho type-safe creation
+- **Factory Pattern** (AssetFactory) cho type-safe creation với ContentType được set đúng
 - **Rich Domain Model** (domain methods trên 4 entities)
 - **Type-safe Enums** với EF Core value conversions
 - **Navigation Properties** cho quan hệ parent-child
 - **Base Controller** giảm duplication
-- **Extension Methods** tổ chức DI registration (Program.cs: 255→97 dòng)
+- **Extension Methods** tổ chức DI registration (Program.cs: 255→148 dòng)
+- **BulkAssetService** tách khỏi AssetService (ISP)
+- **AssetCleanupHelper** encapsulate cleanup logic (SRP)
+- **Strategy Pattern** cho SmartCollectionService (5 filter strategies, OCP)
+- **Class-based Frontend API** layer (BaseApiService → 7 subclasses + TokenManager singleton)
 
-**Phase 2 (Service Layer refactoring)** sẽ tách `AssetService` thành các service nhỏ hơn, áp dụng Strategy pattern cho Smart Collections, và extract reusable helpers.
-
-Frontend chưa được refactor — sẽ là Phase 3.
+**Phần chưa làm (Phase 4-5):** Frontend domain models, component architecture refactoring, state management.

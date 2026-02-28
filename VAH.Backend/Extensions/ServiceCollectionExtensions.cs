@@ -188,7 +188,9 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(new FileUploadConfig());
         services.AddScoped<IStorageService, LocalStorageService>();
+        services.AddScoped<AssetCleanupHelper>();
         services.AddScoped<IAssetService, AssetService>();
+        services.AddScoped<IBulkAssetService, BulkAssetService>();
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IThumbnailService, ThumbnailService>();

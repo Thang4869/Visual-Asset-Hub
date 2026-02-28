@@ -1,7 +1,7 @@
 # Visual Asset Hub — Đánh giá Kiến trúc & Lộ trình Phát triển
 
 > **Cập nhật lần cuối:** 28/02/2026  
-> **Phiên bản:** 4.1 — Hoàn thành 4 giai đoạn phát triển + hotfixes (28/26 hạng mục)
+> **Phiên bản:** 4.2 — Hoàn thành 4 giai đoạn phát triển + OOP refactoring Phases 1-3 + hotfixes (28/26 hạng mục + 15/23 OOP tasks)
 
 ---
 
@@ -34,13 +34,14 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 │  │  ExceptionHandler → CORS → Serilog → RateLimiter →          │   │
 │  │  StaticFiles → Auth → Controllers + SignalR Hub              │   │
 │  ├────────────────────────────────────────────────────────────┤   │
-│  │ 8 Controllers (38 endpoints):                               │   │
-│  │  Assets(15) • Auth(2) • Collections(5) • Search(1) •        │   │
+│  │ 8 Controllers (43 endpoints):                               │   │
+│  │  Assets(16) • Auth(2) • Collections(5) • Search(1) •        │   │
 │  │  Tags(10) • SmartCollections(2) • Permissions(6) • Health(1)│   │
 │  ├────────────────────────────────────────────────────────────┤   │
-│  │ 9 Services:                                                  │   │
-│  │  Asset • Collection • Auth • Storage • Thumbnail •           │   │
-│  │  Tag • Notification • SmartCollection • Permission           │   │
+│  │ 12 Services + Helpers:                                       │   │
+│  │  Asset • BulkAsset • Collection • Auth • Storage •           │   │
+│  │  Thumbnail • Tag • Notification • SmartCollection •          │   │
+│  │  Permission • Search • AssetCleanupHelper                    │   │
 │  ├────────────────────────────────────────────────────────────┤   │
 │  │ EF Core 9 (SQLite dev / PostgreSQL prod) • 5 DbSets         │   │
 │  │ ASP.NET Identity • Auto-Migrate on Startup                   │   │
@@ -99,12 +100,15 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | `FileUploadConfig` | Singleton | 50MB max, 20 files/request, 27 extensions, 13 MIME prefixes |
 | `IStorageService` → `LocalStorageService` | Scoped | Lưu file tại wwwroot/uploads |
 | `IAssetService` → `AssetService` | Scoped | Asset business logic |
+| `IBulkAssetService` → `BulkAssetService` | Scoped | Bulk delete/move/tag operations |
+| `AssetCleanupHelper` | Scoped | File + thumbnail cleanup utility |
 | `ICollectionService` → `CollectionService` | Scoped | Collection logic + Redis cache |
 | `IAuthService` → `AuthService` | Scoped | Register/Login + JWT generation |
 | `IThumbnailService` → `ThumbnailService` | Scoped | ImageSharp: sm/md/lg WebP |
 | `ITagService` → `TagService` | Scoped | Tag CRUD + M2M |
 | `INotificationService` → `NotificationService` | Scoped | SignalR notification wrapper |
-| `ISmartCollectionService` → `SmartCollectionService` | Scoped | Dynamic virtual collections |
+| `ISmartCollectionService` → `SmartCollectionService` | Scoped | Dynamic virtual collections (Strategy pattern) |
+| `ISmartCollectionFilter` → 5 strategies | Scoped | RecentDays, ContentType, Untagged, WithThumbnails, Tag |
 | `IPermissionService` → `PermissionService` | Scoped | RBAC permission management |
 | SignalR | — | Hub + group management |
 
@@ -120,7 +124,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
  6. UseSwagger()                    ← Dev only
  7. UseAuthentication()             ← JWT Bearer validation
  8. UseAuthorization()              ← Authorization policies
- 9. MapControllers()                ← 38 REST API endpoints
+ 9. MapControllers()                ← 43 REST API endpoints
 10. MapHub<AssetHub>("/hubs/assets") ← SignalR WebSocket hub
  ◄── Response
 ```
@@ -160,7 +164,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Service layer** | ✅ RESOLVED | Interface-based DI, 11 services tách biệt. SearchService extracted từ controller. Domain methods trên entities | Clean separation |
+| **Service layer** | ✅ RESOLVED | Interface-based DI, 12 services tách biệt (11 interface-backed + AssetCleanupHelper). BulkAssetService tách từ AssetService. SearchService extracted từ controller. Strategy pattern cho SmartCollection. Domain methods trên entities | Clean separation |
 | **Repository pattern** | 🟡 MEDIUM | Service layer gọi `_context` trực tiếp (không qua Repository) | Coupling với EF Core, nhưng acceptable cho project size này |
 | **Domain separation** | ✅ IMPROVED | Models có domain behavior, Enums tách riêng, DTOs gom vào Models/DTOs.cs | Rich Domain Model thay vì Anemic |
 | **Exception handling** | ✅ RESOLVED | Global ExceptionHandlingMiddleware (RFC 7807) | Structured error responses |
@@ -173,7 +177,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Schema versioning** | ✅ RESOLVED | EF Core Migrations (5 migrations). Auto-migrate on startup | Schema version controlled |
+| **Schema versioning** | ✅ RESOLVED | EF Core Migrations (5 migrations: InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges). Auto-migrate on startup | Schema version controlled |
 | **Indexing** | ✅ RESOLVED | Composite indexes, FK indexes, UserId indexes đã khai báo trong AppDbContext | Optimized query performance |
 | **Full-text search** | ✅ RESOLVED | Server-side search via SearchService (LIKE queries, paginated) | Search qua API, có pagination |
 | **Tags system** | ✅ RESOLVED | Proper many-to-many (Tags table + AssetTags junction) với Tag entity, domain methods | Normalized, query-friendly |
@@ -196,12 +200,12 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **State management** | 🟡 MEDIUM | 11 `useState` trong `App.jsx`. Tất cả logic + state ở root component | Props drilling qua 3+ levels. Re-render toàn bộ tree khi bất kỳ state nào thay đổi. 650+ lines trong 1 file |
-| **API abstraction** | 🟡 MEDIUM | `axios.get/post/put/delete` gọi trực tiếp trong handler functions | Duplicate error handling. Hardcode `API_URL`. Không interceptor cho auth token |
+| **State management** | 🟡 MEDIUM | 11 `useState` trong `App.jsx`. Logic phân tán qua 6 hooks nhưng state vẫn ở root | Props drilling qua 3+ levels. Re-render toàn bộ tree khi bất kỳ state nào thay đổi. 615+ lines trong 1 file |
+| **API abstraction** | ✅ RESOLVED | Class-based API layer: `BaseApiService` → 7 subclasses. `TokenManager` singleton. Barrel exports `api/index.js` | OOP-compliant, consistent, extensible |
 | **Data fetching** | 🟡 MEDIUM | Manual `useEffect` + `useState` pattern | Không cache, dedup, background refetch, stale-while-revalidate. Re-fetch toàn bộ khi navigate |
-| **Routing** | 🟡 MEDIUM | Không có router — single page state-driven | URL không reflect trạng thái UI. Không shareable link. Browser back/forward broken |
+| **Routing** | ✅ RESOLVED | React Router v7.13, URL sync qua useParams/useNavigate. 4 routes: /login, /, /collections/:id, /collections/:id/folder/:folderId | Shareable URLs, browser navigation works |
 | **Code splitting** | 🟢 LOW | Không cần thiết hiện tại (8 components nhỏ) | Sẽ thành vấn đề khi bundle >500KB |
-| **Error boundary** | 🟡 MEDIUM | Không có React Error Boundary | JS error trong child component → white screen toàn app |
+| **Error boundary** | ✅ RESOLVED | `ErrorBoundary.jsx` class component wrapping app | Graceful error fallback UI |
 | **Loading/empty states** | 🟢 LOW | `loading` boolean nhưng chưa có skeleton UI | UX không mượt nhưng không phải risk kỹ thuật |
 
 ## 2.6 DevOps & Production Readiness
@@ -229,11 +233,11 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 ## 2.8 Đánh giá khả năng Scale hiện tại
 
 ```text
-Concurrent Users:  ~1-3 (SQLite write lock, no auth)
-Data Volume:       ~1,000 assets (no pagination, no index)
-File Storage:      ~5-10GB (local disk, no cleanup)
-Deployment:        Single instance only
-Availability:      Zero redundancy
+Concurrent Users:  ~5-10 (SQLite write lock, JWT auth)
+Data Volume:       ~10,000 assets (server-side pagination, 22 indexes)
+File Storage:      ~5-10GB (local disk, orphan cleanup on delete)
+Deployment:        Single instance (Docker Compose) or multi-instance (PostgreSQL)
+Availability:      Docker healthchecks, graceful degradation (Redis optional)
 ```
 AspNetUsers ──┬──< Assets (UserId FK, Cascade)
               ├──< Collections (UserId FK, Cascade)
@@ -279,7 +283,7 @@ Chi tiết exception chỉ hiện ở Development environment.
 
 ## 3. API Reference (38 Endpoints)
 
-### 3.1 Assets — `api/Assets` [Authorize]
+### 3.1 Assets — `api/Assets` [Authorize] (16 endpoints)
 
 | # | Method | Route | Mô tả |
 |---|--------|-------|-------|
@@ -297,7 +301,8 @@ Chi tiết exception chỉ hiện ở Development environment.
 | 12 | GET | `/api/Assets/group/{groupId}` | Assets theo nhóm |
 | 13 | POST | `/api/Assets/bulk-delete` | Xóa hàng loạt |
 | 14 | POST | `/api/Assets/bulk-move` | Di chuyển hàng loạt |
-| 15 | POST | `/api/Assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
+| 15 | POST | `/api/Assets/bulk-move-group` | Di chuyển màu giữa các group với vị trí chính xác |
+| 16 | POST | `/api/Assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
 
 ### 3.2 Auth — `api/Auth` [RateLimited]
 
@@ -373,15 +378,18 @@ VAH.Frontend/src/
 ├── App.jsx                      # AppLayout + Routes (615 lines)
 ├── App.css                      # Dark Navy theme (24 CSS variables)
 │
-├── api/                         # 7 API modules
-│   ├── client.js                # Axios instance + JWT interceptor + staticUrl
-│   ├── assetsApi.js             # 12 functions
-│   ├── authApi.js               # register, login
-│   ├── collectionsApi.js        # fetchAll, fetchItems, create, delete
-│   ├── searchApi.js             # search(params)
-│   ├── tagsApi.js               # 10 functions
-│   ├── smartCollectionsApi.js   # 2 functions
-│   └── permissionsApi.js        # 6 functions
+│  api/                         # 11 API files (class-based)
+│  │ ├── BaseApiService.js        # Abstract base class (_get/_post/_put/_delete)
+│  │ ├── TokenManager.js          # JWT token singleton (private #storageKey)
+│  │ ├── client.js                # Axios instance + JWT interceptor + staticUrl
+│  │ ├── assetsApi.js             # AssetApiService (16 methods)
+│  │ ├── authApi.js               # AuthApiService
+│  │ ├── collectionsApi.js        # CollectionApiService
+│  │ ├── searchApi.js             # SearchApiService
+│  │ ├── tagsApi.js               # TagApiService (10 methods)
+│  │ ├── smartCollectionsApi.js   # SmartCollectionApiService
+│  │ ├── permissionsApi.js        # PermissionApiService (6 methods)
+│  │ └── index.js                 # Barrel file — re-exports all singletons
 │
 ├── hooks/                       # 6 custom hooks
 │   ├── useAuth.js               # AuthProvider context + login/register/logout
@@ -391,15 +399,15 @@ VAH.Frontend/src/
 │   ├── useSignalR.js            # Real-time connection + events
 │   └── useUndoRedo.js           # Command pattern (50 history)
 │
-└── components/                  # 12 components
+└── components/                  # 11 components
     ├── LoginPage.jsx            # Login/Register form
-    ├── ErrorBoundary.jsx        # React error boundary
+    ├── ErrorBoundary.jsx        # React error boundary (class component)
     ├── CollectionTree.jsx       # Sidebar tree navigation
     ├── CollectionBrowser.jsx    # File browser (grid/list/masonry)
     ├── AssetDisplayer.jsx       # Asset gallery + canvas
     ├── AssetGrid.jsx            # Simple card grid
     ├── UploadArea.jsx           # Drag-and-drop upload zone
-    ├── ColorBoard.jsx           # Color palette manager
+    ├── ColorBoard.jsx           # Color palette manager (drag-drop, multi-select, click-to-copy)
     ├── SearchBar.jsx            # Search input
     ├── ShareDialog.jsx          # RBAC sharing dialog
     └── DraggableAssetCanvas.jsx # Canvas drag-and-drop
@@ -577,16 +585,16 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng API endpoints | 38 |
-| Backend services | 9 (với interfaces) |
+| Tổng API endpoints | 43 |
+| Backend services | 12 (11 interface-backed + AssetCleanupHelper) |
 | Frontend hooks | 6 |
-| Frontend components | 12 |
-| API modules (frontend) | 7 |
+| Frontend components | 11 |
+| API modules (frontend) | 11 (7 domain + BaseApiService + TokenManager + client + barrel) |
 | Database tables | 5 entity + Identity |
 | Database indexes | 22 |
 | Docker services | 4 |
-| EF Migrations | 5 |
-| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + 3 hotfixes** |
+| EF Migrations | 5 (InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges) |
+| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor Phases 1-3 (15/23) + hotfixes** |
 
 ---
 

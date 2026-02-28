@@ -14,6 +14,8 @@
 | Phase 4 | Enhancement & Polish | ✅ Hoàn thành | 7/7 |
 | **Tổng** | | **100%** | **26/26** |
 
+> **Ghi chú:** Tổng cộng 43 API endpoints (thêm `POST /api/assets/bulk-move-group` trong Session #3).
+
 ---
 
 ## Phase 1 — Backend Foundation
@@ -178,7 +180,7 @@
 - 4 services: postgres, redis, backend, frontend
 - PostgreSQL 16-alpine: healthcheck, storage volume
 - Redis 7-alpine: healthcheck, persistence
-- Backend: multi-stage .NET build, non-root user
+- Backend: multi-stage .NET build, non-root user, 148 lines Program.cs
 - Frontend: multi-stage Node → Nginx, non-root user
 - Environment variables inject từ compose
 

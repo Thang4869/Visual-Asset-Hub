@@ -11,6 +11,7 @@ public class AssetService : IAssetService
     private readonly FileUploadConfig _uploadConfig;
     private readonly IThumbnailService _thumbnailService;
     private readonly INotificationService _notifier;
+    private readonly AssetCleanupHelper _cleanup;
     private readonly ILogger<AssetService> _logger;
 
     public AssetService(
@@ -19,6 +20,7 @@ public class AssetService : IAssetService
         FileUploadConfig uploadConfig,
         IThumbnailService thumbnailService,
         INotificationService notifier,
+        AssetCleanupHelper cleanup,
         ILogger<AssetService> logger)
     {
         _context = context;
@@ -26,6 +28,7 @@ public class AssetService : IAssetService
         _uploadConfig = uploadConfig;
         _thumbnailService = thumbnailService;
         _notifier = notifier;
+        _cleanup = cleanup;
         _logger = logger;
     }
 
@@ -254,18 +257,8 @@ public class AssetService : IAssetService
             .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             ?? throw new KeyNotFoundException("Asset not found.");
 
-        // Clean up physical file and thumbnails if applicable
-        if (asset.RequiresFileCleanup)
-        {
-            await _storage.DeleteAsync(asset.FilePath);
-
-            if (!string.IsNullOrEmpty(asset.ThumbnailSm) && asset.ThumbnailSm != asset.FilePath)
-                await _storage.DeleteAsync(asset.ThumbnailSm);
-            if (!string.IsNullOrEmpty(asset.ThumbnailMd) && asset.ThumbnailMd != asset.FilePath)
-                await _storage.DeleteAsync(asset.ThumbnailMd);
-            if (!string.IsNullOrEmpty(asset.ThumbnailLg) && asset.ThumbnailLg != asset.FilePath)
-                await _storage.DeleteAsync(asset.ThumbnailLg);
-        }
+        // Clean up physical file and thumbnails via helper
+        await _cleanup.CleanupFilesAsync(asset);
 
         // If deleting a folder, move children to parent folder (orphan prevention)
         if (asset.IsFolder)
@@ -315,201 +308,5 @@ public class AssetService : IAssetService
             .Where(a => a.GroupId == groupId && a.UserId == userId)
             .OrderBy(a => a.SortOrder)
             .ToListAsync();
-    }
-
-    // ──── Bulk Operations ────
-
-    public async Task<int> BulkDeleteAsync(List<int> assetIds, string userId)
-    {
-        if (assetIds == null || assetIds.Count == 0)
-            throw new ArgumentException("Asset IDs are required.");
-
-        var assets = await _context.Assets
-            .Where(a => assetIds.Contains(a.Id) && a.UserId == userId)
-            .ToListAsync();
-
-        foreach (var asset in assets)
-        {
-            // Clean up physical files and thumbnails if applicable
-            if (asset.RequiresFileCleanup)
-            {
-                await _storage.DeleteAsync(asset.FilePath);
-                if (!string.IsNullOrEmpty(asset.ThumbnailSm)) await _storage.DeleteAsync(asset.ThumbnailSm);
-                if (!string.IsNullOrEmpty(asset.ThumbnailMd)) await _storage.DeleteAsync(asset.ThumbnailMd);
-                if (!string.IsNullOrEmpty(asset.ThumbnailLg)) await _storage.DeleteAsync(asset.ThumbnailLg);
-            }
-
-            // Orphan prevention for folders
-            if (asset.IsFolder)
-            {
-                var children = await _context.Assets
-                    .Where(a => a.ParentFolderId == asset.Id)
-                    .ToListAsync();
-                foreach (var child in children)
-                    child.MoveToFolder(asset.ParentFolderId);
-            }
-        }
-
-        _context.Assets.RemoveRange(assets);
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Bulk deleted {Count} assets for user {UserId}", assets.Count, userId);
-        await _notifier.NotifyAsync(userId, "AssetsBulkDeleted", new { count = assets.Count, assetIds });
-        return assets.Count;
-    }
-
-    public async Task<int> BulkMoveAsync(BulkMoveDto dto, string userId)
-    {
-        if (dto.AssetIds == null || dto.AssetIds.Count == 0)
-            throw new ArgumentException("Asset IDs are required.");
-
-        var assets = await _context.Assets
-            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
-            .ToListAsync();
-
-        // Validate target collection exists if specified
-        if (dto.TargetCollectionId.HasValue)
-        {
-            var collExists = await _context.Collections
-                .AnyAsync(c => c.Id == dto.TargetCollectionId.Value && (c.UserId == userId || c.UserId == null));
-            if (!collExists)
-                throw new KeyNotFoundException($"Target collection {dto.TargetCollectionId.Value} not found.");
-        }
-
-        foreach (var asset in assets)
-        {
-            if (dto.TargetCollectionId.HasValue)
-                asset.MoveToCollection(dto.TargetCollectionId.Value);
-
-            if (dto.ClearParentFolder == true)
-                asset.MoveToFolder(null);
-            else if (dto.TargetFolderId.HasValue)
-                asset.MoveToFolder(dto.TargetFolderId.Value);
-        }
-
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Bulk moved {Count} assets for user {UserId}", assets.Count, userId);
-        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = assets.Count });
-        return assets.Count;
-    }
-
-    public async Task<int> BulkMoveGroupAsync(BulkMoveGroupDto dto, string userId)
-    {
-        if (dto.AssetIds == null || dto.AssetIds.Count == 0)
-            throw new ArgumentException("Asset IDs are required.");
-
-        // Fetch the colors being moved
-        var movedAssets = await _context.Assets
-            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
-            .ToListAsync();
-
-        if (movedAssets.Count == 0) return 0;
-
-        // Set group for each moved asset
-        foreach (var asset in movedAssets)
-        {
-            asset.GroupId = dto.TargetGroupId;
-        }
-
-        // Get all existing colors in the target group (including newly moved ones after save)
-        var targetGroupId = dto.TargetGroupId;
-        var existingInGroup = await _context.Assets
-            .Where(a => a.GroupId == targetGroupId && a.UserId == userId
-                        && a.ContentType == AssetContentType.Color
-                        && !dto.AssetIds.Contains(a.Id))
-            .OrderBy(a => a.SortOrder)
-            .ToListAsync();
-
-        // Build final ordered list
-        List<Asset> finalOrder;
-        if (dto.InsertBeforeId.HasValue)
-        {
-            finalOrder = new List<Asset>();
-            bool inserted = false;
-            foreach (var existing in existingInGroup)
-            {
-                if (existing.Id == dto.InsertBeforeId.Value && !inserted)
-                {
-                    finalOrder.AddRange(movedAssets);
-                    inserted = true;
-                }
-                finalOrder.Add(existing);
-            }
-            if (!inserted)
-                finalOrder.AddRange(movedAssets); // append at end if insertBefore not found
-        }
-        else
-        {
-            finalOrder = new List<Asset>(existingInGroup);
-            finalOrder.AddRange(movedAssets);
-        }
-
-        // Assign sort orders
-        for (int i = 0; i < finalOrder.Count; i++)
-        {
-            finalOrder[i].SortOrder = i;
-        }
-
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Bulk moved {Count} colors to group {GroupId} for user {UserId}",
-            movedAssets.Count, dto.TargetGroupId, userId);
-        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = movedAssets.Count });
-        return movedAssets.Count;
-    }
-
-    public async Task<int> BulkTagAsync(BulkTagDto dto, string userId)
-    {
-        if (dto.AssetIds == null || dto.AssetIds.Count == 0)
-            throw new ArgumentException("Asset IDs are required.");
-        if (dto.TagIds == null || dto.TagIds.Count == 0)
-            throw new ArgumentException("Tag IDs are required.");
-
-        // Verify all assets belong to user
-        var assets = await _context.Assets
-            .Where(a => dto.AssetIds.Contains(a.Id) && a.UserId == userId)
-            .ToListAsync();
-
-        // Verify tags belong to user
-        var validTagIds = await _context.Tags
-            .Where(t => dto.TagIds.Contains(t.Id) && t.UserId == userId)
-            .Select(t => t.Id)
-            .ToListAsync();
-
-        int count = 0;
-
-        foreach (var asset in assets)
-        {
-            foreach (var tagId in validTagIds)
-            {
-                if (dto.Remove)
-                {
-                    var junction = await _context.AssetTags
-                        .FirstOrDefaultAsync(at => at.AssetId == asset.Id && at.TagId == tagId);
-                    if (junction != null)
-                    {
-                        _context.AssetTags.Remove(junction);
-                        count++;
-                    }
-                }
-                else
-                {
-                    var exists = await _context.AssetTags
-                        .AnyAsync(at => at.AssetId == asset.Id && at.TagId == tagId);
-                    if (!exists)
-                    {
-                        _context.AssetTags.Add(new AssetTag { AssetId = asset.Id, TagId = tagId });
-                        count++;
-                    }
-                }
-            }
-        }
-
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Bulk tag operation ({Action}) on {Count} asset-tag pairs for user {UserId}",
-            dto.Remove ? "remove" : "add", count, userId);
-        return count;
     }
 }

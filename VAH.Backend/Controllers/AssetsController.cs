@@ -10,10 +10,12 @@ namespace VAH.Backend.Controllers;
 public class AssetsController : BaseApiController
 {
     private readonly IAssetService _assetService;
+    private readonly IBulkAssetService _bulkService;
 
-    public AssetsController(IAssetService assetService)
+    public AssetsController(IAssetService assetService, IBulkAssetService bulkService)
     {
         _assetService = assetService;
+        _bulkService = bulkService;
     }
 
     // GET: api/assets?page=1&pageSize=50&sortBy=createdAt&sortOrder=desc
@@ -121,7 +123,7 @@ public class AssetsController : BaseApiController
     [HttpPost("bulk-delete")]
     public async Task<ActionResult> BulkDelete([FromBody] BulkDeleteDto dto)
     {
-        var count = await _assetService.BulkDeleteAsync(dto.AssetIds, GetUserId());
+        var count = await _bulkService.BulkDeleteAsync(dto.AssetIds, GetUserId());
         return Ok(new { deleted = count });
     }
 
@@ -129,7 +131,7 @@ public class AssetsController : BaseApiController
     [HttpPost("bulk-move")]
     public async Task<ActionResult> BulkMove([FromBody] BulkMoveDto dto)
     {
-        var count = await _assetService.BulkMoveAsync(dto, GetUserId());
+        var count = await _bulkService.BulkMoveAsync(dto, GetUserId());
         return Ok(new { moved = count });
     }
 
@@ -137,7 +139,7 @@ public class AssetsController : BaseApiController
     [HttpPost("bulk-move-group")]
     public async Task<ActionResult> BulkMoveGroup([FromBody] BulkMoveGroupDto dto)
     {
-        var count = await _assetService.BulkMoveGroupAsync(dto, GetUserId());
+        var count = await _bulkService.BulkMoveGroupAsync(dto, GetUserId());
         return Ok(new { moved = count });
     }
 
@@ -145,7 +147,7 @@ public class AssetsController : BaseApiController
     [HttpPost("bulk-tag")]
     public async Task<ActionResult> BulkTag([FromBody] BulkTagDto dto)
     {
-        var count = await _assetService.BulkTagAsync(dto, GetUserId());
+        var count = await _bulkService.BulkTagAsync(dto, GetUserId());
         return Ok(new { affected = count });
     }
 }

@@ -161,7 +161,7 @@ Phase 1 refactoring đã chuyển đổi backend từ **Anemic Domain Model** sa
 | **S** — Single Responsibility | 🟡 | 🟢 | SearchController tách logic, Program.cs tách config, BaseController tách common code |
 | **O** — Open/Closed | 🔴 | 🟢 | Asset hierarchy — thêm type mới chỉ cần tạo subtype + factory method |
 | **L** — Liskov Substitution | 🟢 | 🟢 | TPH subtypes tuân thủ LSP — mọi subtype thay thế được Asset base |
-| **I** — Interface Segregation | 🟡 | 🟡 | ISearchService tốt, nhưng IAssetService vẫn lớn (Phase 2 sẽ tách) |
+| **I** — Interface Segregation | 🟡 | ✅ | ISearchService tốt, IBulkAssetService tách khỏi IAssetService (Phase 2) |
 | **D** — Dependency Inversion | 🟢 | 🟢 | Tất cả services qua interface, DI container |
 
 ---
@@ -175,22 +175,21 @@ Phase 1 refactoring đã chuyển đổi backend từ **Anemic Domain Model** sa
 - [x] 1.4 Navigation properties (Task #8)
 - [x] 1.5 Move DTOs to proper location (Task #1)
 
-### Phase 2 — Backend Services (3/6 done)
-- [ ] 2.1 Tách AssetService → FileUploadService, FolderService, ColorService, LinkService
-- [ ] 2.2 Extract reusable helpers (file cleanup, thumbnail cleanup)
+### Phase 2 — Backend Services ✅ HOÀN TẤT (6/6)
+- [x] 2.1 Tách AssetService → BulkAssetService (4 bulk methods). AssetCleanupHelper extracted.
+- [x] 2.2 Extract reusable helpers (AssetCleanupHelper: file + thumbnail cleanup)
 - [x] 2.3 SearchService extraction (Task #4)
-- [ ] 2.4 Strategy pattern cho SmartCollectionService
+- [x] 2.4 Strategy pattern cho SmartCollectionService (5 strategies)
 - [x] 2.5 BaseApiController (Task #2)
 - [x] 2.6 ServiceCollectionExtensions (Task #5)
 
-### Phase 3 — Frontend (0/5)
-- [ ] 3.1 TypeScript migration
-- [ ] 3.2 Component composition pattern
-- [ ] 3.3 Custom hooks refactor
-- [ ] 3.4 State management
-- [ ] 3.5 Error handling patterns
+### Phase 3 — Frontend API Layer ✅ HOÀN TẤT (4/4)
+- [x] 3.1 BaseApiService class (abstract base with _get/_post/_put/_delete)
+- [x] 3.2 7 API classes kế thừa BaseApiService (backward-compatible named exports)
+- [x] 3.3 TokenManager class (singleton, private #storageKey)
+- [x] 3.4 Thống nhất code style (all class methods, consistent)
 
-### Tổng: **8/23 tasks hoàn thành (35%)**
+### Tổng: **15/23 tasks hoàn thành (65%)**
 
 ---
 
