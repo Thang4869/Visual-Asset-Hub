@@ -1,7 +1,7 @@
 # Visual Asset Hub — Đánh giá Kiến trúc & Lộ trình Phát triển
 
 > **Cập nhật lần cuối:** 28/02/2026  
-> **Phiên bản:** 4.2 — Hoàn thành 4 giai đoạn phát triển + OOP refactoring Phases 1-3 + hotfixes (28/26 hạng mục + 15/23 OOP tasks)
+> **Phiên bản:** 4.3 — Hoàn thành 4 giai đoạn phát triển + OOP refactoring 5/5 Phases (26/26 hạng mục + 23/23 OOP tasks)
 
 ---
 
@@ -200,7 +200,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **State management** | 🟡 MEDIUM | 11 `useState` trong `App.jsx`. Logic phân tán qua 6 hooks nhưng state vẫn ở root | Props drilling qua 3+ levels. Re-render toàn bộ tree khi bất kỳ state nào thay đổi. 615+ lines trong 1 file |
+| **State management** | ✅ RESOLVED | `AppContext` + `AppProvider` (Context API). `useAppContext()` hook. App.jsx giảm từ 620→344 dòng. State centralised, không còn prop-drilling | Clean separation |
 | **API abstraction** | ✅ RESOLVED | Class-based API layer: `BaseApiService` → 7 subclasses. `TokenManager` singleton. Barrel exports `api/index.js` | OOP-compliant, consistent, extensible |
 | **Data fetching** | 🟡 MEDIUM | Manual `useEffect` + `useState` pattern | Không cache, dedup, background refetch, stale-while-revalidate. Re-fetch toàn bộ khi navigate |
 | **Routing** | ✅ RESOLVED | React Router v7.13, URL sync qua useParams/useNavigate. 4 routes: /login, /, /collections/:id, /collections/:id/folder/:folderId | Shareable URLs, browser navigation works |
@@ -375,31 +375,45 @@ Chi tiết exception chỉ hiện ở Development environment.
 ```
 VAH.Frontend/src/
 ├── main.jsx                     # StrictMode → ErrorBoundary → BrowserRouter → AuthProvider → App
-├── App.jsx                      # AppLayout + Routes (615 lines)
+├── App.jsx                      # AppLayout + Routes (344 lines, refactored từ 620)
 ├── App.css                      # Dark Navy theme (24 CSS variables)
 │
-│  api/                         # 11 API files (class-based)
-│  │ ├── BaseApiService.js        # Abstract base class (_get/_post/_put/_delete)
-│  │ ├── TokenManager.js          # JWT token singleton (private #storageKey)
-│  │ ├── client.js                # Axios instance + JWT interceptor + staticUrl
-│  │ ├── assetsApi.js             # AssetApiService (16 methods)
-│  │ ├── authApi.js               # AuthApiService
-│  │ ├── collectionsApi.js        # CollectionApiService
-│  │ ├── searchApi.js             # SearchApiService
-│  │ ├── tagsApi.js               # TagApiService (10 methods)
-│  │ ├── smartCollectionsApi.js   # SmartCollectionApiService
-│  │ ├── permissionsApi.js        # PermissionApiService (6 methods)
-│  │ └── index.js                 # Barrel file — re-exports all singletons
+├── api/                         # 11 API files (class-based)
+│   ├── BaseApiService.js        # Abstract base class (_get/_post/_put/_delete)
+│   ├── TokenManager.js          # JWT token singleton (private #storageKey)
+│   ├── client.js                # Axios instance + JWT interceptor + staticUrl
+│   ├── assetsApi.js             # AssetApiService (16 methods)
+│   ├── authApi.js               # AuthApiService
+│   ├── collectionsApi.js        # CollectionApiService
+│   ├── searchApi.js             # SearchApiService
+│   ├── tagsApi.js               # TagApiService (10 methods)
+│   ├── smartCollectionsApi.js   # SmartCollectionApiService
+│   ├── permissionsApi.js        # PermissionApiService (6 methods)
+│   └── index.js                 # Barrel file — re-exports all singletons
 │
-├── hooks/                       # 6 custom hooks
+├── context/                     # State management (Context API)
+│   └── AppContext.js            # AppProvider + useAppContext() — centralised state
+│
+├── models/                      # Domain model classes
+│   └── index.js                 # Asset, Collection, Tag classes + mapping helpers
+│
+├── hooks/                       # 11 custom hooks
 │   ├── useAuth.js               # AuthProvider context + login/register/logout
-│   ├── useAssets.js             # CRUD + multi-select + bulk operations
-│   ├── useCollections.js        # State + URL sync + CRUD
+│   ├── useAssets.js             # CRUD + compose useAssetSelection + useBulkOperations
+│   ├── useAssetSelection.js     # Multi-select state: toggle, range, selectAll
+│   ├── useBulkOperations.js     # Bulk delete/move/tag/moveGroup
+│   ├── useCollections.js        # State + CRUD + compose useCollectionNavigation
+│   ├── useCollectionNavigation.js # URL sync, breadcrumbs, folder path
+│   ├── useSmartCollections.js   # Smart collection fetch + state
+│   ├── useSharePermissions.js   # Permission CRUD (grant/updateRole/revoke)
 │   ├── useTags.js               # Tag CRUD + asset-tag M2M
 │   ├── useSignalR.js            # Real-time connection + events
 │   └── useUndoRedo.js           # Command pattern (50 history)
 │
-└── components/                  # 11 components
+└── components/                  # 14 components
+    ├── AppHeader.jsx            # Header bar (search, actions, notifications)
+    ├── AppSidebar.jsx           # Sidebar (collection tree, smart collections)
+    ├── DetailsPanel.jsx         # Right panel (preview, metadata, tags)
     ├── LoginPage.jsx            # Login/Register form
     ├── ErrorBoundary.jsx        # React error boundary (class component)
     ├── CollectionTree.jsx       # Sidebar tree navigation
@@ -409,7 +423,7 @@ VAH.Frontend/src/
     ├── UploadArea.jsx           # Drag-and-drop upload zone
     ├── ColorBoard.jsx           # Color palette manager (drag-drop, multi-select, click-to-copy)
     ├── SearchBar.jsx            # Search input
-    ├── ShareDialog.jsx          # RBAC sharing dialog
+    ├── ShareDialog.jsx          # RBAC sharing dialog (presentational, logic in useSharePermissions)
     └── DraggableAssetCanvas.jsx # Canvas drag-and-drop
 ```
 
@@ -430,8 +444,14 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 | Hook | Chức năng | Đặc điểm |
 |------|-----------|----------|
 | `useAuth()` | Auth state, login/register/logout | Context Provider, persist localStorage |
-| `useCollections()` | Collection list, selection, CRUD | URL sync qua useParams/useNavigate |
-| `useAssets()` | Asset CRUD, multi-select, bulk ops | Ctrl+click toggle, Shift+click range |
+| `useAppContext()` | Centralised app state | Context API, compose tất cả domain hooks |
+| `useCollections()` | Collection list, CRUD | Compose `useCollectionNavigation` |
+| `useCollectionNavigation()` | URL sync, breadcrumbs, folder path | useParams/useNavigate |
+| `useAssets()` | Asset CRUD | Compose `useAssetSelection` + `useBulkOperations` |
+| `useAssetSelection()` | Multi-select state | Ctrl+click toggle, Shift+click range |
+| `useBulkOperations()` | Bulk delete/move/tag/moveGroup | Batch API calls |
+| `useSmartCollections()` | Smart collection fetch + state | Auto-fetch, virtual collections |
+| `useSharePermissions()` | Permission CRUD | grant, updateRole, revoke |
 | `useTags()` | Tag CRUD, asset-tag management | Auto-fetch on mount |
 | `useSignalR()` | Real-time events | Auto-reconnect [0, 2s, 5s, 10s, 30s] |
 | `useUndoRedo()` | Command pattern undo/redo | Ctrl+Z / Ctrl+Shift+Z, max 50 history |
@@ -587,15 +607,17 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 |--------|---------|
 | Tổng API endpoints | 43 |
 | Backend services | 12 (11 interface-backed + AssetCleanupHelper) |
-| Frontend hooks | 6 |
-| Frontend components | 11 |
+| Frontend hooks | 11 |
+| Frontend components | 14 |
+| Frontend context | 1 (AppContext + AppProvider) |
+| Frontend models | 1 (Asset, Collection, Tag domain classes) |
 | API modules (frontend) | 11 (7 domain + BaseApiService + TokenManager + client + barrel) |
 | Database tables | 5 entity + Identity |
 | Database indexes | 22 |
 | Docker services | 4 |
 | EF Migrations | 5 (InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges) |
-| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor Phases 1-3 (15/23) + hotfixes** |
+| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor 5/5 Phases (23/23) + hotfixes** |
 
 ---
 
-> *Tất cả 4 giai đoạn phát triển đã hoàn thành. Hệ thống sẵn sàng deploy production qua Docker Compose với PostgreSQL, Redis, SignalR real-time, RBAC sharing, và non-root containers.*
+> *Tất cả 4 giai đoạn phát triển + 5 OOP refactoring phases đã hoàn thành (23/23 tasks). Hệ thống sẵn sàng deploy production qua Docker Compose với PostgreSQL, Redis, SignalR real-time, RBAC sharing, và non-root containers.*

@@ -605,7 +605,7 @@ GET    /                      → List<Collection>
     ├── index.html                   # HTML entry point
     └── src/
         ├── main.jsx                 # StrictMode → ErrorBoundary → BrowserRouter → AuthProvider → App
-        ├── App.jsx                  # AppLayout + Routes (615 lines)
+        ├── App.jsx                  # AppLayout + Routes (344 lines, refactored từ 620)
         ├── App.css                  # Dark Navy theme (24 CSS variables)
         ├── index.css                # Global reset & base styles
         ├── api/                     # 11 files (class-based OOP architecture)
@@ -620,14 +620,26 @@ GET    /                      → List<Collection>
         │   ├── smartCollectionsApi.js # SmartCollectionApiService extends BaseApiService
         │   ├── permissionsApi.js    # PermissionApiService extends BaseApiService
         │   └── index.js             # Barrel file — re-exports all service singletons
-        ├── hooks/                   # 6 custom hooks
+        ├── hooks/                   # 11 custom hooks
         │   ├── useAuth.js           # AuthProvider context + login/register/logout
-        │   ├── useAssets.js         # CRUD + multi-select + bulk operations
-        │   ├── useCollections.js    # State + URL sync + CRUD
+        │   ├── useAssets.js         # CRUD + compose useAssetSelection + useBulkOperations
+        │   ├── useAssetSelection.js # Multi-select state: toggle, range, selectAll
+        │   ├── useBulkOperations.js # Bulk delete/move/tag/moveGroup
+        │   ├── useCollections.js    # State + CRUD + compose useCollectionNavigation
+        │   ├── useCollectionNavigation.js # URL sync, breadcrumbs, folder path
+        │   ├── useSmartCollections.js # Smart collection fetch + state
+        │   ├── useSharePermissions.js # Permission CRUD (grant/updateRole/revoke)
         │   ├── useTags.js           # Tag CRUD + asset-tag M2M
         │   ├── useSignalR.js        # Real-time connection + events
         │   └── useUndoRedo.js       # Command pattern (50 history)
-        └── components/              # 11 components (10 with CSS pairs)
+        ├── context/                 # State management
+        │   └── AppContext.js        # AppProvider + useAppContext() — centralised state
+        ├── models/                  # Domain model classes
+        │   └── index.js             # Asset, Collection, Tag classes + mapping helpers
+        └── components/              # 14 components
+            ├── AppHeader.jsx            # Header bar (search, actions, notifications)
+            ├── AppSidebar.jsx           # Sidebar (collection tree, smart collections)
+            ├── DetailsPanel.jsx         # Right panel (preview, metadata, tags)
             ├── LoginPage.jsx/css          # Login/Register form
             ├── ErrorBoundary.jsx          # React error boundary (class component)
             ├── CollectionTree.jsx/css     # Sidebar tree navigation
@@ -637,7 +649,7 @@ GET    /                      → List<Collection>
             ├── SearchBar.jsx/css          # Thanh tìm kiếm
             ├── UploadArea.jsx/css         # Vùng upload kéo thả
             ├── ColorBoard.jsx/css         # Bảng màu (drag-drop, copy, multi-select)
-            ├── ShareDialog.jsx/css        # RBAC sharing dialog
+            ├── ShareDialog.jsx/css        # RBAC sharing dialog (presentational)
             └── DraggableAssetCanvas.jsx/css # Canvas kéo thả tự do
 ```
 
@@ -706,12 +718,42 @@ Auto-fetch on mount.
 **Command:** `{ execute: fn, undo: fn, description: string }`  
 **Keyboard:** Ctrl+Z (undo), Ctrl+Shift+Z (redo)
 
+### 7.7 useAssetSelection
+
+**Returns:** `{ selectedAssetId, setSelectedAssetId, selectedAsset, selectedAssetIds, toggleSelectAsset, selectAllAssets, clearSelection }`  
+**Multi-select:** Ctrl+click (toggle), Shift+click (range), normal (single).
+
+### 7.8 useBulkOperations
+
+**Input:** `{ selectedAssetIds, selectedCollection, currentFolderId, refreshItems, clearSelection }`  
+**Returns:** `{ handleBulkDelete, handleBulkMove, handleBulkTag, handleBulkMoveGroup }`  
+Batch API calls for multi-select operations.
+
+### 7.9 useCollectionNavigation
+
+**Returns:** `{ breadcrumbPath, folderPath, currentFolderId, navigateToCollection, openFolder, folderBreadcrumbClick, folderBreadcrumbRoot, breadcrumbClick, syncFromUrl, syncInitial }`  
+**URL Sync:** `useParams()` cho collectionId/folderId, `useNavigate()` push URL.
+
+### 7.10 useSmartCollections
+
+**Returns:** `{ smartCollections, selectedSmartCollection, selectSmartCollection, smartCollectionItems, smartLoading }`  
+Auto-fetch smart collection definitions on mount.
+
+### 7.11 useSharePermissions
+
+**Input:** `(collectionId)`  
+**Returns:** `{ permissions, loading, error, grant, updateRole, revoke }`  
+Permission CRUD extracted từ ShareDialog. `grant(email, role)`, `updateRole(permId, newRole)`, `revoke(permId)`.
+
 ---
 
 ## 8. Frontend — Components
 
 | Component | Props | Chức năng |
 |-----------|-------|-----------|
+| `AppHeader` | (từ useAppContext) | Header bar: search, view mode toggle, actions, notifications |
+| `AppSidebar` | (từ useAppContext) | Sidebar: collection tree, smart collections, share indicator |
+| `DetailsPanel` | (từ useAppContext) | Right panel: asset preview, metadata, tag management |
 | `LoginPage` | — (sử dụng useAuth) | Login/Register form với toggle |
 | `ErrorBoundary` | children | React error boundary, hiển thị fallback khi crash |
 | `CollectionTree` | collections, selectedCollection, onSelectCollection, onCreateCollection, onDeleteCollection | Sidebar hierarchical tree, icons theo type |
@@ -721,14 +763,14 @@ Auto-fetch on mount.
 | `UploadArea` | onUpload | react-dropzone file drop zone |
 | `ColorBoard` | items, onCreateColor, onCreateGroup, onSelectAsset, onMoveColorsToGroup, selectedAssetIds | Color palette manager: group columns, click-to-copy hex code, drag-drop reorder with positional insert indicator, multi-select drag, drag handle (⠣) |
 | `SearchBar` | onSearch | Search input |
-| `ShareDialog` | collectionId, collectionName, onClose | RBAC sharing modal: grant/update/revoke by email |
+| `ShareDialog` | collectionId, collectionName, onClose | RBAC sharing modal (presentational — logic trong useSharePermissions hook) |
 | `DraggableAssetCanvas` | (internal) | Canvas drag-and-drop cho images |
 
 ---
 
 ### 9.6 THỐNG KÊ DỰ ÁN
 
-> **Cập nhật:** Sau Phase 1 refactor (8 tasks hoàn thành)
+> **Cập nhật:** Sau OOP refactoring 5/5 Phases hoàn tất (23/23 tasks)
 
 #### Quy mô code — Backend
 
@@ -748,15 +790,17 @@ Auto-fetch on mount.
 
 | Thành phần | Files | Dòng code (ước tính) |
 |------------|-------|---------------------|
-| Frontend Components | 11 (.jsx) + 10 (.css) | ~700 + ~800 |
-| Frontend Hooks | 6 | ~500 |
+| Frontend Components | 14 (.jsx) + 10 (.css) | ~800 + ~800 |
+| Frontend Hooks | 11 | ~700 |
 | Frontend API (class-based) | 11 (7 domain + BaseApiService + TokenManager + client + barrel) | ~350 |
-| Frontend App | 1 (App.jsx) + 1 (App.css) | ~615 + ~400 |
-| **Tổng Frontend** | **~40+ files** | **~3,365+** |
+| Frontend Context | 1 (AppContext.js) | ~120 |
+| Frontend Models | 1 (index.js: Asset, Collection, Tag) | ~180 |
+| Frontend App | 1 (App.jsx) + 1 (App.css) | ~344 + ~400 |
+| **Tổng Frontend** | **~50+ files** | **~3,694+** |
 
 | | | |
 |---|---|---|
-| **TỔNG DỰ ÁN** | **~89+ files** | **~7,110+** |
+| **TỔNG DỰ ÁN** | **~99+ files** | **~7,439+** |
 
 #### API Endpoints (43 total)
 
@@ -801,7 +845,7 @@ frontend:
 
 ### 9.8 KẾT LUẬN
 
-Dự án Visual Asset Hub đã trải qua **4 giai đoạn phát triển** và **OOP Refactoring Phases 1-3** hoàn chỉnh (15/23 tasks). Backend hiện có:
+Dự án Visual Asset Hub đã trải qua **4 giai đoạn phát triển** và **OOP Refactoring 5/5 Phases** hoàn chỉnh (23/23 tasks). Backend hiện có:
 - **TPH Inheritance** (Asset → 5 subtypes) với virtual behavior properties
 - **Factory Pattern** (AssetFactory) cho type-safe creation với ContentType được set đúng
 - **Rich Domain Model** (domain methods trên 4 entities)
@@ -814,4 +858,11 @@ Dự án Visual Asset Hub đã trải qua **4 giai đoạn phát triển** và *
 - **Strategy Pattern** cho SmartCollectionService (5 filter strategies, OCP)
 - **Class-based Frontend API** layer (BaseApiService → 7 subclasses + TokenManager singleton)
 
-**Phần chưa làm (Phase 4-5):** Frontend domain models, component architecture refactoring, state management.
+Frontend hiện có:
+- **Domain Model Classes**: `Asset`, `Collection`, `Tag` với computed properties và validation
+- **AppContext + AppProvider**: Centralised state management (Context API)
+- **Component Decomposition**: `AppHeader`, `AppSidebar`, `DetailsPanel` tách từ App.jsx (620→344 dòng)
+- **Hook Composition**: 11 hooks chuyên biệt (`useAssetSelection`, `useBulkOperations`, `useCollectionNavigation`, `useSmartCollections`, `useSharePermissions`)
+- **Presentational Components**: ShareDialog giờ chỉ render UI, logic trong hook
+
+**Tất cả phases đã hoàn tất. Không còn OOP tasks pending.**
