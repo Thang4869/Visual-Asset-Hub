@@ -123,4 +123,27 @@ public class Asset
 
     /// <summary>Whether this is a system/shared asset (no owner).</summary>
     public bool IsSystemAsset => UserId == null;
+
+    // ── Mapping ──
+
+    /// <summary>Map this entity to the API response DTO.</summary>
+    public AssetResponseDto ToDto() => new()
+    {
+        Id = Id,
+        FileName = FileName,
+        FilePath = FilePath,
+        Tags = Tags,
+        CreatedAt = CreatedAt,
+        PositionX = PositionX,
+        PositionY = PositionY,
+        CollectionId = CollectionId,
+        ContentType = ContentType,
+        GroupId = GroupId,
+        ParentFolderId = ParentFolderId,
+        SortOrder = SortOrder,
+        IsFolder = IsFolder,
+        ThumbnailSm = ThumbnailSm,
+        ThumbnailMd = ThumbnailMd,
+        ThumbnailLg = ThumbnailLg,
+    };
 }

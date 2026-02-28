@@ -1,6 +1,6 @@
 # Visual Asset Hub — Báo cáo Thay đổi & Sửa lỗi
 
-> **Cập nhật lần cuối:** 01/03/2026 — Session #6.5
+> **Cập nhật lần cuối:** 01/03/2026 — Session #6.7
 
 ---
 
@@ -1553,6 +1553,66 @@ public Task<IActionResult> UpdateCollectionPut(int id, ..., CancellationToken ct
 dotnet build --no-restore → 0 errors, 0 warnings ✅
 ```
 
+---
+
+### Session #6.6 — Domain Controller Separation & Policy-Based Authorization (01/03/2026)
+
+**Mục tiêu:** Phân rã AssetsController theo Domain-Driven Design (SRP) + nâng cấp từ `[Authorize]` → Policy-based authorization.
+
+#### 1. Modular Domain Separation (SRP)
+
+Tách 4 specialized asset creation endpoints ra khỏi AssetsController thành các domain-specific controllers:
+
+| Controller mới | Route | Domain | Endpoints |
+|---------------|-------|--------|-----------|
+| `FoldersController` | `api/assets/folders` | Folder (organizational container) | `POST` — create folder |
+| `ColorsController` | `api/assets/colors` | Color (single swatch) | `POST` — create color |
+| `ColorGroupsController` | `api/assets/color-groups` | ColorGroup (palette container) | `POST` — create color group |
+| `LinksController` | `api/assets/links` | Link (external URL bookmark) | `POST` — create link |
+
+**AssetsController** giữ lại 10 endpoints core lifecycle:
+- **Reads (3):** `GET /`, `GET /{id}`, `GET /group/{groupId}`
+- **Writes (7):** `POST /`, `POST /upload`, `PATCH /{id}`, `PUT /{id}`, `PUT /{id}/position`, `DELETE /{id}`, `POST /{id}/duplicate`, `POST /reorder`
+
+**Frontend không cần thay đổi** — route URLs giữ nguyên (controller routes match existing paths).
+
+#### 2. Policy-Based Authorization
+
+Thay thế `[Authorize]` chung bằng granular policies:
+
+| Policy | Áp dụng cho | Controllers |
+|--------|-----------|------------|
+| `RequireAssetRead` | `GET` endpoints | `AssetsController` (3 endpoints) |
+| `RequireAssetWrite` | `POST/PUT/PATCH/DELETE` | `AssetsController` (7), `BulkAssetsController` (4), `FoldersController`, `ColorsController`, `ColorGroupsController`, `LinksController` |
+
+Policies registered trong `ServiceCollectionExtensions.AddIdentityAndAuth()` via `AddAuthorizationBuilder()`.
+
+#### 3. HTTP Semantics (đã có từ trước, xác nhận consistency)
+
+| Action | Status Code | Pattern |
+|--------|------------|---------|
+| Create (POST) | `201 Created` | `CreatedAtAction()` + Location header |
+| Update (PATCH/PUT) | `200 OK` | Return updated resource |
+| Delete | `204 No Content` | No body |
+| Reorder | `204 No Content` | No body |
+
+#### Files đã thay đổi (Session #6.6)
+
+| File | Action |
+|------|--------|
+| `Controllers/AssetsController.cs` | Removed 4 specialized creation endpoints, added per-action policy auth |
+| `Controllers/FoldersController.cs` | **NEW** — folder creation domain controller |
+| `Controllers/ColorsController.cs` | **NEW** — color creation domain controller |
+| `Controllers/ColorGroupsController.cs` | **NEW** — color group creation domain controller |
+| `Controllers/LinksController.cs` | **NEW** — link creation domain controller |
+| `Controllers/BulkAssetsController.cs` | `[Authorize]` → `[Authorize(Policy = "RequireAssetWrite")]` |
+| `Extensions/ServiceCollectionExtensions.cs` | Added `RequireAssetRead` + `RequireAssetWrite` policies |
+
+#### Kết quả build:
+```
+dotnet build --no-restore → 0 errors, 0 warnings ✅
+```
+
 #### Phase F1: Domain Model Activation
 | # | Task | Files | Status |
 |---|------|-------|--------|
@@ -1574,3 +1634,114 @@ dotnet build --no-restore → 0 errors, 0 warnings ✅
 | 8 | Extract shared IconMapper | 5 components | ⬜ |
 | 9 | Remove direct API calls from components | DraggableAssetCanvas, TreeViewPanel, App.jsx | ⬜ |
 | 10 | Encapsulate hook state — hide raw setters | useAssetSelection, useCollections, useAuth | ⬜ |
+
+---
+
+### Session #6.7 — Production Architecture: DTO Boundary, API Versioning & Layout Separation (01/03/2026)
+
+**Mục tiêu:** 6 nâng cấp kiến trúc production-grade: DTO boundary, API versioning, layout SRP, explicit binding, validation, required contracts.
+
+#### 1. Clean Architecture — DTO Boundary
+
+Thay thế `Asset` entity bằng `AssetResponseDto` trong tất cả API response types:
+
+| Component | Thay đổi |
+|-----------|----------|
+| `AssetResponseDto` | **NEW** — 19 properties (Id, FileName, FilePath, Tags, CreatedAt, PositionX/Y, CollectionId, ContentType, GroupId, ParentFolderId, SortOrder, IsFolder, Thumbnail Sm/Md/Lg) |
+| `Asset.ToDto()` | **NEW** — instance mapping method trên entity |
+| `IAssetService` | All 14 return types: `Asset` → `AssetResponseDto`, `List<Asset>` → `List<AssetResponseDto>`, `PagedResult<Asset>` → `PagedResult<AssetResponseDto>` |
+| `AssetService` | Added `.ToDto()` / `.Select(a => a.ToDto()).ToList()` trên mọi return statement |
+| `ISmartCollectionService` | `PagedResult<Asset>` → `PagedResult<AssetResponseDto>` |
+| `SmartCollectionService` | Items mapped via `.ToDto()` |
+| `SearchService` | `SearchResult.Assets` mapped via `.Select(a => a.ToDto())` |
+| `CollectionService` | `CollectionWithItemsResult.Items` mapped via `.Select(a => a.ToDto())` |
+| `SearchResult` DTO | `List<Asset>` → `List<AssetResponseDto>` |
+| `CollectionWithItemsResult` DTO | `List<Asset>` → `List<AssetResponseDto>` |
+
+**Lợi ích:** Entity internals (UserId, navigation properties) không bao giờ lộ ra API response.
+
+#### 2. Layout vs Lifecycle Separation (SRP)
+
+| Từ | Đến |
+|----|-----|
+| `AssetsController.UpdatePosition()` | **→ `AssetLayoutController`** |
+| `AssetsController.ReorderAssets()` | **→ `AssetLayoutController`** |
+
+`AssetLayoutController` — route `api/v1/assets`, chứa 2 endpoints:
+- `PUT {id}/position` — update canvas position
+- `POST reorder` — reorder assets
+
+`AssetsController` giảm từ 10 → 8 endpoints (chỉ lifecycle).
+
+#### 3. API Versioning — `api/v1/[controller]`
+
+Tất cả 13 controllers đã chuyển sang versioned routes:
+
+| Controller | Route cũ | Route mới |
+|-----------|---------|-----------|
+| `AssetsController` | `api/[controller]` | `api/v1/[controller]` |
+| `AssetLayoutController` | — | `api/v1/assets` (NEW) |
+| `BulkAssetsController` | `api/assets` | `api/v1/assets` |
+| `FoldersController` | `api/assets/folders` | `api/v1/assets/folders` |
+| `ColorsController` | `api/assets/colors` | `api/v1/assets/colors` |
+| `ColorGroupsController` | `api/assets/color-groups` | `api/v1/assets/color-groups` |
+| `LinksController` | `api/assets/links` | `api/v1/assets/links` |
+| `CollectionsController` | `api/[controller]` | `api/v1/[controller]` |
+| `AuthController` | `api/[controller]` | `api/v1/[controller]` |
+| `TagsController` | `api/[controller]` | `api/v1/[controller]` |
+| `PermissionsController` | `api/collections/{id}/permissions` | `api/v1/collections/{id}/permissions` |
+| `SearchController` | `api/[controller]` | `api/v1/[controller]` |
+| `SmartCollectionsController` | `api/[controller]` | `api/v1/[controller]` |
+| `HealthController` | `api/[controller]` | `api/v1/[controller]` |
+
+**Frontend:** `client.js` baseURL updated `'/api'` → `'/api/v1'`.
+**PermissionsController:** absolute route `/api/shared-collections` → `/api/v1/shared-collections`.
+
+#### 4. Explicit Binding — `[FromForm]`
+
+`UploadFiles` endpoint: `List<IFormFile> files` → `[FromForm] List<IFormFile> files`.
+
+#### 5. Required Contract — `DuplicateAssetDto`
+
+`DuplicateAssetDto? dto = null` → `DuplicateAssetDto dto` (non-nullable, required body).
+Access changed: `dto?.TargetFolderId` → `dto.TargetFolderId`.
+
+#### 6. Parameter Validation — `[Range(1, int.MaxValue)]`
+
+Applied `[Range(1, int.MaxValue)]` trên tất cả `int id` parameters trong `AssetsController` và `AssetLayoutController`:
+- `GetAssetById(int id)`, `GetAssetsByGroup(int groupId)`
+- `UpdateAsset(int id)`, `UpdateAssetPut(int id)`, `DeleteAsset(int id)`
+- `DuplicateAsset(int id)`, `UpdatePosition(int id)`
+
+#### Files đã thay đổi (Session #6.7)
+
+| File | Action |
+|------|--------|
+| `Models/DTOs.cs` | Added `AssetResponseDto`; updated `SearchResult.Assets` + `CollectionWithItemsResult.Items` to use DTO |
+| `Models/Asset.cs` | Added `ToDto()` mapping method |
+| `Services/IAssetService.cs` | All return types → `AssetResponseDto` variants |
+| `Services/AssetService.cs` | All returns mapped via `.ToDto()` |
+| `Services/ISmartCollectionService.cs` | Return type → `PagedResult<AssetResponseDto>` |
+| `Services/SmartCollectionService.cs` | Items mapped via `.ToDto()` |
+| `Services/SearchService.cs` | Assets mapped via `.Select(a => a.ToDto())` |
+| `Services/CollectionService.cs` | Items mapped via `.Select(a => a.ToDto())` |
+| `Controllers/AssetsController.cs` | Rewritten: v1 route, DTO types, [Range], [FromForm], required DuplicateAssetDto, removed layout endpoints |
+| `Controllers/AssetLayoutController.cs` | **NEW** — UpdatePosition + ReorderAssets with v1 route |
+| `Controllers/BulkAssetsController.cs` | Route → `api/v1/assets` |
+| `Controllers/FoldersController.cs` | Route → `api/v1/assets/folders`, `AssetResponseDto` types |
+| `Controllers/ColorsController.cs` | Route → `api/v1/assets/colors`, `AssetResponseDto` types |
+| `Controllers/ColorGroupsController.cs` | Route → `api/v1/assets/color-groups`, `AssetResponseDto` types |
+| `Controllers/LinksController.cs` | Route → `api/v1/assets/links`, `AssetResponseDto` types |
+| `Controllers/CollectionsController.cs` | Route → `api/v1/[controller]` |
+| `Controllers/AuthController.cs` | Route → `api/v1/[controller]` |
+| `Controllers/TagsController.cs` | Route → `api/v1/[controller]` |
+| `Controllers/PermissionsController.cs` | Route → `api/v1/...`, absolute → `/api/v1/shared-collections` |
+| `Controllers/SearchController.cs` | Route → `api/v1/[controller]` |
+| `Controllers/SmartCollectionsController.cs` | Route → `api/v1/[controller]`, `AssetResponseDto` types |
+| `Controllers/HealthController.cs` | Route → `api/v1/[controller]` |
+| `Frontend/src/api/client.js` | baseURL → `'/api/v1'` |
+
+#### Kết quả build:
+```
+dotnet build --no-restore → 0 errors, 0 warnings ✅
+```

@@ -8,7 +8,7 @@ namespace VAH.Backend.Controllers;
 /// <summary>
 /// Authentication endpoints for user registration and login.
 /// </summary>
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [EnableRateLimiting("Fixed")]
 [Produces("application/json")]
 public class AuthController(IAuthService authService) : BaseApiController

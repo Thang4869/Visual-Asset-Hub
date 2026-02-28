@@ -11,8 +11,8 @@ namespace VAH.Backend.Controllers;
 /// different performance characteristics, authorization patterns, and error semantics.
 /// Route: api/assets/bulk-* for backward compatibility with frontend.
 /// </summary>
-[Route("api/assets")]
-[Authorize]
+[Route("api/v1/assets")]
+[Authorize(Policy = "RequireAssetWrite")]
 [Produces("application/json")]
 public class BulkAssetsController(IBulkAssetService bulkService) : BaseApiController
 {

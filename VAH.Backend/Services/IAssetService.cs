@@ -4,18 +4,18 @@ namespace VAH.Backend.Services;
 
 public interface IAssetService
 {
-    Task<PagedResult<Asset>> GetAssetsAsync(PaginationParams pagination, string userId, CancellationToken ct = default);
-    Task<Asset> GetByIdAsync(int id, string userId, CancellationToken ct = default);
-    Task<Asset> CreateAssetAsync(CreateAssetDto dto, string userId, CancellationToken ct = default);
-    Task<List<Asset>> UploadFilesAsync(List<IFormFile> files, int collectionId, int? folderId, string userId, CancellationToken ct = default);
-    Task<Asset> UpdatePositionAsync(int id, double positionX, double positionY, string userId, CancellationToken ct = default);
-    Task<Asset> CreateFolderAsync(CreateFolderDto dto, string userId, CancellationToken ct = default);
-    Task<Asset> CreateColorAsync(CreateColorDto dto, string userId, CancellationToken ct = default);
-    Task<Asset> CreateColorGroupAsync(CreateColorGroupDto dto, string userId, CancellationToken ct = default);
-    Task<Asset> CreateLinkAsync(CreateLinkDto dto, string userId, CancellationToken ct = default);
-    Task<Asset> UpdateAssetAsync(int id, UpdateAssetDto dto, string userId, CancellationToken ct = default);
+    Task<PagedResult<AssetResponseDto>> GetAssetsAsync(PaginationParams pagination, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> GetByIdAsync(int id, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> CreateAssetAsync(CreateAssetDto dto, string userId, CancellationToken ct = default);
+    Task<List<AssetResponseDto>> UploadFilesAsync(List<IFormFile> files, int collectionId, int? folderId, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> UpdatePositionAsync(int id, double positionX, double positionY, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> CreateFolderAsync(CreateFolderDto dto, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> CreateColorAsync(CreateColorDto dto, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> CreateColorGroupAsync(CreateColorGroupDto dto, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> CreateLinkAsync(CreateLinkDto dto, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> UpdateAssetAsync(int id, UpdateAssetDto dto, string userId, CancellationToken ct = default);
     Task<bool> DeleteAssetAsync(int id, string userId, CancellationToken ct = default);
     Task ReorderAssetsAsync(List<int> assetIds, string userId, CancellationToken ct = default);
-    Task<List<Asset>> GetAssetsByGroupAsync(int groupId, string userId, CancellationToken ct = default);
-    Task<Asset> DuplicateAssetAsync(int id, int? targetFolderId, string userId, CancellationToken ct = default);
+    Task<List<AssetResponseDto>> GetAssetsByGroupAsync(int groupId, string userId, CancellationToken ct = default);
+    Task<AssetResponseDto> DuplicateAssetAsync(int id, int? targetFolderId, string userId, CancellationToken ct = default);
 }

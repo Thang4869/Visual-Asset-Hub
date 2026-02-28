@@ -8,7 +8,7 @@ namespace VAH.Backend.Controllers;
 /// <summary>
 /// CRUD operations for user collections.
 /// </summary>
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class CollectionsController(ICollectionService collectionService) : BaseApiController

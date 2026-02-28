@@ -8,7 +8,7 @@ namespace VAH.Backend.Controllers;
 /// <summary>
 /// Smart (auto-categorized) collections — virtual collections computed from rules.
 /// </summary>
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class SmartCollectionsController(ISmartCollectionService smartService) : BaseApiController
@@ -21,8 +21,8 @@ public class SmartCollectionsController(ISmartCollectionService smartService) : 
 
     /// <summary>Get paginated items matching a smart collection’s criteria.</summary>
     [HttpGet("{id}/items")]
-    [ProducesResponseType(typeof(PagedResult<Asset>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResult<Asset>>> GetSmartCollectionItems(
+    [ProducesResponseType(typeof(PagedResult<AssetResponseDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<AssetResponseDto>>> GetSmartCollectionItems(
         string id, [FromQuery] PaginationParams pagination, CancellationToken ct)
         => Ok(await smartService.GetItemsAsync(id, pagination, GetUserId(), ct));
 }

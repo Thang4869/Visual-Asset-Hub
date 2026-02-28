@@ -8,7 +8,7 @@ namespace VAH.Backend.Controllers;
 /// <summary>
 /// Collection permission management (grant, update, revoke).
 /// </summary>
-[Route("api/collections/{collectionId}/permissions")]
+[Route("api/v1/collections/{collectionId}/permissions")]
 [Authorize]
 [Produces("application/json")]
 public class PermissionsController(IPermissionService permissionService) : BaseApiController
@@ -57,7 +57,7 @@ public class PermissionsController(IPermissionService permissionService) : BaseA
     }
 
     /// <summary>Get all collections shared with the current user.</summary>
-    [HttpGet("/api/shared-collections")]
+    [HttpGet("/api/v1/shared-collections")]
     [ProducesResponseType(typeof(List<Collection>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Collection>>> GetSharedCollections(CancellationToken ct)
         => Ok(await permissionService.GetSharedCollectionsAsync(GetUserId(), ct));
