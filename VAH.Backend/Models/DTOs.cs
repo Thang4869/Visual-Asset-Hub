@@ -2,6 +2,31 @@ using System.ComponentModel.DataAnnotations;
 
 namespace VAH.Backend.Models;
 
+// ──── Response DTOs (Clean Architecture — never leak domain entities) ────
+
+/// <summary>
+/// API response DTO for Asset. Prevents domain model leakage across API boundary.
+/// </summary>
+public class AssetResponseDto
+{
+    public int Id { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
+    public string Tags { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public double PositionX { get; set; }
+    public double PositionY { get; set; }
+    public int CollectionId { get; set; }
+    public AssetContentType ContentType { get; set; }
+    public int? GroupId { get; set; }
+    public int? ParentFolderId { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsFolder { get; set; }
+    public string? ThumbnailSm { get; set; }
+    public string? ThumbnailMd { get; set; }
+    public string? ThumbnailLg { get; set; }
+}
+
 // ──── Asset Creation DTOs ────
 
 public class CreateAssetDto
@@ -217,7 +242,7 @@ public class AssetPositionDto
 public class SearchResult
 {
     public string Query { get; set; } = string.Empty;
-    public List<Asset> Assets { get; set; } = new();
+    public List<AssetResponseDto> Assets { get; set; } = new();
     public int TotalAssets { get; set; }
     public List<Collection> Collections { get; set; } = new();
     public int TotalCollections { get; set; }
@@ -232,7 +257,7 @@ public class SearchResult
 public class CollectionWithItemsResult
 {
     public Collection Collection { get; set; } = null!;
-    public List<Asset> Items { get; set; } = new();
+    public List<AssetResponseDto> Items { get; set; } = new();
     public List<Collection> SubCollections { get; set; } = new();
 }
 

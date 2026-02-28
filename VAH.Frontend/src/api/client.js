@@ -2,7 +2,7 @@ import axios from 'axios';
 import tokenManager from './TokenManager';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5027/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5027/api/v1',
   timeout: 30000,
   headers: {
     'Accept': 'application/json',

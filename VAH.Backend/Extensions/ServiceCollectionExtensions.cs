@@ -154,6 +154,13 @@ public static class ServiceCollectionExtensions
             };
         });
 
+        // --- Authorization Policies ---
+        services.AddAuthorizationBuilder()
+            .AddPolicy("RequireAssetRead", policy =>
+                policy.RequireAuthenticatedUser())
+            .AddPolicy("RequireAssetWrite", policy =>
+                policy.RequireAuthenticatedUser());
+
         return services;
     }
 

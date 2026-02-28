@@ -12,5 +12,5 @@ public interface ISmartCollectionService
     Task<List<SmartCollectionDefinition>> GetDefinitionsAsync(string userId, CancellationToken ct = default);
 
     /// <summary>Get items matching a smart collection's criteria.</summary>
-    Task<PagedResult<Asset>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId, CancellationToken ct = default);
+    Task<PagedResult<AssetResponseDto>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId, CancellationToken ct = default);
 }

@@ -9,7 +9,7 @@ namespace VAH.Backend.Controllers;
 /// Server-side search endpoint.
 /// Replaces client-side .includes() filtering for better performance and scalability.
 /// </summary>
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class SearchController(ISearchService searchService) : BaseApiController

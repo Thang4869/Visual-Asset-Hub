@@ -8,7 +8,7 @@ namespace VAH.Backend.Controllers;
 /// <summary>
 /// Tag CRUD and asset-tag association endpoints.
 /// </summary>
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class TagsController(ITagService tagService) : BaseApiController

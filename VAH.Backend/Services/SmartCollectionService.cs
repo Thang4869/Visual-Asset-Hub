@@ -59,7 +59,7 @@ public class SmartCollectionService : ISmartCollectionService
         return definitions;
     }
 
-    public async Task<PagedResult<Asset>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId, CancellationToken ct = default)
+    public async Task<PagedResult<AssetResponseDto>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId, CancellationToken ct = default)
     {
         IQueryable<Asset> query = _context.Assets
             .Where(a => a.UserId == userId && !a.IsFolder);
@@ -88,9 +88,9 @@ public class SmartCollectionService : ISmartCollectionService
             .Take(pagination.PageSize)
             .ToListAsync(ct);
 
-        return new PagedResult<Asset>
+        return new PagedResult<AssetResponseDto>
         {
-            Items = items,
+            Items = items.Select(a => a.ToDto()).ToList(),
             TotalCount = totalCount,
             Page = pagination.Page,
             PageSize = pagination.PageSize
