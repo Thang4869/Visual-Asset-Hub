@@ -1,12 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import * as assetsApi from '../api/assetsApi';
+import useAssetSelection from './useAssetSelection';
+import useBulkOperations from './useBulkOperations';
 
 /**
- * Hook encapsulating asset-level operations including multi-select & bulk ops.
+ * Hook encapsulating asset-level operations.
+ *
+ * Composes:
+ *  - useAssetSelection  → single / multi-select state
+ *  - useBulkOperations  → bulk delete / move / tag
+ *
+ * Keeps CRUD operations (upload, create, delete, move, reorder) here.
  */
 export default function useAssets({ selectedCollection, currentFolderId, collectionItems, refreshItems }) {
-  const [selectedAssetId, setSelectedAssetId] = useState(null);
-  const [selectedAssetIds, setSelectedAssetIds] = useState(new Set());
+  // ── Composed hooks ──
+  const selection = useAssetSelection(collectionItems);
+  const bulk = useBulkOperations({
+    selectedAssetIds: selection.selectedAssetIds,
+    setSelectedAssetIds: selection.setSelectedAssetIds,
+    setSelectedAssetId: selection.setSelectedAssetId,
+    refreshItems,
+  });
 
   // ------- Upload -------
   const handleUpload = useCallback(
@@ -103,22 +117,6 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     [selectedCollection, currentFolderId, refreshItems],
   );
 
-  // ------- Move color(s) to group with position -------
-  const handleMoveColorsToGroup = useCallback(
-    async (colorIds, targetGroupId, insertBeforeId = null) => {
-      if (!colorIds || colorIds.length === 0) return;
-      try {
-        await assetsApi.bulkMoveGroup(colorIds, targetGroupId, insertBeforeId);
-        setSelectedAssetIds(new Set());
-        refreshItems();
-      } catch (err) {
-        console.error('Error moving colors to group:', err);
-        alert('Lỗi khi di chuyển màu');
-      }
-    },
-    [refreshItems],
-  );
-
   // ------- Delete single asset -------
   const handleDeleteAsset = useCallback(
     async (assetId) => {
@@ -126,14 +124,14 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
       if (!confirm('Bạn có chắc muốn xóa item này?')) return;
       try {
         await assetsApi.deleteAsset(assetId);
-        if (selectedAssetId === assetId) setSelectedAssetId(null);
+        if (selection.selectedAssetId === assetId) selection.setSelectedAssetId(null);
         refreshItems();
       } catch (err) {
         console.error('Error deleting asset:', err);
         alert('Lỗi khi xóa item');
       }
     },
-    [selectedAssetId, refreshItems],
+    [selection.selectedAssetId, refreshItems],
   );
 
   // ------- Move -------
@@ -152,7 +150,7 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
   );
 
   const handleMoveSelected = useCallback(async () => {
-    if (!selectedAssetId) {
+    if (!selection.selectedAssetId) {
       alert('Chọn một item để di chuyển');
       return;
     }
@@ -166,7 +164,7 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
 
     if (targetName.toLowerCase() === 'root') {
       try {
-        await assetsApi.updateAsset(selectedAssetId, { clearParentFolder: true });
+        await assetsApi.updateAsset(selection.selectedAssetId, { clearParentFolder: true });
         refreshItems();
       } catch (err) {
         console.error('Error moving asset to root:', err);
@@ -180,8 +178,8 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
       alert('Không tìm thấy folder tên đó');
       return;
     }
-    handleMoveAsset(selectedAssetId, folder.id);
-  }, [selectedAssetId, collectionItems, refreshItems, handleMoveAsset]);
+    handleMoveAsset(selection.selectedAssetId, folder.id);
+  }, [selection.selectedAssetId, collectionItems, refreshItems, handleMoveAsset]);
 
   // ------- Reorder -------
   const handleReorderAssets = useCallback(
@@ -198,101 +196,13 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     [selectedCollection, refreshItems],
   );
 
-  // ------- derived -------
-  const selectedAsset = selectedAssetId
-    ? collectionItems.items.find((a) => a.id === selectedAssetId)
-    : null;
-
-  // ------- Multi-select -------
-  const toggleSelectAsset = useCallback((assetId, event) => {
-    if (event?.ctrlKey || event?.metaKey) {
-      // Ctrl+click: toggle individual
-      setSelectedAssetIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(assetId)) next.delete(assetId);
-        else next.add(assetId);
-        return next;
-      });
-    } else if (event?.shiftKey && selectedAssetId) {
-      // Shift+click: range select
-      const items = collectionItems.items;
-      const startIdx = items.findIndex((a) => a.id === selectedAssetId);
-      const endIdx = items.findIndex((a) => a.id === assetId);
-      if (startIdx !== -1 && endIdx !== -1) {
-        const [lo, hi] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
-        const range = items.slice(lo, hi + 1).map((a) => a.id);
-        setSelectedAssetIds((prev) => {
-          const next = new Set(prev);
-          range.forEach((id) => next.add(id));
-          return next;
-        });
-      }
-    } else {
-      // Normal click: single select
-      setSelectedAssetId(assetId);
-      setSelectedAssetIds(new Set());
-    }
-  }, [selectedAssetId, collectionItems]);
-
-  const selectAllAssets = useCallback(() => {
-    const ids = collectionItems.items.filter(a => !a.isFolder).map(a => a.id);
-    setSelectedAssetIds(new Set(ids));
-  }, [collectionItems]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedAssetIds(new Set());
-  }, []);
-
-  // ------- Bulk Operations -------
-  const handleBulkDelete = useCallback(async () => {
-    const ids = Array.from(selectedAssetIds);
-    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
-    if (!confirm(`Xóa ${ids.length} item?`)) return;
-    try {
-      await assetsApi.bulkDelete(ids);
-      setSelectedAssetIds(new Set());
-      setSelectedAssetId(null);
-      refreshItems();
-    } catch (err) {
-      console.error('Bulk delete error:', err);
-      alert('Lỗi khi xóa hàng loạt');
-    }
-  }, [selectedAssetIds, refreshItems]);
-
-  const handleBulkMove = useCallback(async (targetCollectionId, targetFolderId, clearParentFolder = false) => {
-    const ids = Array.from(selectedAssetIds);
-    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
-    try {
-      await assetsApi.bulkMove(ids, targetCollectionId, targetFolderId, clearParentFolder);
-      setSelectedAssetIds(new Set());
-      refreshItems();
-    } catch (err) {
-      console.error('Bulk move error:', err);
-      alert('Lỗi khi di chuyển hàng loạt');
-    }
-  }, [selectedAssetIds, refreshItems]);
-
-  const handleBulkTag = useCallback(async (tagIds, remove = false) => {
-    const ids = Array.from(selectedAssetIds);
-    if (ids.length === 0) { alert('Chọn ít nhất một item'); return; }
-    try {
-      await assetsApi.bulkTag(ids, tagIds, remove);
-      refreshItems();
-    } catch (err) {
-      console.error('Bulk tag error:', err);
-      alert('Lỗi khi gán tag hàng loạt');
-    }
-  }, [selectedAssetIds, refreshItems]);
-
+  // Return merged: selection + bulk + CRUD ops (backward-compatible API)
   return {
-    selectedAssetId,
-    setSelectedAssetId,
-    selectedAsset,
-    selectedAssetIds,
-    setSelectedAssetIds,
-    toggleSelectAsset,
-    selectAllAssets,
-    clearSelection,
+    // From useAssetSelection
+    ...selection,
+    // From useBulkOperations
+    ...bulk,
+    // CRUD operations
     handleUpload,
     handleCreateFolder,
     handleCreateLink,
@@ -302,9 +212,5 @@ export default function useAssets({ selectedCollection, currentFolderId, collect
     handleMoveAsset,
     handleMoveSelected,
     handleReorderAssets,
-    handleMoveColorsToGroup,
-    handleBulkDelete,
-    handleBulkMove,
-    handleBulkTag,
   };
 }
