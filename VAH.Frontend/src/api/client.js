@@ -1,4 +1,5 @@
 import axios from 'axios';
+import tokenManager from './TokenManager';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5027/api',
@@ -8,17 +9,15 @@ const apiClient = axios.create({
   },
 });
 
-// ---- Token helpers (localStorage) ----
-const TOKEN_KEY = 'vah_token';
-
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+// ---- Backward-compatible token helpers (delegate to TokenManager) ----
+export const getToken = () => tokenManager.getToken();
+export const setToken = (token) => tokenManager.setToken(token);
+export const clearToken = () => tokenManager.clearToken();
 
 // Request interceptor — attach JWT bearer token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = getToken();
+    const token = tokenManager.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,8 +36,8 @@ apiClient.interceptors.response.use(
       console.error(`[API ${status}]`, message);
 
       // If 401 and we had a token, it's expired — clear & reload
-      if (status === 401 && getToken()) {
-        clearToken();
+      if (status === 401 && tokenManager.hasToken()) {
+        tokenManager.clearToken();
         window.location.reload();
       }
     } else if (error.request) {

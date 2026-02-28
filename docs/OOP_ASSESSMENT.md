@@ -1,9 +1,9 @@
 # Bản Đánh Giá OOP - Visual Asset Hub (VAH)
 
 > **Ngày tạo:** 2026-02-27  
-> **Cập nhật lần cuối:** 2026-02-27  
+> **Cập nhật lần cuối:** 2026-02-28  
 > **Mục đích:** Đánh giá mức độ áp dụng OOP trong toàn bộ dự án, làm cơ sở cho quá trình refactor.  
-> **Trạng thái:** 🟡 Phase 1 hoàn tất (8/8 tasks) — chuẩn bị Phase 2
+> **Trạng thái:** 🟡 Phase 1 + Phase 3 hoàn tất (12/12 tasks) — chuẩn bị Phase 2, 4, 5
 
 ---
 
@@ -108,25 +108,30 @@
 
 ## II. FRONTEND (React / JavaScript)
 
-### 1. API Layer — Procedural Functions 🔴
+### 1. API Layer — Refactored ✅
 
-| File | Trạng thái | Vấn đề |
+> **Phase 3 hoàn tất:** Tất cả API files đã được refactor thành class-based architecture với `BaseApiService` inheritance, `TokenManager` class, và barrel exports.
+
+| File | Trạng thái | Ghi chú |
 |------|-----------|--------|
-| `api/client.js` | 🟡 Module | Axios instance + interceptors. Functional, không OOP. Các helper (`getToken`, `setToken`, `clearToken`, `staticUrl`) là loose functions. |
-| `api/assetsApi.js` | 🔴 Procedural | Các function rời rạc, không có class hay object. |
-| `api/authApi.js` | 🔴 Procedural | Tương tự. |
-| `api/collectionsApi.js` | 🔴 Procedural | Tương tự. |
-| `api/tagsApi.js` | 🔴 Procedural | Tương tự. |
-| `api/searchApi.js` | 🔴 Procedural | Tương tự. |
-| `api/smartCollectionsApi.js` | 🔴 Procedural | Tương tự. |
-| `api/permissionsApi.js` | 🔴 Procedural | Tương tự, nhưng dùng async function declarations (hơi khác style so với các file khác dùng arrow). |
+| `api/TokenManager.js` | 🟢 Mới | **[Task 3.3]** Encapsulate JWT token persistence (`getToken`, `setToken`, `clearToken`, `hasToken`). Private field `#storageKey`. Singleton pattern. |
+| `api/BaseApiService.js` | 🟢 Mới | **[Task 3.1]** Abstract base class: `_get()`, `_post()`, `_put()`, `_delete()` helpers. Subclasses chỉ cần set `endpoint`. OOP: Encapsulation, Inheritance, OCP. |
+| `api/client.js` | 🟢 Refactored | **[Task 3.3]** Giờ dùng `TokenManager` singleton thay vì loose functions. Backward-compatible exports giữ nguyên. |
+| `api/assetsApi.js` | 🟢 Refactored | **[Task 3.2]** `AssetApiService extends BaseApiService`. 13 methods. Backward-compatible named exports. |
+| `api/authApi.js` | 🟢 Refactored | **[Task 3.2]** `AuthApiService extends BaseApiService`. |
+| `api/collectionsApi.js` | 🟢 Refactored | **[Task 3.2]** `CollectionApiService extends BaseApiService`. |
+| `api/tagsApi.js` | 🟢 Refactored | **[Task 3.2]** `TagApiService extends BaseApiService`. 10 methods. |
+| `api/searchApi.js` | 🟢 Refactored | **[Task 3.2]** `SearchApiService extends BaseApiService`. |
+| `api/smartCollectionsApi.js` | 🟢 Refactored | **[Task 3.2]** `SmartCollectionApiService extends BaseApiService`. |
+| `api/permissionsApi.js` | 🟢 Refactored | **[Task 3.2, 3.4]** `PermissionApiService extends BaseApiService`. Style thống nhất (arrow → class methods). |
+| `api/index.js` | 🟢 Mới | Barrel file — re-exports tất cả service singletons. |
 
-**Vấn đề chính:**
-- [ ] **Không có API class/object**: Mỗi file export nhiều function rời rạc. Nên gom thành class (ví dụ: `class AssetApi { ... }`) hoặc ít nhất là object gom nhóm.
-- [ ] **Không có base API class**: Mọi file tự import `apiClient` rồi gọi trực tiếp. Nên có abstract base → kế thừa.
-- [ ] **Inconsistent style**: `permissionsApi.js` dùng `async function` declarations, các file khác dùng arrow functions. Thiếu consistency.
-- [ ] **Token management (`getToken`/`setToken`/`clearToken`)**: Nên encapsulate thành `TokenManager` class hoặc `AuthStorage` class.
-- [ ] **Thiếu error handling chung**: Mỗi API call tự handle error khác nhau.
+**Vấn đề đã giải quyết:**
+- [x] **~~Không có API class/object~~**: ✅ **[Task 3.2]** Mỗi file giờ là class kế thừa `BaseApiService`. Backward-compatible named exports giữ nguyên.
+- [x] **~~Không có base API class~~**: ✅ **[Task 3.1]** `BaseApiService` với `_get/_post/_put/_delete` helpers.
+- [x] **~~Inconsistent style~~**: ✅ **[Task 3.4]** Tất cả API files giờ dùng class methods (consistent style).
+- [x] **~~Token management là loose functions~~**: ✅ **[Task 3.3]** `TokenManager` class with private fields + singleton.
+- [ ] **Thiếu error handling chung**: Có thể thêm vào `BaseApiService` nếu cần (Phase sau).
 
 ### 2. Hooks — Functional (React idiom) 🟡
 
@@ -172,20 +177,20 @@
 
 | Nguyên tắc | Backend | Frontend | Ghi chú |
 |------------|---------|----------|---------|
-| **Encapsulation** | � Tốt | 🔴 Yếu | BE: Domain methods, private/virtual behavior, factory pattern. FE: Dùng plain objects |
-| **Abstraction** | 🟢 Tốt | 🔴 Yếu | BE: Interface-based DI, FE: Không có abstraction layer |
-| **Inheritance** | 🟢 Tốt | 🔴 Không dùng | BE: TPH hierarchy (Asset→5 subtypes), BaseApiController. FE: N/A |
-| **Polymorphism** | 🟢 Tốt | 🔴 Không dùng | BE: IStorageService, virtual behavior (HasPhysicalFile, CanHaveThumbnails, RequiresFileCleanup) |
+| **Encapsulation** | 🟢 Tốt | 🟡 Cải thiện | BE: Domain methods, private/virtual behavior, factory pattern. FE: `TokenManager` private fields, class-based API services |
+| **Abstraction** | 🟢 Tốt | 🟡 Cải thiện | BE: Interface-based DI. FE: `BaseApiService` abstraction layer |
+| **Inheritance** | 🟢 Tốt | 🟢 Tốt | BE: TPH hierarchy, BaseApiController. FE: `BaseApiService` → 7 subclasses |
+| **Polymorphism** | 🟢 Tốt | 🟡 Cơ bản | BE: IStorageService, virtual behavior. FE: Override `_get/_post/_put/_delete` khi cần |
 
 ### SOLID Principles
 
 | Nguyên tắc | Backend | Frontend |
 |------------|---------|----------|
 | **S** - Single Responsibility | � | 🔴 (App.jsx, useAssets.js, useCollections.js) |
-| **O** - Open/Closed | 🟢 | 🔴 |
-| **L** - Liskov Substitution | 🟢 | N/A |
-| **I** - Interface Segregation | 🟡 (IAssetService vẫn lớn) | 🔴 |
-| **D** - Dependency Inversion | 🟢 | 🔴 (direct import, no DI) |
+| **O** - Open/Closed | 🟢 | � (BaseApiService extensible) |
+| **L** - Liskov Substitution | 🟢 | 🟢 (API subclasses substitutable) |
+| **I** - Interface Segregation | 🟡 (IAssetService vẫn lớn) | 🟡 (mỗi API service focus 1 domain) |
+| **D** - Dependency Inversion | 🟢 | 🟡 (singleton services, nhưng chưa có DI container) |
 
 ### Design Patterns Đã Dùng
 
@@ -215,6 +220,10 @@
 | **Extension Methods** | `ServiceCollectionExtensions` — 6 methods tổ chức DI | Task #5 |
 | **Base Controller** | `BaseApiController` — shared `GetUserId()` | Task #2 |
 | **Rich Domain Model** | Domain methods trên Asset, Collection, Tag, CollectionPermission | Task #7 |
+| **BaseApiService (FE)** | Abstract base class → 7 API service subclasses kế thừa | Task 3.1, 3.2 |
+| **Singleton (FE)** | `TokenManager` singleton instance, `*ApiService` singletons | Task 3.3 |
+| **Encapsulation (FE)** | `TokenManager` private `#storageKey` field | Task 3.3 |
+| **Barrel Exports (FE)** | `api/index.js` — unified service re-exports | Task 3.2 |
 
 ---
 
@@ -239,13 +248,13 @@
 - [ ] 2.5 Tạo base controller class (extract `GetUserId()`)
 - [ ] 2.6 Tạo `ServiceCollectionExtensions` cho Program.cs DI registration
 
-### Phase 3: Frontend API Layer — OOP hóa 🔴
-> Ưu tiên cao ở frontend.
+### Phase 3: Frontend API Layer — OOP hóa ✅
+> Hoàn tất 2026-02-28.
 
-- [ ] 3.1 Tạo `BaseApiService` class (chứa common logic: error handling, auth header)
-- [ ] 3.2 Tạo các API class kế thừa: `AssetApiService`, `CollectionApiService`, `TagApiService`, etc.
-- [ ] 3.3 Tạo `TokenManager` / `AuthStorage` class (encapsulate localStorage)
-- [ ] 3.4 Thống nhất style (async function vs arrow)
+- [x] 3.1 Tạo `BaseApiService` class (chứa common logic: `_get/_post/_put/_delete` helpers)
+- [x] 3.2 Tạo các API class kế thừa: `AssetApiService`, `CollectionApiService`, `TagApiService`, etc. (7 classes)
+- [x] 3.3 Tạo `TokenManager` class (encapsulate localStorage, private fields, singleton)
+- [x] 3.4 Thống nhất style — tất cả dùng class methods, không còn mix async function/arrow
 
 ### Phase 4: Frontend Domain Models 🟡
 > Ưu tiên trung bình.
@@ -280,10 +289,10 @@
 | 2.1 | Tách AssetService | ⬜ Chưa bắt đầu | | | |
 | 2.2 | Extract reusable helpers | ⬜ Chưa bắt đầu | | | |
 | 2.4 | Strategy pattern SmartCollection | ⬜ Chưa bắt đầu | | | |
-| 3.1 | BaseApiService class | ⬜ Chưa bắt đầu | | | |
-| 3.2 | API classes kế thừa | ⬜ Chưa bắt đầu | | | |
-| 3.3 | TokenManager class | ⬜ Chưa bắt đầu | | | |
-| 3.4 | Thống nhất code style | ⬜ Chưa bắt đầu | | | |
+| 3.1 | BaseApiService class | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `BaseApiService` với `_get/_post/_put/_delete`. Tất cả 7 API services kế thừa. |
+| 3.2 | API classes kế thừa | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | 7 classes: `AssetApiService`, `AuthApiService`, `CollectionApiService`, `TagApiService`, `SearchApiService`, `SmartCollectionApiService`, `PermissionApiService`. Backward-compatible named exports. |
+| 3.3 | TokenManager class | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `TokenManager` class, private `#storageKey`, singleton pattern. `client.js` cập nhật dùng `TokenManager`. |
+| 3.4 | Thống nhất code style | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | Tất cả API files giờ dùng class methods, consistent style. `permissionsApi.js` không còn dùng `async function` declarations riêng lẻ. |
 | 4.1 | Frontend domain classes | ⬜ Chưa bắt đầu | | | |
 | 4.2 | Computed properties/validation | ⬜ Chưa bắt đầu | | | |
 | 4.3 | API → Domain mapping | ⬜ Chưa bắt đầu | | | |

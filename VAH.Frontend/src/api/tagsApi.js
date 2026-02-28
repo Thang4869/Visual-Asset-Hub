@@ -1,43 +1,75 @@
-import apiClient from './client';
+import BaseApiService from './BaseApiService';
 
-const ENDPOINT = '/Tags';
+/**
+ * TagApiService — handles tag CRUD and asset-tag junction operations.
+ */
+class TagApiService extends BaseApiService {
+  constructor() {
+    super('/Tags');
+  }
 
-/** Get all tags for current user */
-export const fetchAllTags = () =>
-  apiClient.get(ENDPOINT).then(r => r.data);
+  /** Get all tags for current user */
+  fetchAll() {
+    return this._get();
+  }
 
-/** Get a single tag */
-export const fetchTag = (id) =>
-  apiClient.get(`${ENDPOINT}/${id}`).then(r => r.data);
+  /** Get a single tag */
+  fetch(id) {
+    return this._get(`/${id}`);
+  }
 
-/** Create a new tag */
-export const createTag = (payload) =>
-  apiClient.post(ENDPOINT, payload).then(r => r.data);
+  /** Create a new tag */
+  create(payload) {
+    return this._post('', payload);
+  }
 
-/** Update a tag */
-export const updateTag = (id, payload) =>
-  apiClient.put(`${ENDPOINT}/${id}`, payload).then(r => r.data);
+  /** Update a tag */
+  update(id, payload) {
+    return this._put(`/${id}`, payload);
+  }
 
-/** Delete a tag */
-export const deleteTag = (id) =>
-  apiClient.delete(`${ENDPOINT}/${id}`);
+  /** Delete a tag */
+  delete(id) {
+    return this._delete(`/${id}`);
+  }
 
-/** Get tags for a specific asset */
-export const getAssetTags = (assetId) =>
-  apiClient.get(`${ENDPOINT}/asset/${assetId}`).then(r => r.data);
+  /** Get tags for a specific asset */
+  getAssetTags(assetId) {
+    return this._get(`/asset/${assetId}`);
+  }
 
-/** Replace all tags on an asset */
-export const setAssetTags = (assetId, tagIds) =>
-  apiClient.put(`${ENDPOINT}/asset/${assetId}`, { tagIds });
+  /** Replace all tags on an asset */
+  setAssetTags(assetId, tagIds) {
+    return this.client.put(`${this.endpoint}/asset/${assetId}`, { tagIds });
+  }
 
-/** Add tags to an asset */
-export const addAssetTags = (assetId, tagIds) =>
-  apiClient.post(`${ENDPOINT}/asset/${assetId}/add`, { tagIds });
+  /** Add tags to an asset */
+  addAssetTags(assetId, tagIds) {
+    return this._post(`/asset/${assetId}/add`, { tagIds });
+  }
 
-/** Remove tags from an asset */
-export const removeAssetTags = (assetId, tagIds) =>
-  apiClient.post(`${ENDPOINT}/asset/${assetId}/remove`, { tagIds });
+  /** Remove tags from an asset */
+  removeAssetTags(assetId, tagIds) {
+    return this._post(`/asset/${assetId}/remove`, { tagIds });
+  }
 
-/** Migrate legacy comma-separated tags */
-export const migrateTags = () =>
-  apiClient.post(`${ENDPOINT}/migrate`).then(r => r.data);
+  /** Migrate legacy comma-separated tags */
+  migrate() {
+    return this._post('/migrate');
+  }
+}
+
+const tagApiService = new TagApiService();
+
+// ── Backward-compatible named exports ──
+export const fetchAllTags = (...args) => tagApiService.fetchAll(...args);
+export const fetchTag = (...args) => tagApiService.fetch(...args);
+export const createTag = (...args) => tagApiService.create(...args);
+export const updateTag = (...args) => tagApiService.update(...args);
+export const deleteTag = (...args) => tagApiService.delete(...args);
+export const getAssetTags = (...args) => tagApiService.getAssetTags(...args);
+export const setAssetTags = (...args) => tagApiService.setAssetTags(...args);
+export const addAssetTags = (...args) => tagApiService.addAssetTags(...args);
+export const removeAssetTags = (...args) => tagApiService.removeAssetTags(...args);
+export const migrateTags = (...args) => tagApiService.migrate(...args);
+export default tagApiService;

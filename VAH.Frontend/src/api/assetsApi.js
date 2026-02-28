@@ -1,67 +1,104 @@
-import apiClient from './client';
+import BaseApiService from './BaseApiService';
 
-const ENDPOINT = '/Assets';
+/**
+ * AssetApiService — handles asset CRUD and bulk operations.
+ */
+class AssetApiService extends BaseApiService {
+  constructor() {
+    super('/Assets');
+  }
 
-/** Upload files to a collection */
-export const uploadFiles = (collectionId, files, folderId = null) => {
-  const formData = new FormData();
-  files.forEach((file) => formData.append('files', file));
+  /** Upload files to a collection */
+  uploadFiles(collectionId, files, folderId = null) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
 
-  const params = new URLSearchParams();
-  params.set('collectionId', collectionId);
-  if (folderId) params.set('folderId', folderId);
+    const params = new URLSearchParams();
+    params.set('collectionId', collectionId);
+    if (folderId) params.set('folderId', folderId);
 
-  return apiClient.post(`${ENDPOINT}/upload?${params.toString()}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-};
+    return this.client.post(`${this.endpoint}/upload?${params.toString()}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
 
-/** Create a folder */
-export const createFolder = (payload) =>
-  apiClient.post(`${ENDPOINT}/create-folder`, payload).then(r => r.data);
+  /** Create a folder */
+  createFolder(payload) {
+    return this._post('/create-folder', payload);
+  }
 
-/** Create a link */
-export const createLink = (payload) =>
-  apiClient.post(`${ENDPOINT}/create-link`, payload).then(r => r.data);
+  /** Create a link */
+  createLink(payload) {
+    return this._post('/create-link', payload);
+  }
 
-/** Create a color */
-export const createColor = (payload) =>
-  apiClient.post(`${ENDPOINT}/create-color`, payload).then(r => r.data);
+  /** Create a color */
+  createColor(payload) {
+    return this._post('/create-color', payload);
+  }
 
-/** Create a color group */
-export const createColorGroup = (payload) =>
-  apiClient.post(`${ENDPOINT}/create-color-group`, payload).then(r => r.data);
+  /** Create a color group */
+  createColorGroup(payload) {
+    return this._post('/create-color-group', payload);
+  }
 
-/** Update asset (rename, move, etc.) */
-export const updateAsset = (id, payload) =>
-  apiClient.put(`${ENDPOINT}/${id}`, payload).then(r => r.data);
+  /** Update asset (rename, move, etc.) */
+  updateAsset(id, payload) {
+    return this._put(`/${id}`, payload);
+  }
 
-/** Update asset position (canvas) */
-export const updatePosition = (id, positionX, positionY) =>
-  apiClient.put(`${ENDPOINT}/${id}/position`, { positionX, positionY });
+  /** Update asset position (canvas) */
+  updatePosition(id, positionX, positionY) {
+    return this.client.put(`${this.endpoint}/${id}/position`, { positionX, positionY });
+  }
 
-/** Delete an asset */
-export const deleteAsset = (id) =>
-  apiClient.delete(`${ENDPOINT}/${id}`);
+  /** Delete an asset */
+  deleteAsset(id) {
+    return this.client.delete(`${this.endpoint}/${id}`);
+  }
 
-/** Reorder assets */
-export const reorderAssets = (assetIds) =>
-  apiClient.post(`${ENDPOINT}/reorder`, { assetIds });
+  /** Reorder assets */
+  reorderAssets(assetIds) {
+    return this.client.post(`${this.endpoint}/reorder`, { assetIds });
+  }
 
-// ──── Bulk Operations ────
+  // ──── Bulk Operations ────
 
-/** Bulk delete assets */
-export const bulkDelete = (assetIds) =>
-  apiClient.post(`${ENDPOINT}/bulk-delete`, { assetIds }).then(r => r.data);
+  /** Bulk delete assets */
+  bulkDelete(assetIds) {
+    return this._post('/bulk-delete', { assetIds });
+  }
 
-/** Bulk move assets */
-export const bulkMove = (assetIds, targetCollectionId = null, targetFolderId = null, clearParentFolder = false) =>
-  apiClient.post(`${ENDPOINT}/bulk-move`, { assetIds, targetCollectionId, targetFolderId, clearParentFolder }).then(r => r.data);
+  /** Bulk move assets */
+  bulkMove(assetIds, targetCollectionId = null, targetFolderId = null, clearParentFolder = false) {
+    return this._post('/bulk-move', { assetIds, targetCollectionId, targetFolderId, clearParentFolder });
+  }
 
-/** Bulk move colors to a group with positional insert */
-export const bulkMoveGroup = (assetIds, targetGroupId = null, insertBeforeId = null) =>
-  apiClient.post(`${ENDPOINT}/bulk-move-group`, { assetIds, targetGroupId, insertBeforeId }).then(r => r.data);
+  /** Bulk move colors to a group with positional insert */
+  bulkMoveGroup(assetIds, targetGroupId = null, insertBeforeId = null) {
+    return this._post('/bulk-move-group', { assetIds, targetGroupId, insertBeforeId });
+  }
 
-/** Bulk tag assets */
-export const bulkTag = (assetIds, tagIds, remove = false) =>
-  apiClient.post(`${ENDPOINT}/bulk-tag`, { assetIds, tagIds, remove }).then(r => r.data);
+  /** Bulk tag assets */
+  bulkTag(assetIds, tagIds, remove = false) {
+    return this._post('/bulk-tag', { assetIds, tagIds, remove });
+  }
+}
+
+const assetApiService = new AssetApiService();
+
+// ── Backward-compatible named exports ──
+export const uploadFiles = (...args) => assetApiService.uploadFiles(...args);
+export const createFolder = (...args) => assetApiService.createFolder(...args);
+export const createLink = (...args) => assetApiService.createLink(...args);
+export const createColor = (...args) => assetApiService.createColor(...args);
+export const createColorGroup = (...args) => assetApiService.createColorGroup(...args);
+export const updateAsset = (...args) => assetApiService.updateAsset(...args);
+export const updatePosition = (...args) => assetApiService.updatePosition(...args);
+export const deleteAsset = (...args) => assetApiService.deleteAsset(...args);
+export const reorderAssets = (...args) => assetApiService.reorderAssets(...args);
+export const bulkDelete = (...args) => assetApiService.bulkDelete(...args);
+export const bulkMove = (...args) => assetApiService.bulkMove(...args);
+export const bulkMoveGroup = (...args) => assetApiService.bulkMoveGroup(...args);
+export const bulkTag = (...args) => assetApiService.bulkTag(...args);
+export default assetApiService;

@@ -877,3 +877,159 @@ System.UnauthorizedAccessException: Email hoặc mật khẩu không đúng.
 2026-02-28 03:37:37.885 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 1.486ms
 2026-02-28 03:37:37.887 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.839ms
 2026-02-28 03:37:37.888 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 4.803ms
+2026-02-28 03:44:49.707 +07:00 [INF] () Starting VAH Backend...
+2026-02-28 03:44:51.307 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-02-28 03:44:53.488 +07:00 [INF] (Microsoft.Hosting.Lifetime) Now listening on: http://localhost:5027
+2026-02-28 03:44:53.497 +07:00 [INF] (Microsoft.Hosting.Lifetime) Application started. Press Ctrl+C to shut down.
+2026-02-28 03:44:53.501 +07:00 [INF] (Microsoft.Hosting.Lifetime) Hosting environment: Development
+2026-02-28 03:44:53.506 +07:00 [INF] (Microsoft.Hosting.Lifetime) Content root path: B:\1A\VAH.Backend
+2026-02-28 03:45:07.219 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 1262.577ms
+2026-02-28 03:45:07.219 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 1261.089ms
+2026-02-28 03:45:07.252 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=SPaGV_OfD24UB94zs4azbQ)
+2026-02-28 03:45:07.256 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=JnC7ZiwEWW8xtG6xCZQ62A)
+2026-02-28 03:45:07.526 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 1570.186ms
+2026-02-28 03:45:07.526 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 1569.619ms
+2026-02-28 03:45:07.533 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 7.081ms
+2026-02-28 03:45:07.536 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 9.656ms
+2026-02-28 03:45:07.549 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 1592.934ms
+2026-02-28 03:45:07.563 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 11.915ms
+2026-02-28 03:45:07.820 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 223.262ms
+2026-02-28 03:45:07.828 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.669ms
+2026-02-28 03:45:21.824 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:45:21.841 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 197.825ms
+2026-02-28 03:45:21.861 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 11.013ms
+2026-02-28 03:45:21.869 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.487ms
+2026-02-28 03:45:21.880 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 8.916ms
+2026-02-28 03:45:23.308 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:45:23.314 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 25.059ms
+2026-02-28 03:45:23.325 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.606ms
+2026-02-28 03:45:23.333 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.489ms
+2026-02-28 03:45:23.342 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.393ms
+2026-02-28 03:45:29.456 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk deleted 2 assets for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:45:29.463 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-delete responded 200 in 65.285ms
+2026-02-28 03:45:29.477 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.327ms
+2026-02-28 03:45:29.485 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.006ms
+2026-02-28 03:45:29.501 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.185ms
+2026-02-28 03:45:35.738 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 49 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:45:35.743 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 20.131ms
+2026-02-28 03:45:35.755 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.875ms
+2026-02-28 03:45:35.762 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.983ms
+2026-02-28 03:45:35.767 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.580ms
+2026-02-28 03:45:37.613 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:45:37.618 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 21.460ms
+2026-02-28 03:45:37.628 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.200ms
+2026-02-28 03:45:37.636 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.376ms
+2026-02-28 03:45:37.643 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.139ms
+2026-02-28 03:45:44.570 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:45:44.574 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 18.885ms
+2026-02-28 03:45:44.587 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.652ms
+2026-02-28 03:45:44.592 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.153ms
+2026-02-28 03:45:44.605 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.737ms
+2026-02-28 03:45:52.558 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:45:52.561 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 17.667ms
+2026-02-28 03:45:52.572 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.119ms
+2026-02-28 03:45:52.579 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.350ms
+2026-02-28 03:45:52.585 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.459ms
+2026-02-28 03:46:00.428 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:46:00.430 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 16.498ms
+2026-02-28 03:46:00.442 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.506ms
+2026-02-28 03:46:00.450 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.687ms
+2026-02-28 03:46:00.458 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.633ms
+2026-02-28 03:46:02.480 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:46:02.482 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 5.122ms
+2026-02-28 03:46:02.488 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 2.963ms
+2026-02-28 03:46:02.493 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.843ms
+2026-02-28 03:46:02.512 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 2.611ms
+2026-02-28 03:46:04.888 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:46:04.891 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 4.270ms
+2026-02-28 03:46:04.901 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.913ms
+2026-02-28 03:46:04.906 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.296ms
+2026-02-28 03:46:04.920 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.777ms
+2026-02-28 03:46:06.287 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:46:06.291 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 21.366ms
+2026-02-28 03:46:06.311 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.780ms
+2026-02-28 03:46:06.327 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 10.814ms
+2026-02-28 03:46:06.338 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 7.107ms
+2026-02-28 03:46:07.165 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:46:07.167 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 19.148ms
+2026-02-28 03:46:07.180 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.899ms
+2026-02-28 03:46:07.189 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.184ms
+2026-02-28 03:46:07.204 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.827ms
+2026-02-28 03:46:10.499 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 48 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:46:10.501 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 17.502ms
+2026-02-28 03:46:10.509 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.082ms
+2026-02-28 03:46:10.516 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.815ms
+2026-02-28 03:46:10.522 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.393ms
+2026-02-28 03:46:17.381 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk deleted 1 assets for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 03:46:17.383 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-delete responded 200 in 18.747ms
+2026-02-28 03:46:17.393 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 2.803ms
+2026-02-28 03:46:17.403 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 7.235ms
+2026-02-28 03:46:17.415 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.437ms
+2026-02-28 03:46:19.176 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 14.299ms
+2026-02-28 03:46:20.167 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 18.322ms
+2026-02-28 03:46:20.247 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_1ce9d7ee-6cd7-4c5f-bf60-238a08e7bf7d.webp responded 304 in 31.500ms
+2026-02-28 03:46:20.247 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_f15d34e1-e423-46aa-911e-96bba5eac7ea.webp responded 304 in 28.041ms
+2026-02-28 03:46:20.247 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_e8127512-4d2d-4da6-9387-833e54ad95b3.webp responded 304 in 28.395ms
+2026-02-28 03:46:20.247 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_90a916d2-600e-495f-8f00-49d8e6f0a8f7.webp responded 304 in 29.033ms
+2026-02-28 03:46:20.247 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_f7348253-b10d-4c9c-a90b-3bb1f9f8ca8b.webp responded 304 in 33.227ms
+2026-02-28 03:46:20.247 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_9aef7f18-c7e4-4051-b5eb-5a960e873c17.webp responded 304 in 28.076ms
+2026-02-28 03:46:21.174 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 4.009ms
+2026-02-28 03:46:35.061 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 3.236ms
+2026-02-28 03:46:35.454 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 3.042ms
+2026-02-28 03:46:35.941 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 2.914ms
+2026-02-28 03:46:42.507 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 2.340ms
+2026-02-28 03:46:46.078 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 2.077ms
+2026-02-28 03:46:48.636 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 2.225ms
+2026-02-28 03:46:57.372 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 2.213ms
+2026-02-28 03:46:59.499 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 2.971ms
+2026-02-28 03:53:51.571 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-28 03:53:51.571 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-28 03:53:51.575 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 524326.684ms
+2026-02-28 03:53:51.575 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 524352.305ms
+2026-02-28 03:53:52.039 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 1.646ms
+2026-02-28 03:53:52.039 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 2.447ms
+2026-02-28 03:53:52.056 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 6.621ms
+2026-02-28 03:53:52.058 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections responded 200 in 0.999ms
+2026-02-28 03:53:52.105 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=1uasFyFi9-TIc_MGSZk7hQ)
+2026-02-28 03:53:52.110 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=WUClgEAhKrWttyCZIHApQQ)
+2026-02-28 03:53:52.116 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.630ms
+2026-02-28 03:53:52.123 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.857ms
+2026-02-28 03:53:52.214 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 164.666ms
+2026-02-28 03:53:52.217 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 166.285ms
+2026-02-28 03:53:52.217 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Tags responded 200 in 1.557ms
+2026-02-28 03:53:52.222 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/SmartCollections responded 200 in 3.571ms
+2026-02-28 03:53:54.204 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 3.263ms
+2026-02-28 03:53:54.204 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_be3e5d2f-1633-4e44-a17a-e07e094b22e8.webp responded 304 in 0.469ms
+2026-02-28 03:53:54.548 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 2.132ms
+2026-02-28 03:53:54.580 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_f7348253-b10d-4c9c-a90b-3bb1f9f8ca8b.webp responded 304 in 0.219ms
+2026-02-28 03:53:54.580 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_1ce9d7ee-6cd7-4c5f-bf60-238a08e7bf7d.webp responded 304 in 0.163ms
+2026-02-28 03:53:54.581 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_90a916d2-600e-495f-8f00-49d8e6f0a8f7.webp responded 304 in 0.078ms
+2026-02-28 03:53:54.888 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 1.849ms
+2026-02-28 03:53:55.241 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 4.328ms
+2026-02-28 04:19:13.256 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 6.500ms
+2026-02-28 04:19:13.593 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.249ms
+2026-02-28 04:19:16.872 +07:00 [INF] (VAH.Backend.Services.AssetService) Bulk moved 1 colors to group 47 for user 306883b5-2e60-4a40-b2b4-81ebac512207
+2026-02-28 04:19:16.873 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/Assets/bulk-move-group responded 200 in 18.210ms
+2026-02-28 04:19:16.883 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 3.497ms
+2026-02-28 04:19:16.894 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 6.300ms
+2026-02-28 04:19:16.901 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 5.860ms
+2026-02-28 04:19:38.665 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_be3e5d2f-1633-4e44-a17a-e07e094b22e8.webp responded 304 in 0.202ms
+2026-02-28 04:19:38.667 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 2.178ms
+2026-02-28 04:19:38.703 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_f7348253-b10d-4c9c-a90b-3bb1f9f8ca8b.webp responded 304 in 0.300ms
+2026-02-28 04:19:38.705 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_1ce9d7ee-6cd7-4c5f-bf60-238a08e7bf7d.webp responded 304 in 0.226ms
+2026-02-28 04:19:38.705 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_e8127512-4d2d-4da6-9387-833e54ad95b3.webp responded 304 in 0.119ms
+2026-02-28 04:19:38.706 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_90a916d2-600e-495f-8f00-49d8e6f0a8f7.webp responded 304 in 0.067ms
+2026-02-28 04:19:38.706 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_9aef7f18-c7e4-4051-b5eb-5a960e873c17.webp responded 304 in 0.066ms
+2026-02-28 04:19:38.706 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_f15d34e1-e423-46aa-911e-96bba5eac7ea.webp responded 304 in 0.068ms
+2026-02-28 04:19:38.965 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 1.930ms
+2026-02-28 04:19:39.444 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 1.966ms
+2026-02-28 04:19:39.851 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 1.753ms
+2026-02-28 04:19:40.173 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 2.980ms
+2026-02-28 04:19:40.571 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/2/items responded 200 in 1.833ms
+2026-02-28 04:19:40.951 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 2.398ms
+2026-02-28 04:19:44.009 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/1/items responded 200 in 1.986ms
+2026-02-28 04:19:47.161 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/Collections/3/items responded 200 in 1.643ms
+2026-02-28 04:20:16.773 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-28 04:20:16.773 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-02-28 04:20:16.776 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 1584683.924ms
+2026-02-28 04:20:16.777 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 1584709.333ms
