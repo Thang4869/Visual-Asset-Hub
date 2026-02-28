@@ -62,8 +62,8 @@ builder.Services.AddSignalR();
 // ============================================================
 var app = builder.Build();
 
-// --- Global exception handler (first in pipeline) ---
-app.UseGlobalExceptionHandler();
+// --- Global exception handler (RFC 7807 via IExceptionHandler) ---
+app.UseExceptionHandler();
 
 // --- CORS ---
 app.UseCors("Frontend");
@@ -85,12 +85,12 @@ app.UseRateLimiter();
 // --- Static files ---
 app.UseStaticFiles();
 
-// --- Swagger (dev only) ---
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// --- Swagger ---
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// --- Redirect root to Swagger ---
+app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
 app.UseAuthentication();
 app.UseAuthorization();

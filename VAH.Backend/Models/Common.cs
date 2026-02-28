@@ -16,19 +16,22 @@ public class PagedResult<T>
 
 /// <summary>
 /// Common query parameters for paginated list endpoints.
+/// Validated via Data Annotations — <see cref="System.ComponentModel.DataAnnotations.RangeAttribute"/>.
 /// </summary>
 public class PaginationParams
 {
-    private const int MaxPageSize = 100;
-    private int _pageSize = 50;
-
+    /// <summary>Page number (1-based).</summary>
+    [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Page must be ≥ 1.")]
     public int Page { get; set; } = 1;
-    public int PageSize
-    {
-        get => _pageSize;
-        set => _pageSize = Math.Min(value, MaxPageSize);
-    }
+
+    /// <summary>Items per page (1–100).</summary>
+    [System.ComponentModel.DataAnnotations.Range(1, 100, ErrorMessage = "PageSize must be between 1 and 100.")]
+    public int PageSize { get; set; } = 50;
+
+    /// <summary>Optional sort field (e.g. "filename", "createdat").</summary>
     public string? SortBy { get; set; }
+
+    /// <summary>Sort direction: "asc" or "desc".</summary>
     public string SortOrder { get; set; } = "asc";
 }
 

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using VAH.Backend.Data;
+using VAH.Backend.Middleware;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
 
@@ -193,6 +194,13 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        // ── MediatR (CQRS pipeline) ──
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssetService>());
+
+        // ── Global Exception Handler (RFC 7807) ──
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
+
         services.AddSingleton(new FileUploadConfig());
         services.AddScoped<IStorageService, LocalStorageService>();
         services.AddScoped<AssetCleanupHelper>();

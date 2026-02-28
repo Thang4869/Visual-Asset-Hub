@@ -1,6 +1,6 @@
 # Visual Asset Hub — Báo cáo Thay đổi & Sửa lỗi
 
-> **Cập nhật lần cuối:** 01/03/2026 — Session #6.7
+> **Cập nhật lần cuối:** 01/03/2026 — Session #6.8
 
 ---
 
@@ -1744,4 +1744,97 @@ Applied `[Range(1, int.MaxValue)]` trên tất cả `int id` parameters trong `A
 #### Kết quả build:
 ```
 dotnet build --no-restore → 0 errors, 0 warnings ✅
+```
+
+---
+
+### Session #6.8 — CQRS (MediatR), GlobalExceptionHandler (RFC 7807) & API Contract (01/03/2026)
+
+**Mục tiêu:** Tách Fat Service khỏi Controller bằng CQRS pattern (MediatR), chuẩn hóa Global Exception Handling với `IExceptionHandler`, và làm sắc nét API Contract.
+
+#### 1. CQRS Pattern (MediatR 12.5)
+
+**Trước:** `AssetsController(IAssetService assetService)` — controller phụ thuộc trực tiếp vào Fat Service.
+**Sau:** `AssetsController(ISender sender)` — controller chỉ là Dispatcher, gửi Command/Query qua MediatR pipeline.
+
+| Layer | Files | Vai trò |
+|-------|-------|---------|
+| **Queries** | `CQRS/Assets/Queries/AssetQueries.cs` | `GetAssetsQuery`, `GetAssetByIdQuery`, `GetAssetsByGroupQuery` — sealed records implement `IRequest<T>` |
+| **Commands** | `CQRS/Assets/Commands/AssetCommands.cs` | `CreateAssetCommand`, `UploadFilesCommand`, `UpdateAssetCommand`, `DeleteAssetCommand`, `DuplicateAssetCommand` — sealed records implement `IRequest<T>` |
+| **Query Handlers** | `CQRS/Assets/Handlers/AssetQueryHandlers.cs` | 3 handlers, delegate to `IAssetService` (incremental refactoring) |
+| **Command Handlers** | `CQRS/Assets/Handlers/AssetCommandHandlers.cs` | 5 handlers, delegate to `IAssetService` |
+
+**DI Registration:** `services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssetService>())` trong `AddApplicationServices()`.
+
+**Lợi ích:** Controller zero logic (pure dispatcher), pipeline behaviors (logging, validation, caching) có thể inject later, rõ ràng Read vs Write intent.
+
+#### 2. Explicit Duplicate Routing (API Contract)
+
+**Trước:** `POST /{id}/duplicate` + `[FromBody] DuplicateAssetDto dto` (lỏng lẻo, body optional).
+**Sau:** 2 endpoint rõ ràng, không cần request body:
+
+| Endpoint | Mục đích |
+|----------|----------|
+| `POST /{id}/duplicate` | Nhân bản tại chỗ (same folder) |
+| `POST /{id}/duplicate-to-folder/{folderId}` | Nhân bản sang thư mục khác |
+
+**Class `DuplicateAssetDto` đã bị xoá** khỏi DTOs.cs.
+**Frontend** `assetsApi.js`: `duplicateAsset()` updated — sử dụng URL routing thay vì request body.
+
+#### 3. Global Exception Handler — RFC 7807 ProblemDetails
+
+**Trước:** `ExceptionHandlingMiddleware` (legacy middleware pattern, manual JSON serialization).
+**Sau:** `GlobalExceptionHandler` implements `IExceptionHandler` (ASP.NET Core 8+ built-in interface).
+
+| Exception | HTTP Status | ProblemDetails Title |
+|-----------|------------|---------------------|
+| `NotFoundException` | 404 | "Not Found" |
+| `ValidationException` | 400 | "Validation Failed" (+ per-field `errors` extension) |
+| `ArgumentException` | 400 | "Bad Request" |
+| `KeyNotFoundException` | 404 | "Not Found" |
+| `UnauthorizedAccessException` | 401 | "Unauthorized" |
+| `InvalidOperationException` | 409 | "Conflict" |
+| Fallback | 500 | "Internal Server Error" (detail hidden in Production) |
+
+Mọi response đều có `traceId` extension. Registered via `services.AddExceptionHandler<GlobalExceptionHandler>()` + `services.AddProblemDetails()`.
+Pipeline: `app.UseExceptionHandler()` thay cho `app.UseGlobalExceptionHandler()`.
+
+**Custom Exceptions** (mới):
+- `Exceptions/NotFoundException.cs` — semantic 404, constructor overloads: `(string message)` + `(string entityName, object key)`
+- `Exceptions/ValidationException.cs` — semantic 400, carries `IDictionary<string, string[]> Errors` for per-field validation
+
+#### 4. PaginationParams Validation (Data Annotations)
+
+**Trước:** Runtime clamping via `Math.Min(value, MaxPageSize)` — silent mutation.
+**Sau:** Explicit Data Annotations — framework auto-validates before handler runs:
+
+| Property | Annotation | Description |
+|----------|-----------|-------------|
+| `Page` | `[Range(1, int.MaxValue)]` | Must be ≥ 1 |
+| `PageSize` | `[Range(1, 100)]` | Must be 1–100 |
+
+Invalid values → automatic 400 ValidationProblemDetails (via `[ApiController]`).
+
+#### Files đã thay đổi (Session #6.8)
+
+| File | Action |
+|------|--------|
+| `VAH.Backend.csproj` | Added `MediatR 12.5.0` NuGet package |
+| `Exceptions/NotFoundException.cs` | **NEW** — custom 404 exception |
+| `Exceptions/ValidationException.cs` | **NEW** — custom 400 exception with per-field errors |
+| `CQRS/Assets/Queries/AssetQueries.cs` | **NEW** — 3 query records |
+| `CQRS/Assets/Commands/AssetCommands.cs` | **NEW** — 5 command records |
+| `CQRS/Assets/Handlers/AssetQueryHandlers.cs` | **NEW** — 3 query handlers |
+| `CQRS/Assets/Handlers/AssetCommandHandlers.cs` | **NEW** — 5 command handlers |
+| `Controllers/AssetsController.cs` | Rewritten: `IAssetService` → `ISender`, CQRS dispatch, 2 explicit duplicate routes |
+| `Middleware/GlobalExceptionHandler.cs` | **NEW** — `IExceptionHandler` implementation (RFC 7807) |
+| `Models/Common.cs` | `PaginationParams` rewritten with `[Range]` annotations |
+| `Models/DTOs.cs` | Removed `DuplicateAssetDto` class |
+| `Extensions/ServiceCollectionExtensions.cs` | Added MediatR registration + `AddExceptionHandler` + `AddProblemDetails` |
+| `Program.cs` | `app.UseGlobalExceptionHandler()` → `app.UseExceptionHandler()` |
+| `Frontend/src/api/assetsApi.js` | `duplicateAsset()` uses URL routing instead of request body |
+
+#### Kết quả build:
+```
+dotnet build --no-incremental → 0 errors, 0 warnings ✅
 ```
