@@ -1,24 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import * as collectionsApi from '../api/collectionsApi';
+import useCollectionNavigation from './useCollectionNavigation';
 
 /**
  * Hook encapsulating collection state and CRUD operations.
- * Syncs with React Router URL params:
- *   /collections/:collectionId
- *   /collections/:collectionId/folder/:folderId
+ *
+ * Composes:
+ *  - useCollectionNavigation → selection, breadcrumbs, folder path, URL push
+ *
+ * Keeps: fetch, URL param sync, CRUD (create/delete), refresh.
  */
 export default function useCollections() {
-  const navigate = useNavigate();
   const { collectionId: urlCollectionId, folderId: urlFolderId } = useParams();
+  const navigate = useNavigate();
 
   const [collections, setCollections] = useState([]);
-  const [selectedCollection, setSelectedCollection] = useState(null);
   const [collectionItems, setCollectionItems] = useState({ items: [], subCollections: [] });
   const [loading, setLoading] = useState(false);
-  const [breadcrumbPath, setBreadcrumbPath] = useState([]);
-  const [folderPath, setFolderPath] = useState([]);
-  const [currentFolderId, setCurrentFolderId] = useState(null);
+
+  // ── Composed navigation hook ──
+  const nav = useCollectionNavigation();
 
   // Track whether initial URL sync is done
   const initialSyncDone = useRef(false);
@@ -58,25 +60,14 @@ export default function useCollections() {
     fetchCollections().then((data) => {
       if (data.length === 0) return;
 
-      // If URL has a collectionId, select that collection
       const targetId = urlCollectionId ? parseInt(urlCollectionId, 10) : null;
-      const match = targetId ? data.find((c) => c.id === targetId) : null;
+      const targetFolderId = urlFolderId ? parseInt(urlFolderId, 10) : null;
 
-      if (match) {
-        setSelectedCollection(match);
-        setBreadcrumbPath([match]);
-        // If URL also has folderId, set it
-        if (urlFolderId) {
-          setCurrentFolderId(parseInt(urlFolderId, 10));
-        }
-      } else if (!selectedCollection) {
-        // No URL match → select first collection but don't navigate (stay on home)
-        if (!urlCollectionId) {
-          // User is on "/" — don't auto-select, show home view
-        } else {
-          // Invalid collection ID in URL → go home
-          navigate('/', { replace: true });
-        }
+      if (targetId) {
+        nav.syncInitial(data, targetId, targetFolderId);
+      } else if (urlCollectionId) {
+        // Invalid collection ID in URL → go home
+        navigate('/', { replace: true });
       }
       initialSyncDone.current = true;
     });
@@ -89,103 +80,14 @@ export default function useCollections() {
     const targetId = urlCollectionId ? parseInt(urlCollectionId, 10) : null;
     const targetFolderId = urlFolderId ? parseInt(urlFolderId, 10) : null;
 
-    if (!targetId) {
-      // URL is "/" → deselect collection (home view)
-      if (selectedCollection) {
-        setSelectedCollection(null);
-        setBreadcrumbPath([]);
-        setFolderPath([]);
-        setCurrentFolderId(null);
-      }
-      return;
-    }
-
-    // Only update if different from current state
-    if (selectedCollection?.id !== targetId) {
-      const match = collections.find((c) => c.id === targetId);
-      if (match) {
-        setSelectedCollection(match);
-        setBreadcrumbPath([match]);
-        setFolderPath([]);
-        setCurrentFolderId(targetFolderId);
-      }
-    } else if ((currentFolderId || null) !== (targetFolderId || null)) {
-      if (targetFolderId) {
-        setCurrentFolderId(targetFolderId);
-      } else {
-        setFolderPath([]);
-        setCurrentFolderId(null);
-      }
-    }
+    nav.syncFromUrl(collections, targetId, targetFolderId);
   }, [urlCollectionId, urlFolderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (selectedCollection) {
-      fetchItems(selectedCollection.id, currentFolderId);
+    if (nav.selectedCollection) {
+      fetchItems(nav.selectedCollection.id, nav.currentFolderId);
     }
-  }, [selectedCollection, currentFolderId, fetchItems]);
-
-  // ------- navigation (push URL) -------
-
-  const selectCollection = useCallback((collection, path = []) => {
-    setSelectedCollection(collection);
-    setBreadcrumbPath(path);
-    setFolderPath([]);
-    setCurrentFolderId(null);
-    if (collection) {
-      navigate(`/collections/${collection.id}`);
-    } else {
-      navigate('/');
-    }
-  }, [navigate]);
-
-  const breadcrumbClick = useCallback(
-    (collection) => {
-      const idx = breadcrumbPath.findIndex((c) => c.id === collection.id);
-      selectCollection(collection, breadcrumbPath.slice(0, idx + 1));
-    },
-    [breadcrumbPath, selectCollection],
-  );
-
-  const navigateToCollection = useCallback(
-    (collection) => {
-      selectCollection(collection, [...breadcrumbPath, collection]);
-    },
-    [breadcrumbPath, selectCollection],
-  );
-
-  const openFolder = useCallback(
-    (folder) => {
-      setFolderPath((prev) => [...prev, folder]);
-      setCurrentFolderId(folder.id);
-      if (selectedCollection) {
-        navigate(`/collections/${selectedCollection.id}/folder/${folder.id}`);
-      }
-    },
-    [selectedCollection, navigate],
-  );
-
-  const folderBreadcrumbClick = useCallback(
-    (folder) => {
-      const idx = folderPath.findIndex((f) => f.id === folder.id);
-      if (idx >= 0) {
-        setFolderPath(folderPath.slice(0, idx + 1));
-        setCurrentFolderId(folder.id);
-        if (selectedCollection) {
-          navigate(`/collections/${selectedCollection.id}/folder/${folder.id}`);
-        }
-      }
-    },
-    [folderPath, selectedCollection, navigate],
-  );
-
-  const folderBreadcrumbRoot = useCallback(() => {
-    setFolderPath([]);
-    setCurrentFolderId(null);
-    if (selectedCollection) {
-      navigate(`/collections/${selectedCollection.id}`);
-    }
-  }, [selectedCollection, navigate]);
+  }, [nav.selectedCollection, nav.currentFolderId, fetchItems]);
 
   // ------- CRUD -------
 
@@ -217,8 +119,8 @@ export default function useCollections() {
       try {
         await collectionsApi.deleteCollection(collectionId);
         const data = await fetchCollections();
-        if (selectedCollection?.id === collectionId) {
-          setSelectedCollection(data[0] || null);
+        if (nav.selectedCollection?.id === collectionId) {
+          nav.setSelectedCollection(data[0] || null);
           if (data[0]) {
             navigate(`/collections/${data[0].id}`);
           } else {
@@ -230,34 +132,36 @@ export default function useCollections() {
         alert('Lỗi khi xóa collection');
       }
     },
-    [fetchCollections, selectedCollection, navigate],
+    [fetchCollections, nav.selectedCollection, navigate],
   );
 
   // ------- refresh helper -------
   const refreshItems = useCallback(() => {
-    if (selectedCollection) {
-      fetchItems(selectedCollection.id, currentFolderId);
+    if (nav.selectedCollection) {
+      fetchItems(nav.selectedCollection.id, nav.currentFolderId);
     }
-  }, [selectedCollection, currentFolderId, fetchItems]);
+  }, [nav.selectedCollection, nav.currentFolderId, fetchItems]);
 
+  // Return merged — backward-compatible API
   return {
     collections,
-    selectedCollection,
     collectionItems,
     loading,
-    breadcrumbPath,
-    folderPath,
-    currentFolderId,
-    // actions
-    selectCollection,
-    breadcrumbClick,
-    navigateToCollection,
-    openFolder,
-    folderBreadcrumbClick,
-    folderBreadcrumbRoot,
+    // From useCollectionNavigation
+    selectedCollection: nav.selectedCollection,
+    setSelectedCollection: nav.setSelectedCollection,
+    breadcrumbPath: nav.breadcrumbPath,
+    folderPath: nav.folderPath,
+    currentFolderId: nav.currentFolderId,
+    selectCollection: nav.selectCollection,
+    breadcrumbClick: nav.breadcrumbClick,
+    navigateToCollection: nav.navigateToCollection,
+    openFolder: nav.openFolder,
+    folderBreadcrumbClick: nav.folderBreadcrumbClick,
+    folderBreadcrumbRoot: nav.folderBreadcrumbRoot,
+    // CRUD + refresh
     handleCreateCollection,
     handleDeleteCollection,
     refreshItems,
-    setSelectedCollection,
   };
 }

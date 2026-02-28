@@ -263,19 +263,19 @@
 - [x] 3.3 Tạo `TokenManager` class (encapsulate localStorage, private fields, singleton)
 - [x] 3.4 Thống nhất style — tất cả dùng class methods, không còn mix async function/arrow
 
-### Phase 4: Frontend Domain Models 🟡
-> Ưu tiên trung bình. Chưa bắt đầu.
+### Phase 4: Frontend Domain Models ✅
+> Hoàn tất 2026-02-28.
 
-- [ ] 4.1 Tạo frontend domain classes: `Asset`, `Collection`, `Tag`, `User`
-- [ ] 4.2 Thêm computed properties, validation logic vào domain classes
-- [ ] 4.3 Mapping layer: API response → domain object
+- [x] 4.1 Tạo frontend domain classes: `Asset`, `Collection`, `Tag` (với computed properties)
+- [x] 4.2 Thêm computed properties, validation logic vào domain classes
+- [x] 4.3 Mapping layer: `toAsset()`, `toCollection()`, `toTag()` + array variants
 
-### Phase 5: Frontend Component Architecture 🟡
-> Ưu tiên trung bình, thực hiện dần. Chưa bắt đầu.
+### Phase 5: Frontend Component Architecture ✅
+> Hoàn tất 2026-02-28.
 
-- [ ] 5.1 Tách `App.jsx` thành nhiều Page/Layout components
-- [ ] 5.2 Tách `useAssets.js` thành nhiều hooks chuyên biệt
-- [ ] 5.3 Tách `useCollections.js` tương tự
+- [x] 5.1 Tách `App.jsx` (620→454 dòng): `AppHeader`, `AppSidebar`, `DetailsPanel` components + `useSmartCollections` hook
+- [x] 5.2 Tách `useAssets.js`: `useAssetSelection` (multi-select) + `useBulkOperations` (bulk delete/move/tag)
+- [x] 5.3 Tách `useCollections.js`: `useCollectionNavigation` (URL sync, breadcrumbs, folder path)
 - [ ] 5.4 Thiết lập state management pattern (Context API hoặc Zustand)
 - [ ] 5.5 Extract business logic từ `ShareDialog` ra hook riêng
 
@@ -300,12 +300,12 @@
 | 3.2 | API classes kế thừa | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | 7 classes: `AssetApiService`, `AuthApiService`, `CollectionApiService`, `TagApiService`, `SearchApiService`, `SmartCollectionApiService`, `PermissionApiService`. Backward-compatible named exports. |
 | 3.3 | TokenManager class | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `TokenManager` class, private `#storageKey`, singleton pattern. `client.js` cập nhật dùng `TokenManager`. |
 | 3.4 | Thống nhất code style | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | Tất cả API files giờ dùng class methods, consistent style. `permissionsApi.js` không còn dùng `async function` declarations riêng lẻ. |
-| 4.1 | Frontend domain classes | ⬜ Chưa bắt đầu | | | |
-| 4.2 | Computed properties/validation | ⬜ Chưa bắt đầu | | | |
-| 4.3 | API → Domain mapping | ⬜ Chưa bắt đầu | | | |
-| 5.1 | Tách App.jsx | ⬜ Chưa bắt đầu | | | |
-| 5.2 | Tách useAssets.js | ⬜ Chưa bắt đầu | | | |
-| 5.3 | Tách useCollections.js | ⬜ Chưa bắt đầu | | | |
+| 4.1 | Frontend domain classes | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `Asset`, `Collection`, `Tag` classes trong `models/index.js`. Computed: `isImage`, `thumbnailUrl`, `tagList`, `contentTypeLabel`, `badgeStyle`, etc. |
+| 4.2 | Computed properties/validation | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | Kết hợp trong 4.1. Mỗi class có `isValid` getter. `Tag` có private `#contrastColor()`. |
+| 4.3 | API → Domain mapping | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `toAsset/toAssets`, `toCollection/toCollections`, `toTag/toTags` helpers. Idempotent (skip nếu đã là instance). |
+| 5.1 | Tách App.jsx | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | 620→454 dòng. `AppHeader`, `AppSidebar`, `DetailsPanel` components + `useSmartCollections` hook extracted. |
+| 5.2 | Tách useAssets.js | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `useAssetSelection` (selection state, toggle, range, selectAll). `useBulkOperations` (bulk delete/move/tag/moveGroup). `useAssets` giờ compose 2 hooks. |
+| 5.3 | Tách useCollections.js | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `useCollectionNavigation` (URL push, breadcrumbs, folder nav, syncFromUrl/syncInitial). `useCollections` compose hook + keeps fetch/CRUD. |
 | 5.4 | State management pattern | ⬜ Chưa bắt đầu | | | |
 | 5.5 | Extract ShareDialog logic | ⬜ Chưa bắt đầu | | | |
 
