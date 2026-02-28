@@ -158,7 +158,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | **Input validation** | 🟡 MEDIUM | Chỉ có `[Required]` trên FileName/FilePath. DTO không validate | SQL injection risk thấp (EF Core parameterize), nhưng logic bugs cao. Có thể tạo asset với collectionId không tồn tại |
 | **File upload protection** | 🟡 MEDIUM | Không giới hạn size, type, số lượng file | Server bị DoS bằng upload file lớn. Upload `.exe`, `.php` shell |
 | **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` |
-| **CORS policy** | 🟡 MEDIUM | `AllowAnyOrigin + AllowAnyMethod + AllowAnyHeader` | CSRF attack surface mở hoàn toàn. Bất kỳ domain nào đều gọi được API |
+| **CORS policy** | ✅ RESOLVED | Config-driven origins (từ `appsettings`), `AllowCredentials` cho SignalR. Không phải `AllowAnyOrigin` | Giới hạn domain được phép gọi API |
 
 ## 2.2 Kiến trúc Backend
 
@@ -281,7 +281,7 @@ Chi tiết exception chỉ hiện ở Development environment.
 
 ---
 
-## 3. API Reference (38 Endpoints)
+## 3. API Reference (43 Endpoints)
 
 ### 3.1 Assets — `api/Assets` [Authorize] (16 endpoints)
 

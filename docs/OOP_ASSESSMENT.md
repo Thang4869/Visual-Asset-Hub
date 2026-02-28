@@ -230,7 +230,7 @@
 | **Strategy Pattern** | SmartCollection filters | Thay thế switch statement cứng |
 | **Facade Pattern** | Frontend API layer | Gom các loose functions thành class |
 | **Service Layer (FE)** | Frontend business logic | Tách logic khỏi hooks/components |
-| **Value Object** | ContentType, Role, LayoutType | Thay string bằng type-safe objects |
+| **Type-safe Enum** | ContentType, Role, LayoutType | Thay string bằng type-safe enums |
 
 ### Design Patterns Đã Áp Dụng (sau refactor)
 
@@ -239,7 +239,7 @@
 | **TPH Inheritance** | `Asset` → `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset` | Task #6 |
 | **Factory Pattern** | `AssetFactory` — 6 static creation methods | Task #6 |
 | **Template Method** (virtual) | `HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup` virtual properties | Task #6 |
-| **Value Objects** (Enums) | `AssetContentType`, `CollectionType`, `LayoutType` + EF Core value conversions | Task #3 |
+| **Type-safe Enums** | `AssetContentType`, `CollectionType`, `LayoutType` + EF Core value conversions | Task #3 |
 | **Extension Methods** | `ServiceCollectionExtensions` — 6 methods tổ chức DI | Task #5 |
 | **Base Controller** | `BaseApiController` — shared `GetUserId()` | Task #2 |
 | **Rich Domain Model** | Domain methods trên Asset, Collection, Tag, CollectionPermission | Task #7 |
@@ -264,7 +264,7 @@
 > Hoàn tất 2026-02-27.
 
 - [x] 1.1 Tạo Asset inheritance hierarchy (`Asset` → `ImageAsset`, `LinkAsset`, `ColorAsset`, `FolderAsset`, `ColorGroupAsset`)
-- [x] 1.2 Chuyển string fields sang enum/value objects (`ContentType`, `CollectionType`, `LayoutType`, `Role`)
+- [x] 1.2 Chuyển string fields sang type-safe enums (`ContentType`, `CollectionType`, `LayoutType`, `Role`)
 - [x] 1.3 Thêm domain behavior vào models (validation, computed properties)
 - [x] 1.4 Thêm navigation properties đầy đủ
 - [x] 1.5 Move `CollectionWithItemsResult`, `SmartCollectionDefinition`, `SearchResult`, `AssetPositionDto` về Models folder
@@ -311,7 +311,7 @@
 |---|------|-----------|--------------|---------------|---------|
 | 1.5 | Move DTOs/Result classes | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `AssetPositionDto`, `SearchResult`, `CollectionWithItemsResult`, `SmartCollectionDefinition` → `Models/DTOs.cs` |
 | 2.5 | Base controller class | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `BaseApiController` với `GetUserId()`. 8 controllers kế thừa. |
-| 1.2 | Enum/Value Objects cho string fields | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `AssetContentType`, `CollectionType`, `LayoutType` enums + EF Core value conversions. |
+| 1.2 | Type-safe Enums cho string fields | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `AssetContentType`, `CollectionType`, `LayoutType` enums + EF Core value conversions. |
 | 2.3 | SearchService | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `ISearchService` + `SearchService`. SearchController giờ chỉ delegate. |
 | 2.6 | ServiceCollectionExtensions | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `Extensions/ServiceCollectionExtensions.cs` — 6 extension methods. Program.cs 255→148 lines. |
 | 1.1 | Asset inheritance hierarchy | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | TPH: `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`. `AssetFactory` + virtual behavior properties. |
@@ -332,6 +332,18 @@
 | 5.3 | Tách useCollections.js | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `useCollectionNavigation` (URL push, breadcrumbs, folder nav, syncFromUrl/syncInitial). `useCollections` compose hook + keeps fetch/CRUD. |
 | 5.4 | State management pattern | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `AppContext` + `AppProvider` (Context API). `useAppContext()` hook. Tất cả domain hooks composed trong Provider, `AppLayout` chỉ destructure từ context. |
 | 5.5 | Extract ShareDialog logic | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `useSharePermissions` hook: `grant`, `updateRole`, `revoke`, `permissions`, `loading`, `error`. `ShareDialog` giờ chỉ là presentational component. |
+
+---
+
+## V.B. REMAINING DEBT / NEXT REFACTOR CANDIDATES
+
+| # | Vấn đề | Mức ưu tiên | Ghi chú |
+|---|--------|-------------|----------|
+| 1 | **Repository pattern** | 🟡 Thấp | Services gọi `_context` trực tiếp — acceptable cho project size, nhưng cần nếu mở rộng |
+| 2 | **Input validation (DTOs)** | 🟡 Trung bình | Chỉ có `[Required]` trên một số fields. FluentValidation hoặc DataAnnotations đầy đủ hơn |
+| 3 | **`IEntityTypeConfiguration<T>`** | 🟡 Thấp | `AppDbContext.OnModelCreating` lớn — tách thành configuration classes riêng |
+| 4 | **Unit tests** | 🔴 Cao | Chưa có test project. Service layer + domain methods cần unit tests |
+| 5 | **N+1 query review** | 🟡 Trung bình | Một số services có thể thiếu `.Include()` hoặc load thừa data |
 
 ---
 
