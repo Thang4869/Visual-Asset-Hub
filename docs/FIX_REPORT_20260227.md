@@ -1,6 +1,6 @@
 # Visual Asset Hub — Báo cáo Thay đổi & Sửa lỗi
 
-> **Cập nhật lần cuối:** 28/02/2026 — Session #4
+> **Cập nhật lần cuối:** 01/03/2026 — Session #6.5
 
 ---
 
@@ -897,3 +897,680 @@ await alert('Hoàn tất!');
 | `components/ColorBoard.jsx` | +209 dòng: context menu, group drag-drop, folder/clipboard integration |
 | `components/ColorBoard.css` | +96 dòng: context menu, group drag styles |
 | `components/ShareDialog.jsx` | Minor: fix shared collection display |
+
+---
+
+## Session #5 — Rename Collection, Global Shortcuts, DTO Refactor & Missing Feature Analysis (28/02/2026)
+
+### Tổng quan
+
+Session #5 tập trung vào **hoàn thiện các tính năng còn thiếu** được xác định qua đánh giá hoàn thiện dự án. Các thay đổi chính:
+
+1. **Rename Collection hoàn chỉnh** — Kết nối frontend handler với backend PUT API
+2. **UpdateCollectionDto** — DTO mới thay thế raw `Collection` entity ở endpoint PUT, sửa bug ghi đè giá trị mặc định
+3. **Global keyboard shortcuts** — Mở rộng keyboard handler từ chỉ Ctrl+Z → full shortcut suite
+4. **Export fetchCollections** — Sidebar tự động refresh sau khi rename
+
+---
+
+### 5.1 Fix Rename Collection (Frontend ↔ Backend)
+
+**Vấn đề:**
+- `handleRenameCollection` trong `AppContext.js` chỉ hiển thị alert "Chức năng đổi tên collection đang phát triển" — stub chưa kết nối API
+- `collectionsApi.js` thiếu method `update()`
+- Backend PUT `/api/collections/{id}` đã có và hoạt động, nhưng frontend không gọi
+
+**Giải pháp:**
+
+| File | Thay đổi |
+|------|----------|
+| `api/collectionsApi.js` | Thêm `update(id, payload)` method + export `updateCollection` |
+| `context/AppContext.js` | Rewrite `handleRenameCollection` → gọi `collectionsApi.updateCollection()`, refresh sidebar + items |
+| `hooks/useCollections.js` | Export thêm `fetchCollections` cho context sử dụng |
+
+**Flow hoàn chỉnh:**
+```
+User right-click → Rename → showPrompt() → nhập tên mới
+  → collectionsApi.updateCollection(id, { name }) → PUT /api/collections/{id}
+  → Backend: CollectionService.UpdateAsync → ApplyUpdate(dto) → SaveChanges
+  → Frontend: refreshItems() + fetchCollections() + setSelectedCollection(updated)
+```
+
+---
+
+### 5.2 UpdateCollectionDto (Backend — Sửa bug partial update)
+
+**Vấn đề:**
+- Controller PUT endpoint nhận raw `Collection` entity
+- Khi frontend chỉ gửi `{ name: "newName" }`, model binding sẽ set các field không gửi thành giá trị mặc định:
+  - `Description` → `""` (ghi đè description thật)
+  - `Type` → `Default` (có thể sai)
+  - `Order` → `0` (ghi đè thứ tự thật)
+  - `LayoutType` → `Grid` (có thể sai)
+- Đây là bug **data loss** khi partial update
+
+**Giải pháp:**
+
+```csharp
+// DTOs.cs — DTO mới với nullable fields
+public class UpdateCollectionDto
+{
+    [MaxLength(255)]  public string? Name { get; set; }
+    [MaxLength(2000)] public string? Description { get; set; }
+    [MaxLength(20)]   public string? Color { get; set; }
+    public CollectionType? Type { get; set; }
+    public int? Order { get; set; }
+    public LayoutType? LayoutType { get; set; }
+}
+```
+
+| File | Thay đổi |
+|------|----------|
+| `Models/DTOs.cs` | Thêm `UpdateCollectionDto` (nullable fields + DataAnnotations) |
+| `Models/Collection.cs` | Rewrite `ApplyUpdate(UpdateCollectionDto dto)` — chỉ update non-null fields |
+| `Controllers/CollectionsController.cs` | `UpdateCollection(int id, UpdateCollectionDto dto)` thay vì `Collection` |
+| `Services/ICollectionService.cs` | Interface: `UpdateAsync(int id, UpdateCollectionDto dto, string userId)` |
+| `Services/CollectionService.cs` | UpdateAsync nhận DTO, bỏ ID mismatch check (không cần vì DTO không có Id) |
+
+**Before vs After:**
+```csharp
+// BEFORE — BUG: ghi đè description, order, layoutType thành default
+public void ApplyUpdate(Collection source) {
+    Name = source.Name?.Trim() ?? Name;
+    Description = source.Description ?? Description; // "" overwrites real data!
+    Type = source.Type;                               // Always overwrites!
+    Order = source.Order;                             // Always overwrites!
+}
+
+// AFTER — FIXED: chỉ update fields thật sự được gửi
+public void ApplyUpdate(UpdateCollectionDto dto) {
+    if (dto.Name != null) Name = dto.Name.Trim();
+    if (dto.Description != null) Description = dto.Description;
+    if (dto.Type.HasValue) Type = dto.Type.Value;
+    if (dto.Order.HasValue) Order = dto.Order.Value;
+}
+```
+
+---
+
+### 5.3 Global Keyboard Shortcuts
+
+**Vấn đề:** Keyboard handler chỉ xử lý `Ctrl+Z` (undo) và `Ctrl+Shift+Z` (redo). Các thao tác clipboard, delete, rename chỉ qua context menu — không có phím tắt toàn cục.
+
+**Giải pháp:** Mở rộng `useEffect` keyboard handler trong `AppContext.js`:
+
+| Phím | Hành động | Điều kiện |
+|------|-----------|-----------|
+| `Ctrl+Z` | Undo | Luôn hoạt động |
+| `Ctrl+Shift+Z` | Redo | Luôn hoạt động |
+| `Delete` / `Backspace` | Xóa asset đang chọn | `selectedAssetId != null` |
+| `F2` | Rename asset đang chọn | `selectedAssetId != null` |
+| `Ctrl+C` | Copy asset đang chọn | `selectedAssetId != null` |
+| `Ctrl+X` | Cut asset đang chọn | `selectedAssetId != null` |
+| `Ctrl+V` | Paste vào folder/collection hiện tại | `clipboard != null` |
+| `Ctrl+A` | Chọn tất cả assets | `selectedCollection != null` |
+
+**An toàn:** Handler bỏ qua khi focus đang ở `INPUT`, `TEXTAREA`, `SELECT` — tránh conflict khi user đang nhập liệu.
+
+---
+
+### 5.4 Phân tích hoàn thiện dự án & Items không thực hiện
+
+Qua phân tích chi tiết, các hạng mục sau đã được đánh giá:
+
+#### ✅ Đã thực hiện trong Session #5
+| # | Hạng mục | Trạng thái |
+|---|----------|-----------|
+| 1 | Rename Collection (endpoint + UI) | ✅ Hoàn thành |
+| 2 | UpdateCollectionDto (fix partial update bug) | ✅ Hoàn thành |
+| 3 | Global keyboard shortcuts (8 shortcuts) | ✅ Hoàn thành |
+| 4 | DTO Validation | ✅ Đã có sẵn (DataAnnotations trên tất cả DTOs) |
+
+#### ⏳ Deferred — Cần thêm thời gian hoặc có blocker
+| # | Hạng mục | Lý do defer |
+|---|----------|-------------|
+| 1 | **Unit Tests** | Cần tạo test project mới (`VAH.Backend.Tests`), mock database, mock services. Ước lượng: 4-6h |
+| 2 | **Concurrency Control** | SQLite không hỗ trợ `[Timestamp] byte[]` giống SQL Server. Cần dùng `ConcurrencyStamp` (Guid) + migration + exception handling trong tất cả services. Rủi ro cao nếu không có test coverage |
+| 3 | **CI/CD Pipeline** | Cần setup GitHub Actions / Azure DevOps. Phụ thuộc vào hosting platform |
+| 4 | **HTTPS** | Cần certificate. Docker Compose hiện dùng HTTP. Production cần reverse proxy (nginx/traefik) với TLS |
+
+---
+
+### Tóm tắt files đã chỉnh sửa (Session #5)
+
+| File | Thay đổi |
+|------|----------|
+| **Backend** | |
+| `Models/DTOs.cs` | Thêm `UpdateCollectionDto` (6 nullable fields + validation) |
+| `Models/Collection.cs` | Rewrite `ApplyUpdate` nhận `UpdateCollectionDto`, chỉ update non-null fields |
+| `Controllers/CollectionsController.cs` | PUT endpoint nhận `UpdateCollectionDto` thay vì raw entity |
+| `Services/ICollectionService.cs` | Interface cập nhật `UpdateAsync` signature |
+| `Services/CollectionService.cs` | `UpdateAsync` nhận DTO, bỏ ID mismatch check |
+| **Frontend** | |
+| `api/collectionsApi.js` | Thêm `update(id, payload)` method + named export `updateCollection` |
+| `context/AppContext.js` | 1) Import `collectionsApi` 2) Rewrite `handleRenameCollection` gọi API thật 3) Mở rộng keyboard handler: 8 global shortcuts |
+| `hooks/useCollections.js` | Export thêm `fetchCollections` cho sidebar refresh |
+
+**Thống kê:**
+- **Backend:** 5 files, ~35 dòng thay đổi
+- **Frontend:** 3 files, ~90 dòng thay đổi
+- **Tổng:** 8 files, ~125 dòng thay đổi
+- **Build:** ✅ `dotnet build` — 0 errors, 0 warnings
+- **API endpoints:** Không thêm endpoint mới (sửa signature PUT `/api/collections/{id}`)
+- **Breaking changes:** PUT `/api/collections/{id}` body đổi từ `Collection` → `UpdateCollectionDto` (nullable fields)
+
+---
+
+## Session #6 — OOP Refactor Phase 1: AssetsController SRP Split + CreateAssetDto + AssetFactory.Duplicate (01/03/2026)
+
+### Tổng quan
+
+Session #6 bắt đầu **đợt OOP refactoring toàn diện** dựa trên kết quả audit 81 source files (~7,300 dòng). Session này tập trung vào **backend controller layer** — điểm vi phạm SRP nghiêm trọng nhất.
+
+### Phân tích kiến trúc trước refactor
+
+**AssetsController.cs (161 dòng, 17 endpoints)** chịu trách nhiệm:
+
+```
+┌─ AssetsController (BEFORE) ──────────────────────────────┐
+│                                                           │
+│  1. Core CRUD: GET list, POST create, PUT update, DELETE  │
+│  2. File Upload: POST upload (multipart)                 │
+│  3. Position Update: PUT position (canvas)               │
+│  4. Specialized Creation: folder, color, color-group,    │
+│     link (4 endpoints)                                    │
+│  5. Bulk Operations: delete, move, move-group, tag       │
+│     (4 endpoints, different service)                      │
+│  6. Reorder: POST reorder                                │
+│  7. Group Query: GET by group                            │
+│  8. Duplicate: POST duplicate                            │
+│                                                           │
+│  Dependencies: IAssetService + IBulkAssetService          │
+│  → Vi phạm SRP: 8 concerns trong 1 controller            │
+│  → Vi phạm ISP: inject IBulkAssetService chỉ dùng 4/17  │
+└───────────────────────────────────────────────────────────┘
+```
+
+**Vấn đề thiết kế khi scale:**
+1. **Fat controller** — 161 dòng, 2 service dependencies, 17 action methods
+2. **Mixed concerns** — CRUD + bulk + specialized creation + canvas position cùng class
+3. **Bulk ops khác performance profile** — bulk-delete có thể xóa 100+ items, cần khác rate-limit
+4. **PostAsset nhận raw `Asset` entity** — exposes internal model, client có thể set `UserId`, `CreatedAt`
+5. **DuplicateAssetAsync switch on ContentType** — OCP violation, không có trong factory
+
+### 6.1 SRP Split: AssetsController → AssetsController + BulkAssetsController
+
+```
+┌─ AssetsController (AFTER) ────────────────────────────────┐
+│  SRP: Single-asset lifecycle + specialized creation        │
+│  Dependencies: IAssetService only                          │
+│  Route: api/assets                                         │
+│                                                            │
+│  Core CRUD (6):                                            │
+│    GET  /                    → Paginated list              │
+│    POST /                    → Create (via CreateAssetDto) │
+│    POST /upload              → File upload                 │
+│    PUT  /{id}                → Update                      │
+│    PUT  /{id}/position       → Canvas position             │
+│    DELETE /{id}              → Delete                       │
+│                                                            │
+│  Extended (5):                                             │
+│    POST /{id}/duplicate      → Duplicate                   │
+│    POST /reorder             → Reorder                     │
+│    GET  /group/{groupId}     → Group query                 │
+│    POST /create-folder       → Folder                      │
+│    POST /create-color        → Color                       │
+│    POST /create-color-group  → Color group                 │
+│    POST /create-link         → Link                        │
+└────────────────────────────────────────────────────────────┘
+
+┌─ BulkAssetsController (NEW) ──────────────────────────────┐
+│  SRP: Batch operations only                                │
+│  Dependencies: IBulkAssetService only                      │
+│  Route: api/assets (same prefix, backward-compat)          │
+│                                                            │
+│    POST /bulk-delete         → Batch delete                │
+│    POST /bulk-move           → Batch move                  │
+│    POST /bulk-move-group     → Batch move within group     │
+│    POST /bulk-tag            → Batch tag/untag             │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Tại sao tách BulkAssetsController?**
+- **SRP**: Bulk operations = different performance, error semantics (partial success vs all-or-nothing)
+- **ISP**: Controller chỉ inject service nó thực sự dùng
+- **Rate limiting**: Future: apply stricter rate limits trên bulk endpoints
+- **Testing**: Unit test bulk behavior không cần mock IAssetService
+- **Backward-compat**: Giữ nguyên route `api/assets/bulk-*` → frontend không đổi
+
+### 6.2 CreateAssetDto — Loại bỏ raw entity exposure
+
+**BEFORE (bảo mật risk):**
+```csharp
+// Client có thể set UserId, CreatedAt, Id, ContentType — ghi đè server logic
+public async Task<ActionResult<Asset>> PostAsset(Asset asset)
+```
+
+**AFTER (DTO chỉ expose fields cần thiết):**
+```csharp
+public class CreateAssetDto
+{
+    [Required, MaxLength(500)]
+    public string FileName { get; set; } = string.Empty;
+
+    [Required, MaxLength(2048)]
+    public string FilePath { get; set; } = string.Empty;
+
+    [Range(1, int.MaxValue)]
+    public int CollectionId { get; set; } = 1;
+
+    public int? ParentFolderId { get; set; }
+}
+
+public async Task<ActionResult<Asset>> CreateAsset([FromBody] CreateAssetDto dto)
+```
+
+**Impact chain:**
+- `IAssetService.CreateAssetAsync` signature: `Asset asset` → `CreateAssetDto dto`
+- `AssetService.CreateAssetAsync`: Dùng `AssetFactory.FromDto(dto, userId)` thay vì raw entity
+- `AssetFactory`: Thêm `FromDto()` static method
+
+### 6.3 AssetFactory.Duplicate() — Loại bỏ OCP violation
+
+**BEFORE (switch + manual field copy trong service):**
+```csharp
+// AssetService.DuplicateAssetAsync — 25 dòng switch + copy
+Asset clone = source.ContentType switch {
+    AssetContentType.Image => new ImageAsset(),
+    AssetContentType.Link => new LinkAsset(),
+    ...
+};
+clone.FileName = source.FileName + " (bản sao)";
+clone.FilePath = source.FilePath;
+// ... 15 more fields manually copied
+```
+
+**AFTER (factory encapsulates TPH subtype creation + field copy):**
+```csharp
+// AssetFactory.Duplicate() — factory owns subtype creation logic
+public static Asset Duplicate(Asset source, string userId, int? targetFolderId = null)
+{
+    Asset clone = source.ContentType switch { ... }; // TPH subtype
+    // All 15 fields copied in one place — DRY, maintainable
+    return clone;
+}
+
+// AssetService — 3 dòng thay vì 25
+var clone = AssetFactory.Duplicate(source, userId, targetFolderId);
+_context.Assets.Add(clone);
+await _context.SaveChangesAsync();
+```
+
+**Benefit:** Thêm property mới vào Asset chỉ cần update 1 chỗ (factory) thay vì hunt qua services.
+
+---
+
+### Tóm tắt files đã chỉnh sửa (Session #6)
+
+| File | Thay đổi |
+|------|----------|
+| **Backend — Controllers** | |
+| `Controllers/AssetsController.cs` | Refactored: bỏ IBulkAssetService dependency, dùng CreateAssetDto thay raw entity, sắp xếp lại endpoints theo logical groups |
+| `Controllers/BulkAssetsController.cs` | **NEW**: 4 bulk endpoints tách từ AssetsController, inject chỉ IBulkAssetService |
+| **Backend — Services** | |
+| `Services/IAssetService.cs` | `CreateAssetAsync(Asset)` → `CreateAssetAsync(CreateAssetDto)` |
+| `Services/AssetService.cs` | 1) CreateAssetAsync dùng `AssetFactory.FromDto()` 2) DuplicateAssetAsync dùng `AssetFactory.Duplicate()` — giảm 22 dòng |
+| **Backend — Models** | |
+| `Models/DTOs.cs` | Thêm `CreateAssetDto` (4 fields + validation annotations) |
+| `Models/AssetFactory.cs` | Thêm `Duplicate()` + `FromDto()` — factory owns tất cả Asset creation logic |
+
+**Thống kê:**
+- **Files thay đổi:** 6 (4 sửa + 1 mới + 1 DTO thêm)
+- **Lines thay đổi:** ~100 dòng refactored, ~60 dòng mới (BulkAssetsController)
+- **Build:** ✅ `dotnet build` — 0 errors, 0 warnings
+- **API routes:** Giữ nguyên 100% — frontend không cần thay đổi
+- **Breaking changes:** `POST /api/assets` body đổi từ raw `Asset` → `CreateAssetDto`
+
+---
+
+### Session #6.2 — RESTful API Standardization + HTTP Status Code Fix (01/03/2026)
+
+#### Phân tích kiến trúc (8-point Senior Architect Assessment)
+
+Đánh giá toàn diện AssetsController sau Session #6.1:
+
+| # | Tiêu chí | Điểm | Ghi chú |
+|---|----------|------|---------|
+| 1 | Clean Architecture | 4/10 | Layered OK, dependency rule violated (Domain → DTO) |
+| 2 | RESTful compliance | 5.5/10 | Missing GET/{id}, 4 RPC routes, wrong status codes |
+| 3 | SRP | 7/10 | Bulk split done, 6 concerns remain (acceptable) |
+| 4 | Security | 7/10 | Auth OK, entity exposure risk |
+| 5 | Scalability | 4/10 | N+1 queries, no API versioning |
+| 6 | Team readiness | 5/10 | Mega DTOs.cs, no tests |
+| 7 | Code quality | 7/10 | Factory, DI, async, error handling good |
+| 8 | **Overall** | **Portfolio++ approaching Production-lite** | |
+
+#### Vấn đề phát hiện và sửa
+
+**6.2.1 — Thêm GET /api/assets/{id} (thiếu hoàn toàn)**
+
+Service đã có `GetByIdAsync` nhưng controller không expose → `CreatedAtAction` trỏ sai.
+
+```csharp
+// GET: api/assets/{id} — NEW
+[HttpGet("{id}")]
+public async Task<ActionResult<Asset>> GetAssetById(int id)
+{
+    var asset = await _assetService.GetByIdAsync(id, GetUserId());
+    if (asset == null) return NotFound();
+    return Ok(asset);
+}
+```
+
+**6.2.2 — Fix CreatedAtAction: Location header chuẩn RFC 7231**
+
+| Endpoint | Before | After |
+|----------|--------|-------|
+| `CreateAsset` | `CreatedAtAction(nameof(GetAssets))` → `/api/assets?id=5` ❌ | `CreatedAtAction(nameof(GetAssetById))` → `/api/assets/5` ✅ |
+| `CreateFolder` | `Ok(folder)` → 200 ❌ | `CreatedAtAction(nameof(GetAssetById))` → 201 ✅ |
+| `CreateColor` | `Ok(color)` → 200 ❌ | `CreatedAtAction(nameof(GetAssetById))` → 201 ✅ |
+| `CreateColorGroup` | `Ok(group)` → 200 ❌ | `CreatedAtAction(nameof(GetAssetById))` → 201 ✅ |
+| `CreateLink` | `Ok(link)` → 200 ❌ | `CreatedAtAction(nameof(GetAssetById))` → 201 ✅ |
+| `DuplicateAsset` | `Ok(clone)` → 200 ❌ | `CreatedAtAction(nameof(GetAssetById))` → 201 ✅ |
+| `UploadFiles` | `Ok(list)` → 200 ❌ | `StatusCode(201, list)` → 201 ✅ |
+| `ReorderAssets` | `Ok()` → 200 empty ❌ | `NoContent()` → 204 ✅ |
+
+**6.2.3 — RPC → REST noun routes**
+
+| Before (RPC) | After (REST) | Lý do |
+|--------------|--------------|-------|
+| `POST /create-folder` | `POST /folders` | REST: verb=POST, noun=folders |
+| `POST /create-color` | `POST /colors` | REST: verb=POST, noun=colors |
+| `POST /create-color-group` | `POST /color-groups` | REST: verb=POST, noun=color-groups |
+| `POST /create-link` | `POST /links` | REST: verb=POST, noun=links |
+
+Frontend `assetsApi.js` updated tương ứng.
+
+**6.2.4 — PUT → PATCH cho partial update**
+
+- `PUT /api/assets/{id}` giữ lại (backward compat) + thêm `PATCH /api/assets/{id}` (chuẩn)
+- `PUT /api/collections/{id}` giữ lại + thêm `PATCH /api/collections/{id}` (chuẩn)
+- `BaseApiService` thêm `_patch()` helper method
+- Frontend `assetsApi.js` + `collectionsApi.js` chuyển sang dùng PATCH
+
+#### Files đã chỉnh sửa (Session #6.2)
+
+| File | Thay đổi |
+|------|----------|
+| `Controllers/AssetsController.cs` | +GET/{id}, fix tất cả CreatedAtAction, thêm PATCH, routes RPC→REST |
+| `Controllers/CollectionsController.cs` | Thêm PATCH endpoint (giữ PUT backward compat) |
+| `Frontend: api/BaseApiService.js` | Thêm `_patch()` helper |
+| `Frontend: api/assetsApi.js` | Routes: `/create-*` → `/folders`, `/colors`, `/color-groups`, `/links`. PUT → PATCH |
+| `Frontend: api/collectionsApi.js` | PUT → PATCH |
+
+**Thống kê:**
+- **Files thay đổi:** 5 (3 backend + 2 frontend)
+- **Build:** ✅ 0 errors, 0 warnings
+- **RESTful score:** 5.5/10 → **7.5/10** (GET/{id}, correct status codes, noun routes, PATCH)
+- **Breaking changes:** Routes đổi tên (create-folder→folders, etc.) + PATCH thêm mới. PUT vẫn hoạt động (backward compat)
+
+---
+
+### Session #6.3 — Self-Assessment & Quality Fix (01/03/2026)
+
+#### Tự đánh giá (Self-review)
+
+Sau khi hoàn thành Session #6.1 + 6.2, tự audit lại phát hiện **8 vấn đề chưa xử lý**:
+
+| # | Vấn đề | Severity | Đã fix? |
+|---|--------|----------|---------|
+| 1 | **DRY violation**: `UpdateAsset` + `UpdateAssetPut` body identical | 🔴 HIGH | ✅ `UpdateAssetPut` → delegate to `UpdateAsset()` |
+| 2 | **Thiếu `[ProducesResponseType]`**: Swagger docs sai | 🟡 MEDIUM | ✅ Thêm cho tất cả 15 endpoints |
+| 3 | **Thiếu XML doc `/// <summary>`**: IDE/Swagger không hiển thị | 🟡 MEDIUM | ✅ Thêm cho tất cả methods |
+| 4 | **Inconsistent error pattern**: `GetByIdAsync` trả null, mọi method khác throw | 🟡 MEDIUM | ✅ `GetByIdAsync` → dùng `FindAssetWithAccessAsync` (throw consistent) |
+| 5 | **Thiếu `CancellationToken`**: request hủy nhưng service vẫn chạy | 🟡 MEDIUM | ✅ Thêm cho IAssetService (14 methods), IBulkAssetService (4 methods), AssetService, BulkAssetService, cả 2 controllers |
+| 6 | Upload endpoint raw params thay DTO | 🟢 LOW | ⬜ Phase 2 |
+| 7 | `group/{groupId}` thiếu pagination | 🟢 LOW | ⬜ Phase 2 |
+| 8 | Return raw entity thay Response DTO | 🟢 LOW | ⬜ Phase 2 |
+
+#### Thay đổi chi tiết
+
+**1. DRY fix — PUT backward compat:**
+```csharp
+// BEFORE: 2 identical method bodies
+[HttpPut("{id}")]
+public async Task<ActionResult<Asset>> UpdateAssetPut(int id, [FromBody] UpdateAssetDto dto) {
+    var asset = await _assetService.UpdateAssetAsync(id, dto, GetUserId()); // DUPLICATE
+    return Ok(asset);
+}
+
+// AFTER: delegate to PATCH method + hide from Swagger
+[HttpPut("{id}")]
+[ApiExplorerSettings(IgnoreApi = true)]
+public Task<ActionResult<Asset>> UpdateAssetPut(int id, ..., CancellationToken ct)
+    => UpdateAsset(id, dto, ct);
+```
+
+**2. Error pattern consistency — `GetByIdAsync`:**
+```csharp
+// BEFORE: 2 error patterns
+public async Task<Asset?> GetByIdAsync(int id, string userId) {
+    if (asset == null) return null;            // Pattern 1: return null
+    ...
+    return null;                               // Controller phải check null
+}
+
+// AFTER: 1 unified pattern
+public async Task<Asset> GetByIdAsync(int id, string userId, CancellationToken ct) {
+    return await FindAssetWithAccessAsync(id, userId, CollectionRoles.Viewer, ct);
+    // → throws KeyNotFoundException → middleware → 404
+}
+```
+
+**3. CancellationToken propagation:**
+- `IAssetService`: 14 methods thêm `CancellationToken ct = default`
+- `IBulkAssetService`: 4 methods thêm `CancellationToken ct = default`
+- `AssetService`: Tất cả `SaveChangesAsync()` → `SaveChangesAsync(ct)`, `ToListAsync()` → `ToListAsync(ct)`, `CountAsync()` → `CountAsync(ct)`, `FirstOrDefaultAsync()` → `FirstOrDefaultAsync(..., ct)`, upload loop thêm `ct.ThrowIfCancellationRequested()`
+- `BulkAssetService`: Same pattern + `ct.ThrowIfCancellationRequested()` trong bulk delete/tag loops
+
+#### Files đã chỉnh sửa (Session #6.3)
+
+| File | Thay đổi |
+|------|----------|
+| `Controllers/AssetsController.cs` | +`[Produces]`, +`[ProducesResponseType]` all endpoints, +`/// <summary>`, +CancellationToken all methods, DRY fix (PUT delegates to PATCH), removed null check in GetAssetById |
+| `Controllers/BulkAssetsController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +`/// <summary>`, +CancellationToken |
+| `Services/IAssetService.cs` | +CancellationToken all 14 methods, `GetByIdAsync` return `Asset` (was `Asset?`) |
+| `Services/IBulkAssetService.cs` | +CancellationToken all 4 methods |
+| `Services/AssetService.cs` | +CancellationToken all methods + private helpers, pass ct to all EF calls, `GetByIdAsync` uses `FindAssetWithAccessAsync` (consistent error pattern), +`ct.ThrowIfCancellationRequested()` in upload loop |
+| `Services/BulkAssetService.cs` | +CancellationToken all methods, pass ct to all EF calls, +`ct.ThrowIfCancellationRequested()` in loops |
+
+**Thống kê:**
+- **Files thay đổi:** 6 (4 backend services/interfaces + 2 controllers)
+- **CancellationToken added:** 18 public methods + 2 private helpers = 20 signatures
+- **Build:** ✅ 0 errors, 0 warnings
+
+---
+
+### Session #6.4 — System-wide Quality Standardization (01/03/2026)
+
+#### Scope
+Áp dụng **cùng tiêu chuẩn chất lượng** đã thiết lập ở Session #6.3 cho **toàn bộ** controllers + services còn lại:
+- `[Produces("application/json")]` + `[ProducesResponseType]` trên tất cả endpoints
+- `/// <summary>` XML docs trên tất cả action methods
+- `CancellationToken` trên tất cả async methods (interface → implementation → controller)
+- DRY fix cho `UpdateCollectionPut` → delegate to `UpdateCollection`
+- **`CreateCollectionDto`** — thay thế raw `Collection` entity trong `PostCollection`
+
+#### Thay đổi chi tiết
+
+**1. CreateCollectionDto (NEW):**
+```csharp
+// BEFORE: Controller nhận raw entity — SRP violation
+public async Task<ActionResult<Collection>> PostCollection(Collection collection)
+
+// AFTER: Controller nhận DTO — clean separation
+public async Task<ActionResult<Collection>> PostCollection([FromBody] CreateCollectionDto dto, CancellationToken ct)
+```
+DTO chỉ chứa: Name (required), Description?, ParentId?, Color?, Type?, LayoutType?.
+CollectionService.CreateAsync map DTO → entity (set CreatedAt, UserId server-side).
+
+**2. CancellationToken propagation — ALL remaining services:**
+
+| Interface | Methods updated |
+|-----------|----------------|
+| `ICollectionService` | 6 methods |
+| `IAuthService` | 2 methods |
+| `ITagService` | 11 methods |
+| `ISearchService` | 1 method |
+| `ISmartCollectionService` | 2 methods |
+| `IPermissionService` | 7 methods |
+| `INotificationService` | 1 method |
+| **Total** | **30 interface methods** |
+
+**3. Cross-service ct propagation:**
+- `AssetService` → `_notifier.NotifyAsync(..., ct)` — 4 calls updated
+- `BulkAssetService` → `_notifier.NotifyAsync(..., ct)` — 3 calls updated
+- `CollectionService` → `_permissionService.HasPermissionAsync(..., ct)` — 4 calls, `_notifier.NotifyAsync(..., ct)` — 3 calls, `_cache.RemoveAsync/GetStringAsync/SetStringAsync(..., ct)` — all calls
+- `PermissionService` → `_cache.RemoveAsync(..., ct)`, `FindAsync([id], ct)` — all EF calls
+
+**4. DRY fix — CollectionsController PUT compat:**
+```csharp
+[HttpPut("{id}")]
+[ApiExplorerSettings(IgnoreApi = true)]
+public Task<IActionResult> UpdateCollectionPut(int id, ..., CancellationToken ct)
+    => UpdateCollection(id, dto, ct);  // delegate, no duplicate body
+```
+
+#### Files đã chỉnh sửa (Session #6.4)
+
+| File | Thay đổi |
+|------|----------|
+| `Models/DTOs.cs` | +`CreateCollectionDto` (new class) |
+| `Services/ICollectionService.cs` | +CancellationToken 6 methods, `CreateAsync(Collection)` → `CreateAsync(CreateCollectionDto)` |
+| `Services/IAuthService.cs` | +CancellationToken 2 methods |
+| `Services/ITagService.cs` | +CancellationToken 11 methods |
+| `Services/ISearchService.cs` | +CancellationToken 1 method |
+| `Services/ISmartCollectionService.cs` | +CancellationToken 2 methods |
+| `Services/IPermissionService.cs` | +CancellationToken 7 methods |
+| `Services/INotificationService.cs` | +CancellationToken 1 method |
+| `Services/CollectionService.cs` | +CancellationToken all methods + `InvalidateCacheAsync`, `CreateAsync` mapped from DTO, `FindAsync([id], ct)`, cache calls +ct, permission calls +ct, notify calls +ct |
+| `Services/AuthService.cs` | +CancellationToken 2 methods |
+| `Services/TagService.cs` | +CancellationToken all 11 methods + `SyncLegacyTagsFieldAsync`, `FindAsync([id], ct)`, all EF calls +ct, +`ct.ThrowIfCancellationRequested()` in loops |
+| `Services/SearchService.cs` | +CancellationToken, all `CountAsync(ct)` + `ToListAsync(ct)` |
+| `Services/SmartCollectionService.cs` | +CancellationToken all methods + `BuildTagFiltersAsync` + `FindDynamicFilterAsync`, all EF calls +ct, +`ct.ThrowIfCancellationRequested()` in loops |
+| `Services/PermissionService.cs` | +CancellationToken all 7 methods + `InvalidateUserCollectionCacheAsync`, `FindAsync([id], ct)`, all EF calls +ct, +`ct.ThrowIfCancellationRequested()` in ListAsync loop |
+| `Services/NotificationService.cs` | +CancellationToken, `SendAsync(..., ct)` |
+| `Services/AssetService.cs` | `NotifyAsync` calls updated to pass ct (4 calls) |
+| `Services/BulkAssetService.cs` | `NotifyAsync` calls updated to pass ct (3 calls) |
+| `Controllers/CollectionsController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +XML docs, +CancellationToken, DRY fix (PUT→PATCH delegate), `PostCollection(CreateCollectionDto)` |
+| `Controllers/AuthController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +CancellationToken |
+| `Controllers/TagsController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +XML docs, +CancellationToken |
+| `Controllers/SearchController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +CancellationToken |
+| `Controllers/SmartCollectionsController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +XML docs, +CancellationToken |
+| `Controllers/PermissionsController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +explicit return types, +CancellationToken |
+| `Controllers/HealthController.cs` | +`[Produces]`, +`[ProducesResponseType]`, +CancellationToken, `CanConnectAsync(ct)` |
+
+**Thống kê:**
+- **Files thay đổi:** 24 (8 interfaces + 9 implementations + 7 controllers)
+- **CancellationToken added:** 30 interface methods + 30 implementation methods + ~35 controller params = ~95 signatures
+- **Cross-service ct propagation:** 14 NotifyAsync calls + 8 PermissionService calls + 6 cache calls
+- **OOP Roadmap item fixed:** B3 #20 (`PostCollection(Collection)` → `CreateCollectionDto`)
+- **Build:** ✅ 0 errors, 0 warnings
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 1 | Private setters trên Asset properties (enforce qua domain methods) | `Models/Asset.cs` | ⬜ |
+| 2 | Private setters trên Collection properties | `Models/Collection.cs` | ⬜ |
+| 3 | Private setters trên Tag properties | `Models/Tag.cs` | ⬜ |
+| 4 | Private setters trên CollectionPermission | `Models/CollectionPermission.cs` | ⬜ |
+| 5 | Remove DTO dependency từ domain models — `Asset.ApplyUpdate(UpdateAssetDto)` → service handles mapping | `Models/Asset.cs`, `Services/AssetService.cs` | ⬜ |
+| 6 | Remove DTO dependency từ Collection model | `Models/Collection.cs`, `Services/CollectionService.cs` | ⬜ |
+| 7 | Remove DTO dependency từ Tag model | `Models/Tag.cs`, `Services/TagService.cs` | ⬜ |
+
+#### Phase B2: Service Layer OOP (HIGH/MEDIUM priority)
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 8 | Extract `IAccessControlService` — centralize permission checks | New service, `AssetService`, `BulkAssetService` | ⬜ |
+| 9 | Extract `IFileValidator` — tách validation logic từ AssetService | New service, `AssetService` | ⬜ |
+| 10 | Fix N+1 query trong `PermissionService.ListAsync` | `Services/PermissionService.cs` | ⬜ |
+| 11 | Extract sorting extension — `IQueryable<Asset>.ApplySort(pagination)` | New extension, 3 services | ⬜ |
+| 12 | Extract `CacheKeys` — shared constants thay magic strings | New class, `CollectionService`, `PermissionService` | ⬜ |
+| 13 | `IAssetCleanupHelper` interface (hiện là concrete class) | `Services/AssetCleanupHelper.cs` | ⬜ |
+| 14 | `FileUploadConfig` → `IOptions<FileUploadConfig>` pattern | `Common.cs`, `ServiceCollectionExtensions.cs` | ⬜ |
+
+#### Phase B3: Infrastructure OOP (MEDIUM/LOW priority)
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 15 | `IEntityTypeConfiguration<T>` — tách AppDbContext.OnModelCreating 170 dòng | `Data/AppDbContext.cs`, new config files | ⬜ |
+| 16 | `HubEvents` constants — sử dụng thay string literals | `Hubs/AssetHub.cs`, tất cả services gọi NotifyAsync | ⬜ |
+| 17 | `CollectionRoles` → enum hoặc smart enum thay string constants | `Models/CollectionPermission.cs`, services | ⬜ |
+| 18 | Raw SQL migration logic → tách service hoặc EF migration | `Program.cs` | ⬜ |
+| 19 | HealthController → inject IHealthCheckService | `Controllers/HealthController.cs` | ⬜ |
+| 20 | `PostCollection(Collection)` → `PostCollection(CreateCollectionDto)` | `Controllers/CollectionsController.cs` | ✅ Session #6.4 |
+| 21 | Enriched TPH subtypes — `LinkAsset.ValidateUrl()`, `ColorAsset.ValidateCode()` | `Models/AssetTypes.cs` | ⬜ |
+| 22 | Mega DTOs.cs → tách per-domain (Asset DTOs, Tag DTOs, Bulk DTOs, Collection DTOs) | `Models/DTOs.cs` | ⬜ |
+
+---
+
+### Session #6.5 — C# 12 Primary Constructors & Expression-bodied Members (01/03/2026)
+
+**Mục tiêu:** Modernize tất cả 9 controllers bằng C# 12 Primary Constructor syntax + expression-bodied members (`=>`).
+
+#### Thay đổi áp dụng cho MỖI controller:
+
+1. **Primary Constructor** — loại bỏ `private readonly` field + constructor body → inject trực tiếp vào class declaration
+   - Trước: `public class XController : BaseApiController { private readonly IService _svc; public XController(IService svc) { _svc = svc; } }`
+   - Sau: `public class XController(IService svc) : BaseApiController { ... }`
+   - Giảm ~5 dòng boilerplate / controller
+
+2. **Expression-bodied members (`=>`)** — single-statement methods chuyển sang expression form
+   - Trước: `{ var x = await svc.Get(); return Ok(x); }`
+   - Sau: `=> Ok(await svc.Get());`
+   - Chỉ áp dụng khi method body là 1 statement duy nhất
+
+3. **Block body giữ nguyên** cho:
+   - `CreatedAtAction()` (cần biến trung gian)
+   - `NoContent()` sau `await` (2 statements)
+   - Complex logic (try/catch, anonymous objects)
+
+#### 9 Controllers đã refactor:
+
+| Controller | Services | Primary Ctor | Expression-bodied methods |
+|-----------|----------|-------------|--------------------------|
+| `AssetsController` | `IAssetService` | ✅ | 6/15 (GetAssets, GetById, UpdateAsset, UpdatePosition, GetByGroup, UploadFiles) |
+| `BulkAssetsController` | `IBulkAssetService` | ✅ | 0/4 (all have 2-stmt body) |
+| `CollectionsController` | `ICollectionService` | ✅ | 2/6 (GetCollections, GetWithItems) |
+| `AuthController` | `IAuthService` | ✅ | 2/2 (Register, Login) |
+| `TagsController` | `ITagService` | ✅ | 4/11 (GetTags, GetTag, UpdateTag, GetAssetTags) |
+| `PermissionsController` | `IPermissionService` | ✅ | 4/7 (List, Grant, Update, GetSharedCollections) |
+| `SearchController` | `ISearchService` | ✅ | 1/1 (Search) |
+| `SmartCollectionsController` | `ISmartCollectionService` | ✅ | 2/2 (GetSmartCollections, GetSmartCollectionItems) |
+| `HealthController` | `AppDbContext`, `IWebHostEnvironment` | ✅ | 0/1 (complex try/catch) |
+
+**Tổng:** 9/9 controllers → primary constructor, 21 methods → expression-bodied
+
+#### Kết quả build:
+```
+dotnet build --no-restore → 0 errors, 0 warnings ✅
+```
+
+#### Phase F1: Domain Model Activation
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 1 | API services return model instances — `toAsset()`, `toCollection()`, `toTag()` | `api/*.js`, `models/index.js` | ⬜ |
+| 2 | Remove backward-compat free function exports | `api/*.js` | ⬜ |
+| 3 | Use enum constants (`ContentType.Image`) thay raw strings | `models/index.js`, 15+ components | ⬜ |
+
+#### Phase F2: God Component/Context Split
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 4 | Split AppContext (471 dòng) → domain contexts | `context/AppContext.js` | ⬜ |
+| 5 | Split App.jsx (477 dòng) → composition | `App.jsx` | ⬜ |
+| 6 | Split ColorBoard.jsx (556 dòng) → subcomponents | `components/ColorBoard.jsx` | ⬜ |
+
+#### Phase F3: DRY + Encapsulation
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 7 | Extract shared ContextMenuBuilder | 3 components | ⬜ |
+| 8 | Extract shared IconMapper | 5 components | ⬜ |
+| 9 | Remove direct API calls from components | DraggableAssetCanvas, TreeViewPanel, App.jsx | ⬜ |
+| 10 | Encapsulate hook state — hide raw setters | useAssetSelection, useCollections, useAuth | ⬜ |

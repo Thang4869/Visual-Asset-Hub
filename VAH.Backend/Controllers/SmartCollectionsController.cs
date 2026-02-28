@@ -10,29 +10,19 @@ namespace VAH.Backend.Controllers;
 /// </summary>
 [Route("api/[controller]")]
 [Authorize]
-public class SmartCollectionsController : BaseApiController
+[Produces("application/json")]
+public class SmartCollectionsController(ISmartCollectionService smartService) : BaseApiController
 {
-    private readonly ISmartCollectionService _smartService;
-
-    public SmartCollectionsController(ISmartCollectionService smartService)
-    {
-        _smartService = smartService;
-    }
-
-    // GET: api/smart-collections
+    /// <summary>Get all available smart collection definitions for the current user.</summary>
     [HttpGet]
-    public async Task<ActionResult<List<SmartCollectionDefinition>>> GetSmartCollections()
-    {
-        var definitions = await _smartService.GetDefinitionsAsync(GetUserId());
-        return Ok(definitions);
-    }
+    [ProducesResponseType(typeof(List<SmartCollectionDefinition>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<SmartCollectionDefinition>>> GetSmartCollections(CancellationToken ct)
+        => Ok(await smartService.GetDefinitionsAsync(GetUserId(), ct));
 
-    // GET: api/smart-collections/{id}/items?page=1&pageSize=50
+    /// <summary>Get paginated items matching a smart collection’s criteria.</summary>
     [HttpGet("{id}/items")]
+    [ProducesResponseType(typeof(PagedResult<Asset>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<Asset>>> GetSmartCollectionItems(
-        string id, [FromQuery] PaginationParams pagination)
-    {
-        var result = await _smartService.GetItemsAsync(id, pagination, GetUserId());
-        return Ok(result);
-    }
+        string id, [FromQuery] PaginationParams pagination, CancellationToken ct)
+        => Ok(await smartService.GetItemsAsync(id, pagination, GetUserId(), ct));
 }

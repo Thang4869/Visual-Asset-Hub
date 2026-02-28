@@ -32,11 +32,11 @@ public class CollectionService : ICollectionService
     private string CacheKey(string userId) => $"collections:all:{userId}";
 
     /// <summary>Invalidate user's collection list cache after mutation.</summary>
-    private async Task InvalidateCacheAsync(string userId)
+    private async Task InvalidateCacheAsync(string userId, CancellationToken ct)
     {
         try
         {
-            await _cache.RemoveAsync(CacheKey(userId));
+            await _cache.RemoveAsync(CacheKey(userId), ct);
         }
         catch (Exception ex)
         {
@@ -44,12 +44,12 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<List<Collection>> GetAllAsync(string userId)
+    public async Task<List<Collection>> GetAllAsync(string userId, CancellationToken ct = default)
     {
         // Try cache first
         try
         {
-            var cached = await _cache.GetStringAsync(CacheKey(userId));
+            var cached = await _cache.GetStringAsync(CacheKey(userId), ct);
             if (cached != null)
             {
                 _logger.LogDebug("Cache hit for collections list (user {UserId})", userId);
@@ -65,10 +65,10 @@ public class CollectionService : ICollectionService
         var collections = await _context.Collections
             .Where(c => c.UserId == userId || c.UserId == null)
             .OrderBy(c => c.Order)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         // Add shared collections
-        var sharedCollections = await _permissionService.GetSharedCollectionsAsync(userId);
+        var sharedCollections = await _permissionService.GetSharedCollectionsAsync(userId, ct);
         var existingIds = collections.Select(c => c.Id).ToHashSet();
         foreach (var sc in sharedCollections)
         {
@@ -80,7 +80,7 @@ public class CollectionService : ICollectionService
         try
         {
             var json = JsonSerializer.Serialize(collections);
-            await _cache.SetStringAsync(CacheKey(userId), json, CacheOptions);
+            await _cache.SetStringAsync(CacheKey(userId), json, CacheOptions, ct);
         }
         catch (Exception ex)
         {
@@ -90,30 +90,30 @@ public class CollectionService : ICollectionService
         return collections;
     }
 
-    public async Task<Collection?> GetByIdAsync(int id, string userId)
+    public async Task<Collection?> GetByIdAsync(int id, string userId, CancellationToken ct = default)
     {
         var collection = await _context.Collections
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
         if (collection == null) return null;
 
         // Allow access if: system collection, own collection, or has permission
         if (collection.UserId == null || collection.UserId == userId)
             return collection;
 
-        var hasAccess = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Viewer);
+        var hasAccess = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Viewer, ct);
         return hasAccess ? collection : null;
     }
 
-    public async Task<CollectionWithItemsResult> GetWithItemsAsync(int id, int? folderId, string userId)
+    public async Task<CollectionWithItemsResult> GetWithItemsAsync(int id, int? folderId, string userId, CancellationToken ct = default)
     {
-        var collection = await _context.Collections.FindAsync(id)
+        var collection = await _context.Collections.FindAsync([id], ct)
             ?? throw new KeyNotFoundException($"Collection {id} not found.");
 
         // Check access: system, own, or shared
         bool isOwnerOrSystem = collection.UserId == null || collection.UserId == userId;
         if (!isOwnerOrSystem)
         {
-            var hasAccess = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Viewer);
+            var hasAccess = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Viewer, ct);
             if (!hasAccess) throw new KeyNotFoundException($"Collection {id} not found.");
         }
 
@@ -124,13 +124,13 @@ public class CollectionService : ICollectionService
             .OrderBy(a => a.IsFolder ? 0 : 1)
             .ThenBy(a => a.SortOrder)
             .ThenBy(a => a.FileName)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         // Show system subcollections + user's own
         var subcollections = await _context.Collections
             .Where(c => c.ParentId == id && (c.UserId == userId || c.UserId == null))
             .OrderBy(c => c.Order)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return new CollectionWithItemsResult
         {
@@ -140,59 +140,64 @@ public class CollectionService : ICollectionService
         };
     }
 
-    public async Task<Collection> CreateAsync(Collection collection, string userId)
+    public async Task<Collection> CreateAsync(CreateCollectionDto dto, string userId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(collection.Name))
+        if (string.IsNullOrWhiteSpace(dto.Name))
             throw new ArgumentException("Collection name is required.");
 
-        collection.Name = collection.Name.Trim();
-        collection.CreatedAt = DateTime.UtcNow;
-        collection.UserId = userId;
+        var collection = new Collection
+        {
+            Name = dto.Name.Trim(),
+            Description = dto.Description ?? string.Empty,
+            ParentId = dto.ParentId,
+            Color = dto.Color ?? "#007bff",
+            Type = dto.Type ?? CollectionType.Default,
+            LayoutType = dto.LayoutType ?? LayoutType.Grid,
+            CreatedAt = DateTime.UtcNow,
+            UserId = userId
+        };
 
         _context.Collections.Add(collection);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Collection created: {Name} (Id={Id}) by user {UserId}", collection.Name, collection.Id, userId);
-        await InvalidateCacheAsync(userId);
-        await _notifier.NotifyAsync(userId, "CollectionCreated", new { collection.Id, collection.Name });
+        await InvalidateCacheAsync(userId, ct);
+        await _notifier.NotifyAsync(userId, "CollectionCreated", new { collection.Id, collection.Name }, ct);
         return collection;
     }
 
-    public async Task<Collection> UpdateAsync(int id, Collection collection, string userId)
+    public async Task<Collection> UpdateAsync(int id, UpdateCollectionDto dto, string userId, CancellationToken ct = default)
     {
-        if (id != collection.Id)
-            throw new ArgumentException("ID mismatch.");
-
         // Allow updating own collections or shared with editor/owner role
-        var existing = await _context.Collections.FindAsync(id)
+        var existing = await _context.Collections.FindAsync([id], ct)
             ?? throw new KeyNotFoundException($"Collection {id} not found.");
 
         bool isOwner = existing.IsOwnedBy(userId);
         if (!isOwner)
         {
-            var canWrite = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Editor);
+            var canWrite = await _permissionService.HasPermissionAsync(id, userId, CollectionRoles.Editor, ct);
             if (!canWrite) throw new KeyNotFoundException($"Collection {id} not found.");
         }
 
-        existing.ApplyUpdate(collection);
+        existing.ApplyUpdate(dto);
 
-        await _context.SaveChangesAsync();
-        await InvalidateCacheAsync(userId);
-        await _notifier.NotifyAsync(userId, "CollectionUpdated", new { existing.Id, existing.Name });
+        await _context.SaveChangesAsync(ct);
+        await InvalidateCacheAsync(userId, ct);
+        await _notifier.NotifyAsync(userId, "CollectionUpdated", new { existing.Id, existing.Name }, ct);
         return existing;
     }
 
-    public async Task<bool> DeleteAsync(int id, string userId)
+    public async Task<bool> DeleteAsync(int id, string userId, CancellationToken ct = default)
     {
         // Only allow deleting own collections
         var collection = await _context.Collections
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId)
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, ct)
             ?? throw new KeyNotFoundException($"Collection {id} not found.");
 
         // Move child collections to top-level instead of deleting them
         var children = await _context.Collections
             .Where(c => c.ParentId == id)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         foreach (var child in children)
         {
@@ -200,11 +205,11 @@ public class CollectionService : ICollectionService
         }
 
         _context.Collections.Remove(collection);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Collection deleted: {Name} (Id={Id}) by user {UserId}", collection.Name, id, userId);
-        await InvalidateCacheAsync(userId);
-        await _notifier.NotifyAsync(userId, "CollectionDeleted", new { id });
+        await InvalidateCacheAsync(userId, ct);
+        await _notifier.NotifyAsync(userId, "CollectionDeleted", new { id }, ct);
         return true;
     }
 }

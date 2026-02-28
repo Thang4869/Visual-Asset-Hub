@@ -84,4 +84,54 @@ public static class AssetFactory
         CreatedAt = DateTime.UtcNow,
         UserId = userId,
     };
+
+    /// <summary>
+    /// Duplicate an existing asset, creating the correct TPH subtype.
+    /// Copies all shared properties; caller can override specific fields afterward.
+    /// </summary>
+    public static Asset Duplicate(Asset source, string userId, int? targetFolderId = null)
+    {
+        // Create correct TPH subtype so EF Core sets the discriminator properly
+        Asset clone = source.ContentType switch
+        {
+            AssetContentType.Image => new ImageAsset(),
+            AssetContentType.Link => new LinkAsset(),
+            AssetContentType.Color => new ColorAsset(),
+            AssetContentType.ColorGroup => new ColorGroupAsset(),
+            AssetContentType.Folder => new FolderAsset(),
+            _ => new Asset(),
+        };
+
+        clone.FileName = source.FileName + " (bản sao)";
+        clone.FilePath = source.FilePath;
+        clone.Tags = source.Tags;
+        clone.CreatedAt = DateTime.UtcNow;
+        clone.CollectionId = source.CollectionId;
+        clone.ContentType = source.ContentType;
+        clone.GroupId = source.GroupId;
+        clone.ParentFolderId = targetFolderId ?? source.ParentFolderId;
+        clone.SortOrder = source.SortOrder + 1;
+        clone.IsFolder = source.IsFolder;
+        clone.UserId = userId;
+        clone.ThumbnailSm = source.ThumbnailSm;
+        clone.ThumbnailMd = source.ThumbnailMd;
+        clone.ThumbnailLg = source.ThumbnailLg;
+
+        return clone;
+    }
+
+    /// <summary>
+    /// Create an Asset from a CreateAssetDto (generic file).
+    /// </summary>
+    public static Asset FromDto(CreateAssetDto dto, string userId) => new()
+    {
+        FileName = dto.FileName.Trim(),
+        FilePath = dto.FilePath.Trim(),
+        Tags = string.Empty,
+        ContentType = AssetContentType.File,
+        CollectionId = dto.CollectionId,
+        ParentFolderId = dto.ParentFolderId,
+        CreatedAt = DateTime.UtcNow,
+        UserId = userId,
+    };
 }

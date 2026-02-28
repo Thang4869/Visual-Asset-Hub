@@ -5,5 +5,5 @@ namespace VAH.Backend.Services;
 /// </summary>
 public interface INotificationService
 {
-    Task NotifyAsync(string userId, string eventType, object? payload = null);
+    Task NotifyAsync(string userId, string eventType, object? payload = null, CancellationToken ct = default);
 }

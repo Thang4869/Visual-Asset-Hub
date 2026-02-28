@@ -7,6 +7,7 @@ import useSignalR from '../hooks/useSignalR';
 import useUndoRedo from '../hooks/useUndoRedo';
 import useSmartCollections from '../hooks/useSmartCollections';
 import * as assetsApi from '../api/assetsApi';
+import * as collectionsApi from '../api/collectionsApi';
 import { useConfirm } from './ConfirmContext';
 
 /**
@@ -88,14 +89,82 @@ export function AppProvider({ children }) {
   // ── Keyboard shortcuts ──
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Skip if user is typing in an input/textarea
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      // Ctrl+Z / Ctrl+Shift+Z — undo/redo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
         if (e.shiftKey) { undoRedo.redo(); } else { undoRedo.undo(); }
+        return;
+      }
+
+      // Delete / Backspace — delete selected asset
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (assetState.selectedAssetId) {
+          e.preventDefault();
+          handleDeleteAsset(assetState.selectedAssetId);
+        }
+        return;
+      }
+
+      // F2 — rename selected asset
+      if (e.key === 'F2') {
+        if (assetState.selectedAssetId) {
+          e.preventDefault();
+          const asset = collectionState.collectionItems?.items?.find(a => a.id === assetState.selectedAssetId);
+          if (asset) handleRenameAsset(asset);
+        }
+        return;
+      }
+
+      // Ctrl+C / Ctrl+X / Ctrl+V — clipboard operations
+      if (!(e.ctrlKey || e.metaKey)) return;
+
+      if (e.key === 'c') {
+        if (assetState.selectedAssetId) {
+          e.preventDefault();
+          const asset = collectionState.collectionItems?.items?.find(a => a.id === assetState.selectedAssetId);
+          if (asset) handleCopy(asset, asset.isFolder ? 'folder' : asset.contentType);
+        }
+        return;
+      }
+
+      if (e.key === 'x') {
+        if (assetState.selectedAssetId) {
+          e.preventDefault();
+          const asset = collectionState.collectionItems?.items?.find(a => a.id === assetState.selectedAssetId);
+          if (asset) handleCut(asset, asset.isFolder ? 'folder' : asset.contentType);
+        }
+        return;
+      }
+
+      if (e.key === 'v' && clipboard) {
+        e.preventDefault();
+        // Paste into current folder or collection root
+        const target = collectionState.currentFolderId
+          ? { id: collectionState.currentFolderId }
+          : { id: collectionState.selectedCollection?.id };
+        const targetType = collectionState.currentFolderId ? 'folder' : 'area';
+        handlePaste(target, targetType);
+        return;
+      }
+
+      // Ctrl+A — select all
+      if (e.key === 'a' && collectionState.selectedCollection) {
+        e.preventDefault();
+        assetState.selectAllAssets();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoRedo.undo, undoRedo.redo]);
+  }, [
+    undoRedo.undo, undoRedo.redo,
+    assetState.selectedAssetId, assetState.selectAllAssets,
+    collectionState.collectionItems, collectionState.currentFolderId, collectionState.selectedCollection,
+    clipboard, handleCopy, handleCut, handlePaste, handleDeleteAsset, handleRenameAsset,
+  ]);
 
   // ── Convenience handlers (cross-concern coordination) ──
   const handleSelectCollection = useCallback((collection, path = []) => {
@@ -183,8 +252,22 @@ export function AppProvider({ children }) {
   const handleRenameCollection = useCallback(async (collection) => {
     const newName = await showPrompt({ message: 'Nhập tên mới:', defaultValue: collection.name });
     if (!newName || newName === collection.name) return;
-    await showAlert({ message: 'Chức năng đổi tên collection đang phát triển', variant: 'warning' });
-  }, [showPrompt, showAlert]);
+    try {
+      await collectionsApi.updateCollection(collection.id, { name: newName });
+      // Refresh collections list and current items
+      collectionState.refreshItems();
+      // Update sidebar collections
+      const data = await collectionState.fetchCollections();
+      // If renamed the selected collection, update its reference
+      if (collectionState.selectedCollection?.id === collection.id) {
+        const updated = (data || []).find(c => c.id === collection.id);
+        if (updated) collectionState.setSelectedCollection(updated);
+      }
+    } catch (e) {
+      console.error('Rename collection error:', e);
+      await showAlert({ message: 'Lỗi khi đổi tên collection' });
+    }
+  }, [showPrompt, showAlert, collectionState.refreshItems, collectionState.fetchCollections, collectionState.selectedCollection, collectionState.setSelectedCollection]);
 
   // ── Clipboard handlers ──
   const handleCopy = useCallback((item, type) => {

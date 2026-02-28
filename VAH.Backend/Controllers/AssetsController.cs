@@ -5,157 +5,155 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
+/// <summary>
+/// Core asset CRUD operations + specialized asset creation.
+/// SRP: Handles single-asset lifecycle and creation of typed assets.
+/// Bulk operations → <see cref="BulkAssetsController"/>.
+/// </summary>
 [Route("api/[controller]")]
 [Authorize]
-public class AssetsController : BaseApiController
+[Produces("application/json")]
+public class AssetsController(IAssetService assetService) : BaseApiController
 {
-    private readonly IAssetService _assetService;
-    private readonly IBulkAssetService _bulkService;
+    // ──── Core CRUD ────
 
-    public AssetsController(IAssetService assetService, IBulkAssetService bulkService)
-    {
-        _assetService = assetService;
-        _bulkService = bulkService;
-    }
-
-    // GET: api/assets?page=1&pageSize=50&sortBy=createdAt&sortOrder=desc
+    /// <summary>Paginated list of user's assets.</summary>
     [HttpGet]
-    public async Task<ActionResult<PagedResult<Asset>>> GetAssets([FromQuery] PaginationParams pagination)
-    {
-        var result = await _assetService.GetAssetsAsync(pagination, GetUserId());
-        return Ok(result);
-    }
+    [ProducesResponseType(typeof(PagedResult<Asset>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<Asset>>> GetAssets(
+        [FromQuery] PaginationParams pagination, CancellationToken ct = default)
+        => Ok(await assetService.GetAssetsAsync(pagination, GetUserId(), ct));
 
-    // POST: api/assets
+    /// <summary>Get a single asset by ID.</summary>
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Asset>> GetAssetById(int id, CancellationToken ct = default)
+        => Ok(await assetService.GetByIdAsync(id, GetUserId(), ct));
+
+    /// <summary>Create a generic (file-type) asset from metadata.</summary>
     [HttpPost]
-    public async Task<ActionResult<Asset>> PostAsset(Asset asset)
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status201Created)]
+    public async Task<ActionResult<Asset>> CreateAsset(
+        [FromBody] CreateAssetDto dto, CancellationToken ct = default)
     {
-        var created = await _assetService.CreateAssetAsync(asset, GetUserId());
-        return CreatedAtAction(nameof(GetAssets), new { id = created.Id }, created);
+        var created = await assetService.CreateAssetAsync(dto, GetUserId(), ct);
+        return CreatedAtAction(nameof(GetAssetById), new { id = created.Id }, created);
     }
 
-    // POST: api/assets/upload?collectionId=1&folderId=2
+    /// <summary>Upload one or more files to a collection.</summary>
     [HttpPost("upload")]
+    [ProducesResponseType(typeof(List<Asset>), StatusCodes.Status201Created)]
     public async Task<ActionResult<List<Asset>>> UploadFiles(
         List<IFormFile> files,
         [FromQuery] int collectionId = 1,
-        [FromQuery] int? folderId = null)
-    {
-        var createdAssets = await _assetService.UploadFilesAsync(files, collectionId, folderId, GetUserId());
-        return Ok(createdAssets);
-    }
+        [FromQuery] int? folderId = null,
+        CancellationToken ct = default)
+        => StatusCode(StatusCodes.Status201Created,
+            await assetService.UploadFilesAsync(files, collectionId, folderId, GetUserId(), ct));
 
-    // PUT: api/assets/{id}/position
-    [HttpPut("{id}/position")]
-    public async Task<ActionResult<Asset>> UpdateAssetPosition(int id, [FromBody] AssetPositionDto positionDto)
-    {
-        var asset = await _assetService.UpdatePositionAsync(id, positionDto.PositionX, positionDto.PositionY, GetUserId());
-        return Ok(asset);
-    }
+    /// <summary>Partial update of an asset (rename, move, regroup).</summary>
+    [HttpPatch("{id}")]
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Asset>> UpdateAsset(
+        int id, [FromBody] UpdateAssetDto dto, CancellationToken ct = default)
+        => Ok(await assetService.UpdateAssetAsync(id, dto, GetUserId(), ct));
 
-    // POST: api/assets/create-folder
-    [HttpPost("create-folder")]
-    public async Task<ActionResult<Asset>> CreateFolder([FromBody] CreateFolderDto dto)
-    {
-        var folder = await _assetService.CreateFolderAsync(dto, GetUserId());
-        return Ok(folder);
-    }
-
-    // POST: api/assets/create-color
-    [HttpPost("create-color")]
-    public async Task<ActionResult<Asset>> CreateColor([FromBody] CreateColorDto dto)
-    {
-        var color = await _assetService.CreateColorAsync(dto, GetUserId());
-        return Ok(color);
-    }
-
-    // POST: api/assets/create-color-group
-    [HttpPost("create-color-group")]
-    public async Task<ActionResult<Asset>> CreateColorGroup([FromBody] CreateColorGroupDto dto)
-    {
-        var group = await _assetService.CreateColorGroupAsync(dto, GetUserId());
-        return Ok(group);
-    }
-
-    // POST: api/assets/create-link
-    [HttpPost("create-link")]
-    public async Task<ActionResult<Asset>> CreateLink([FromBody] CreateLinkDto dto)
-    {
-        var link = await _assetService.CreateLinkAsync(dto, GetUserId());
-        return Ok(link);
-    }
-
-    // PUT: api/assets/{id}
+    /// <summary>Backward-compatible alias for PATCH (partial update).</summary>
     [HttpPut("{id}")]
-    public async Task<ActionResult<Asset>> UpdateAsset(int id, [FromBody] UpdateAssetDto dto)
-    {
-        var asset = await _assetService.UpdateAssetAsync(id, dto, GetUserId());
-        return Ok(asset);
-    }
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public Task<ActionResult<Asset>> UpdateAssetPut(
+        int id, [FromBody] UpdateAssetDto dto, CancellationToken ct = default)
+        => UpdateAsset(id, dto, ct);
 
-    // DELETE: api/assets/{id}
+    /// <summary>Update canvas position (x/y coordinates).</summary>
+    [HttpPut("{id}/position")]
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Asset>> UpdatePosition(
+        int id, [FromBody] AssetPositionDto dto, CancellationToken ct = default)
+        => Ok(await assetService.UpdatePositionAsync(id, dto.PositionX, dto.PositionY, GetUserId(), ct));
+
+    /// <summary>Delete an asset and its associated files/thumbnails.</summary>
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteAsset(int id)
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAsset(int id, CancellationToken ct = default)
     {
-        await _assetService.DeleteAssetAsync(id, GetUserId());
+        await assetService.DeleteAssetAsync(id, GetUserId(), ct);
         return NoContent();
     }
 
-    // POST: api/assets/reorder
-    [HttpPost("reorder")]
-    public async Task<IActionResult> ReorderAssets([FromBody] ReorderAssetsDto dto)
-    {
-        await _assetService.ReorderAssetsAsync(dto.AssetIds, GetUserId());
-        return Ok();
-    }
-
-    // GET: api/assets/group/{groupId}
-    [HttpGet("group/{groupId}")]
-    public async Task<ActionResult<List<Asset>>> GetAssetsByGroup(int groupId)
-    {
-        var assets = await _assetService.GetAssetsByGroupAsync(groupId, GetUserId());
-        return Ok(assets);
-    }
-
-    // ──── Bulk Operations ────
-
-    // POST: api/assets/bulk-delete
-    [HttpPost("bulk-delete")]
-    public async Task<ActionResult> BulkDelete([FromBody] BulkDeleteDto dto)
-    {
-        var count = await _bulkService.BulkDeleteAsync(dto.AssetIds, GetUserId());
-        return Ok(new { deleted = count });
-    }
-
-    // POST: api/assets/bulk-move
-    [HttpPost("bulk-move")]
-    public async Task<ActionResult> BulkMove([FromBody] BulkMoveDto dto)
-    {
-        var count = await _bulkService.BulkMoveAsync(dto, GetUserId());
-        return Ok(new { moved = count });
-    }
-
-    // POST: api/assets/bulk-move-group
-    [HttpPost("bulk-move-group")]
-    public async Task<ActionResult> BulkMoveGroup([FromBody] BulkMoveGroupDto dto)
-    {
-        var count = await _bulkService.BulkMoveGroupAsync(dto, GetUserId());
-        return Ok(new { moved = count });
-    }
-
-    // POST: api/assets/bulk-tag
-    [HttpPost("bulk-tag")]
-    public async Task<ActionResult> BulkTag([FromBody] BulkTagDto dto)
-    {
-        var count = await _bulkService.BulkTagAsync(dto, GetUserId());
-        return Ok(new { affected = count });
-    }
-
-    // POST: api/assets/{id}/duplicate
+    /// <summary>Duplicate (clone) an existing asset.</summary>
     [HttpPost("{id}/duplicate")]
-    public async Task<ActionResult<Asset>> DuplicateAsset(int id, [FromBody] DuplicateAssetDto? dto = null)
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Asset>> DuplicateAsset(
+        int id, [FromBody] DuplicateAssetDto? dto = null, CancellationToken ct = default)
     {
-        var clone = await _assetService.DuplicateAssetAsync(id, dto?.TargetFolderId, GetUserId());
-        return Ok(clone);
+        var clone = await assetService.DuplicateAssetAsync(id, dto?.TargetFolderId, GetUserId(), ct);
+        return CreatedAtAction(nameof(GetAssetById), new { id = clone.Id }, clone);
+    }
+
+    /// <summary>Reorder assets by providing the desired ID sequence.</summary>
+    [HttpPost("reorder")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ReorderAssets(
+        [FromBody] ReorderAssetsDto dto, CancellationToken ct = default)
+    {
+        await assetService.ReorderAssetsAsync(dto.AssetIds, GetUserId(), ct);
+        return NoContent();
+    }
+
+    /// <summary>Get assets belonging to a color group.</summary>
+    [HttpGet("group/{groupId}")]
+    [ProducesResponseType(typeof(List<Asset>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<Asset>>> GetAssetsByGroup(
+        int groupId, CancellationToken ct = default)
+        => Ok(await assetService.GetAssetsByGroupAsync(groupId, GetUserId(), ct));
+
+    // ──── Specialized Asset Creation (RESTful noun routes) ────
+
+    /// <summary>Create a folder asset.</summary>
+    [HttpPost("folders")]
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status201Created)]
+    public async Task<ActionResult<Asset>> CreateFolder(
+        [FromBody] CreateFolderDto dto, CancellationToken ct = default)
+    {
+        var folder = await assetService.CreateFolderAsync(dto, GetUserId(), ct);
+        return CreatedAtAction(nameof(GetAssetById), new { id = folder.Id }, folder);
+    }
+
+    /// <summary>Create a color swatch asset.</summary>
+    [HttpPost("colors")]
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status201Created)]
+    public async Task<ActionResult<Asset>> CreateColor(
+        [FromBody] CreateColorDto dto, CancellationToken ct = default)
+    {
+        var color = await assetService.CreateColorAsync(dto, GetUserId(), ct);
+        return CreatedAtAction(nameof(GetAssetById), new { id = color.Id }, color);
+    }
+
+    /// <summary>Create a color group (palette container).</summary>
+    [HttpPost("color-groups")]
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status201Created)]
+    public async Task<ActionResult<Asset>> CreateColorGroup(
+        [FromBody] CreateColorGroupDto dto, CancellationToken ct = default)
+    {
+        var group = await assetService.CreateColorGroupAsync(dto, GetUserId(), ct);
+        return CreatedAtAction(nameof(GetAssetById), new { id = group.Id }, group);
+    }
+
+    /// <summary>Create a web link (bookmark) asset.</summary>
+    [HttpPost("links")]
+    [ProducesResponseType(typeof(Asset), StatusCodes.Status201Created)]
+    public async Task<ActionResult<Asset>> CreateLink(
+        [FromBody] CreateLinkDto dto, CancellationToken ct = default)
+    {
+        var link = await assetService.CreateLinkAsync(dto, GetUserId(), ct);
+        return CreatedAtAction(nameof(GetAssetById), new { id = link.Id }, link);
     }
 }

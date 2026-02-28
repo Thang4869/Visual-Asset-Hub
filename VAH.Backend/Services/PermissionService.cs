@@ -22,22 +22,22 @@ public class PermissionService : IPermissionService
     }
 
     /// <summary>Invalidate a user's cached collection list so they see permission changes immediately.</summary>
-    private async Task InvalidateUserCollectionCacheAsync(string userId)
+    private async Task InvalidateUserCollectionCacheAsync(string userId, CancellationToken ct)
     {
-        try { await _cache.RemoveAsync($"collections:all:{userId}"); }
+        try { await _cache.RemoveAsync($"collections:all:{userId}", ct); }
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to invalidate collection cache for user {UserId}", userId); }
     }
 
     /// <inheritdoc/>
-    public async Task<bool> HasPermissionAsync(int collectionId, string userId, string minimumRole)
+    public async Task<bool> HasPermissionAsync(int collectionId, string userId, string minimumRole, CancellationToken ct = default)
     {
         // Collection owner always has full access
-        var collection = await _context.Collections.FindAsync(collectionId);
+        var collection = await _context.Collections.FindAsync([collectionId], ct);
         if (collection == null) return false;
         if (collection.UserId == userId) return true;
 
         var perm = await _context.CollectionPermissions
-            .FirstOrDefaultAsync(p => p.CollectionId == collectionId && p.UserId == userId);
+            .FirstOrDefaultAsync(p => p.CollectionId == collectionId && p.UserId == userId, ct);
         if (perm == null) return false;
 
         return minimumRole switch
@@ -50,26 +50,26 @@ public class PermissionService : IPermissionService
     }
 
     /// <inheritdoc/>
-    public async Task<string?> GetRoleAsync(int collectionId, string userId)
+    public async Task<string?> GetRoleAsync(int collectionId, string userId, CancellationToken ct = default)
     {
-        var collection = await _context.Collections.FindAsync(collectionId);
+        var collection = await _context.Collections.FindAsync([collectionId], ct);
         if (collection == null) return null;
         if (collection.UserId == userId) return CollectionRoles.Owner;
 
         var perm = await _context.CollectionPermissions
-            .FirstOrDefaultAsync(p => p.CollectionId == collectionId && p.UserId == userId);
+            .FirstOrDefaultAsync(p => p.CollectionId == collectionId && p.UserId == userId, ct);
         return perm?.Role;
     }
 
     /// <inheritdoc/>
-    public async Task<CollectionPermission> GrantAsync(int collectionId, GrantPermissionDto dto, string grantedByUserId)
+    public async Task<CollectionPermission> GrantAsync(int collectionId, GrantPermissionDto dto, string grantedByUserId, CancellationToken ct = default)
     {
         // Validate role string
         if (!CollectionRoles.All.Contains(dto.Role))
             throw new ArgumentException($"Invalid role '{dto.Role}'. Must be one of: {string.Join(", ", CollectionRoles.All)}");
 
         // Only owner can grant
-        if (!await HasPermissionAsync(collectionId, grantedByUserId, CollectionRoles.Owner))
+        if (!await HasPermissionAsync(collectionId, grantedByUserId, CollectionRoles.Owner, ct))
             throw new UnauthorizedAccessException("Only the collection owner can grant permissions.");
 
         // Find target user by email
@@ -82,16 +82,16 @@ public class PermissionService : IPermissionService
 
         // Check if permission already exists
         var existing = await _context.CollectionPermissions
-            .FirstOrDefaultAsync(p => p.CollectionId == collectionId && p.UserId == targetUser.Id);
+            .FirstOrDefaultAsync(p => p.CollectionId == collectionId && p.UserId == targetUser.Id, ct);
 
         if (existing != null)
         {
             existing.Role = dto.Role;
             existing.GrantedBy = grantedByUserId;
             existing.GrantedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
             _logger.LogInformation("Updated permission for user {TargetUserId} on collection {CollectionId} to {Role}", targetUser.Id, collectionId, dto.Role);
-            await InvalidateUserCollectionCacheAsync(targetUser.Id);
+            await InvalidateUserCollectionCacheAsync(targetUser.Id, ct);
             return existing;
         }
 
@@ -105,64 +105,65 @@ public class PermissionService : IPermissionService
         };
 
         _context.CollectionPermissions.Add(permission);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Granted {Role} permission to user {TargetUserId} on collection {CollectionId}", dto.Role, targetUser.Id, collectionId);
-        await InvalidateUserCollectionCacheAsync(targetUser.Id);
+        await InvalidateUserCollectionCacheAsync(targetUser.Id, ct);
         return permission;
     }
 
     /// <inheritdoc/>
-    public async Task<CollectionPermission> UpdateAsync(int permissionId, UpdatePermissionDto dto, string currentUserId)
+    public async Task<CollectionPermission> UpdateAsync(int permissionId, UpdatePermissionDto dto, string currentUserId, CancellationToken ct = default)
     {
         if (!CollectionRoles.All.Contains(dto.Role))
             throw new ArgumentException($"Invalid role '{dto.Role}'.");
 
-        var permission = await _context.CollectionPermissions.FindAsync(permissionId)
+        var permission = await _context.CollectionPermissions.FindAsync([permissionId], ct)
             ?? throw new KeyNotFoundException($"Permission {permissionId} not found.");
 
-        if (!await HasPermissionAsync(permission.CollectionId, currentUserId, CollectionRoles.Owner))
+        if (!await HasPermissionAsync(permission.CollectionId, currentUserId, CollectionRoles.Owner, ct))
             throw new UnauthorizedAccessException("Only the collection owner can update permissions.");
 
         permission.Role = dto.Role;
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Updated permission {PermissionId} to role {Role}", permissionId, dto.Role);
-        await InvalidateUserCollectionCacheAsync(permission.UserId);
+        await InvalidateUserCollectionCacheAsync(permission.UserId, ct);
         return permission;
     }
 
     /// <inheritdoc/>
-    public async Task<bool> RevokeAsync(int permissionId, string currentUserId)
+    public async Task<bool> RevokeAsync(int permissionId, string currentUserId, CancellationToken ct = default)
     {
-        var permission = await _context.CollectionPermissions.FindAsync(permissionId)
+        var permission = await _context.CollectionPermissions.FindAsync([permissionId], ct)
             ?? throw new KeyNotFoundException($"Permission {permissionId} not found.");
 
-        if (!await HasPermissionAsync(permission.CollectionId, currentUserId, CollectionRoles.Owner))
+        if (!await HasPermissionAsync(permission.CollectionId, currentUserId, CollectionRoles.Owner, ct))
             throw new UnauthorizedAccessException("Only the collection owner can revoke permissions.");
 
         _context.CollectionPermissions.Remove(permission);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Revoked permission {PermissionId} from user {UserId} on collection {CollectionId}", permissionId, permission.UserId, permission.CollectionId);
-        await InvalidateUserCollectionCacheAsync(permission.UserId);
+        await InvalidateUserCollectionCacheAsync(permission.UserId, ct);
         return true;
     }
 
     /// <inheritdoc/>
-    public async Task<List<PermissionInfoDto>> ListAsync(int collectionId, string currentUserId)
+    public async Task<List<PermissionInfoDto>> ListAsync(int collectionId, string currentUserId, CancellationToken ct = default)
     {
         // Must have at least viewer access (or be owner) to see permissions
-        if (!await HasPermissionAsync(collectionId, currentUserId, CollectionRoles.Viewer))
+        if (!await HasPermissionAsync(collectionId, currentUserId, CollectionRoles.Viewer, ct))
             throw new UnauthorizedAccessException("No access to this collection.");
 
         var permissions = await _context.CollectionPermissions
             .Where(p => p.CollectionId == collectionId)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         var result = new List<PermissionInfoDto>();
         foreach (var p in permissions)
         {
+            ct.ThrowIfCancellationRequested();
             var user = await _userManager.FindByIdAsync(p.UserId);
             result.Add(new PermissionInfoDto
             {
@@ -179,18 +180,18 @@ public class PermissionService : IPermissionService
     }
 
     /// <inheritdoc/>
-    public async Task<List<Collection>> GetSharedCollectionsAsync(string userId)
+    public async Task<List<Collection>> GetSharedCollectionsAsync(string userId, CancellationToken ct = default)
     {
         var collectionIds = await _context.CollectionPermissions
             .Where(p => p.UserId == userId)
             .Select(p => p.CollectionId)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         if (collectionIds.Count == 0) return new();
 
         return await _context.Collections
             .Where(c => collectionIds.Contains(c.Id))
             .OrderBy(c => c.Order)
-            .ToListAsync();
+            .ToListAsync(ct);
     }
 }

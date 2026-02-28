@@ -37,34 +37,36 @@ public class SmartCollectionService : ISmartCollectionService
         _logger = logger;
     }
 
-    public async Task<List<SmartCollectionDefinition>> GetDefinitionsAsync(string userId)
+    public async Task<List<SmartCollectionDefinition>> GetDefinitionsAsync(string userId, CancellationToken ct = default)
     {
         var definitions = new List<SmartCollectionDefinition>();
 
         // 1. Built-in filters
         foreach (var filter in BuiltInFilters)
         {
+            ct.ThrowIfCancellationRequested();
             definitions.Add(await filter.GetDefinitionAsync(_context, userId));
         }
 
         // 2. Dynamic tag-based filters (top 10 most used tags)
-        var tagFilters = await BuildTagFiltersAsync(userId);
+        var tagFilters = await BuildTagFiltersAsync(userId, ct);
         foreach (var filter in tagFilters)
         {
+            ct.ThrowIfCancellationRequested();
             definitions.Add(await filter.GetDefinitionAsync(_context, userId));
         }
 
         return definitions;
     }
 
-    public async Task<PagedResult<Asset>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId)
+    public async Task<PagedResult<Asset>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId, CancellationToken ct = default)
     {
         IQueryable<Asset> query = _context.Assets
             .Where(a => a.UserId == userId && !a.IsFolder);
 
         // Find matching filter from registry
         var filter = FindFilter(smartCollectionId)
-                     ?? await FindDynamicFilterAsync(smartCollectionId, userId);
+                     ?? await FindDynamicFilterAsync(smartCollectionId, userId, ct);
 
         if (filter != null)
         {
@@ -80,11 +82,11 @@ public class SmartCollectionService : ISmartCollectionService
             _ => query.OrderByDescending(a => a.CreatedAt)
         };
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(ct);
         var items = await query
             .Skip((pagination.Page - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return new PagedResult<Asset>
         {
@@ -102,7 +104,7 @@ public class SmartCollectionService : ISmartCollectionService
     }
 
     /// <summary>Build a dynamic TagFilter if the ID matches the tag-{id} pattern.</summary>
-    private async Task<ISmartCollectionFilter?> FindDynamicFilterAsync(string smartCollectionId, string userId)
+    private async Task<ISmartCollectionFilter?> FindDynamicFilterAsync(string smartCollectionId, string userId, CancellationToken ct)
     {
         if (!smartCollectionId.StartsWith("tag-")) return null;
 
@@ -111,13 +113,13 @@ public class SmartCollectionService : ISmartCollectionService
         var tag = await _context.Tags
             .Where(t => t.Id == tagId && t.UserId == userId)
             .Select(t => new { t.Id, t.Name, t.Color })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
         return tag != null ? new TagFilter(tag.Id, tag.Name, tag.Color) : null;
     }
 
     /// <summary>Build TagFilter strategies for the user's top-10 most-used tags.</summary>
-    private async Task<List<TagFilter>> BuildTagFiltersAsync(string userId)
+    private async Task<List<TagFilter>> BuildTagFiltersAsync(string userId, CancellationToken ct)
     {
         var topTags = await _context.Tags
             .Where(t => t.UserId == userId)
@@ -131,7 +133,7 @@ public class SmartCollectionService : ISmartCollectionService
             .Where(t => t.Count > 0)
             .OrderByDescending(t => t.Count)
             .Take(10)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return topTags.Select(t => new TagFilter(t.Id, t.Name, t.Color)).ToList();
     }

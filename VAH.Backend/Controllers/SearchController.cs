@@ -11,28 +11,18 @@ namespace VAH.Backend.Controllers;
 /// </summary>
 [Route("api/[controller]")]
 [Authorize]
-public class SearchController : BaseApiController
+[Produces("application/json")]
+public class SearchController(ISearchService searchService) : BaseApiController
 {
-    private readonly ISearchService _searchService;
-
-    public SearchController(ISearchService searchService)
-    {
-        _searchService = searchService;
-    }
-
-    /// <summary>
-    /// Search assets and collections by name/tags.
-    /// GET /api/search?q=landscape&type=image&collectionId=1&page=1&pageSize=50
-    /// </summary>
+    /// <summary>Search assets and collections by name/tags with filtering and pagination.</summary>
     [HttpGet]
+    [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
     public async Task<ActionResult<SearchResult>> Search(
         [FromQuery] string? q,
         [FromQuery] string? type,
         [FromQuery] int? collectionId,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
-    {
-        var result = await _searchService.SearchAsync(GetUserId(), q, type, collectionId, page, pageSize);
-        return Ok(result);
-    }
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
+        => Ok(await searchService.SearchAsync(GetUserId(), q, type, collectionId, page, pageSize, ct));
 }

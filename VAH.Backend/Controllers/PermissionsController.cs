@@ -5,62 +5,60 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
+/// <summary>
+/// Collection permission management (grant, update, revoke).
+/// </summary>
 [Route("api/collections/{collectionId}/permissions")]
 [Authorize]
-public class PermissionsController : BaseApiController
+[Produces("application/json")]
+public class PermissionsController(IPermissionService permissionService) : BaseApiController
 {
-    private readonly IPermissionService _permissionService;
-
-    public PermissionsController(IPermissionService permissionService)
-    {
-        _permissionService = permissionService;
-    }
-
     /// <summary>List all permissions for a collection.</summary>
     [HttpGet]
-    public async Task<IActionResult> List(int collectionId)
-    {
-        var permissions = await _permissionService.ListAsync(collectionId, GetUserId());
-        return Ok(permissions);
-    }
+    [ProducesResponseType(typeof(List<PermissionInfoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<List<PermissionInfoDto>>> List(int collectionId, CancellationToken ct)
+        => Ok(await permissionService.ListAsync(collectionId, GetUserId(), ct));
 
     /// <summary>Grant a permission to a user by email.</summary>
     [HttpPost]
-    public async Task<IActionResult> Grant(int collectionId, [FromBody] GrantPermissionDto dto)
-    {
-        var permission = await _permissionService.GrantAsync(collectionId, dto, GetUserId());
-        return Ok(permission);
-    }
+    [ProducesResponseType(typeof(CollectionPermission), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<CollectionPermission>> Grant(int collectionId, [FromBody] GrantPermissionDto dto, CancellationToken ct)
+        => Ok(await permissionService.GrantAsync(collectionId, dto, GetUserId(), ct));
 
-    /// <summary>Update an existing permission's role.</summary>
+    /// <summary>Update an existing permission’s role.</summary>
     [HttpPut("{permissionId}")]
-    public async Task<IActionResult> Update(int collectionId, int permissionId, [FromBody] UpdatePermissionDto dto)
-    {
-        var permission = await _permissionService.UpdateAsync(permissionId, dto, GetUserId());
-        return Ok(permission);
-    }
+    [ProducesResponseType(typeof(CollectionPermission), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<CollectionPermission>> Update(int collectionId, int permissionId, [FromBody] UpdatePermissionDto dto, CancellationToken ct)
+        => Ok(await permissionService.UpdateAsync(permissionId, dto, GetUserId(), ct));
 
     /// <summary>Revoke a permission.</summary>
     [HttpDelete("{permissionId}")]
-    public async Task<IActionResult> Revoke(int collectionId, int permissionId)
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Revoke(int collectionId, int permissionId, CancellationToken ct)
     {
-        await _permissionService.RevokeAsync(permissionId, GetUserId());
+        await permissionService.RevokeAsync(permissionId, GetUserId(), ct);
         return NoContent();
     }
 
-    /// <summary>Get the current user's role for a collection.</summary>
+    /// <summary>Get the current user’s role for a collection.</summary>
     [HttpGet("my-role")]
-    public async Task<IActionResult> GetMyRole(int collectionId)
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyRole(int collectionId, CancellationToken ct)
     {
-        var role = await _permissionService.GetRoleAsync(collectionId, GetUserId());
+        var role = await permissionService.GetRoleAsync(collectionId, GetUserId(), ct);
         return Ok(new { role });
     }
 
     /// <summary>Get all collections shared with the current user.</summary>
     [HttpGet("/api/shared-collections")]
-    public async Task<IActionResult> GetSharedCollections()
-    {
-        var collections = await _permissionService.GetSharedCollectionsAsync(GetUserId());
-        return Ok(collections);
-    }
+    [ProducesResponseType(typeof(List<Collection>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<Collection>>> GetSharedCollections(CancellationToken ct)
+        => Ok(await permissionService.GetSharedCollectionsAsync(GetUserId(), ct));
 }

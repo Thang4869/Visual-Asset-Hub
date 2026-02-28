@@ -14,12 +14,12 @@ public class NotificationService : INotificationService
         _logger = logger;
     }
 
-    public async Task NotifyAsync(string userId, string eventType, object? payload = null)
+    public async Task NotifyAsync(string userId, string eventType, object? payload = null, CancellationToken ct = default)
     {
         try
         {
             await _hubContext.Clients.Group($"user:{userId}")
-                .SendAsync(eventType, payload);
+                .SendAsync(eventType, payload, ct);
 
             _logger.LogDebug("SignalR notification sent: {Event} to user {UserId}", eventType, userId);
         }

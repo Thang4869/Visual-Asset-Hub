@@ -42,18 +42,20 @@ public class BulkAssetService : IBulkAssetService
         return result;
     }
 
-    public async Task<int> BulkDeleteAsync(List<int> assetIds, string userId)
+    public async Task<int> BulkDeleteAsync(List<int> assetIds, string userId, CancellationToken ct = default)
     {
         if (assetIds == null || assetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
 
         var allAssets = await _context.Assets
             .Where(a => assetIds.Contains(a.Id))
-            .ToListAsync();
+            .ToListAsync(ct);
         var assets = await FilterByAccessAsync(allAssets, userId, CollectionRoles.Editor);
 
         foreach (var asset in assets)
         {
+            ct.ThrowIfCancellationRequested();
+
             // Clean up physical files and thumbnails via helper
             await _cleanup.CleanupFilesAsync(asset);
 
@@ -62,34 +64,34 @@ public class BulkAssetService : IBulkAssetService
             {
                 var children = await _context.Assets
                     .Where(a => a.ParentFolderId == asset.Id)
-                    .ToListAsync();
+                    .ToListAsync(ct);
                 foreach (var child in children)
                     child.MoveToFolder(asset.ParentFolderId);
             }
         }
 
         _context.Assets.RemoveRange(assets);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Bulk deleted {Count} assets for user {UserId}", assets.Count, userId);
-        await _notifier.NotifyAsync(userId, "AssetsBulkDeleted", new { count = assets.Count, assetIds });
+        await _notifier.NotifyAsync(userId, "AssetsBulkDeleted", new { count = assets.Count, assetIds }, ct);
         return assets.Count;
     }
 
-    public async Task<int> BulkMoveAsync(BulkMoveDto dto, string userId)
+    public async Task<int> BulkMoveAsync(BulkMoveDto dto, string userId, CancellationToken ct = default)
     {
         if (dto.AssetIds == null || dto.AssetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
 
         var allMoveAssets = await _context.Assets
             .Where(a => dto.AssetIds.Contains(a.Id))
-            .ToListAsync();
+            .ToListAsync(ct);
         var assets = await FilterByAccessAsync(allMoveAssets, userId, CollectionRoles.Editor);
 
         // Validate target collection exists if specified
         if (dto.TargetCollectionId.HasValue)
         {
-            var coll = await _context.Collections.FindAsync(dto.TargetCollectionId.Value);
+            var coll = await _context.Collections.FindAsync([dto.TargetCollectionId.Value], ct);
             var collExists = coll != null && (coll.UserId == userId || coll.UserId == null
                 || await _permissions.HasPermissionAsync(dto.TargetCollectionId.Value, userId, CollectionRoles.Editor));
             if (!collExists)
@@ -107,14 +109,14 @@ public class BulkAssetService : IBulkAssetService
                 asset.MoveToFolder(dto.TargetFolderId.Value);
         }
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Bulk moved {Count} assets for user {UserId}", assets.Count, userId);
-        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = assets.Count });
+        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = assets.Count }, ct);
         return assets.Count;
     }
 
-    public async Task<int> BulkMoveGroupAsync(BulkMoveGroupDto dto, string userId)
+    public async Task<int> BulkMoveGroupAsync(BulkMoveGroupDto dto, string userId, CancellationToken ct = default)
     {
         if (dto.AssetIds == null || dto.AssetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
@@ -122,7 +124,7 @@ public class BulkAssetService : IBulkAssetService
         // Fetch the colors being moved
         var allMoveGroupAssets = await _context.Assets
             .Where(a => dto.AssetIds.Contains(a.Id))
-            .ToListAsync();
+            .ToListAsync(ct);
         var movedAssets = await FilterByAccessAsync(allMoveGroupAssets, userId, CollectionRoles.Editor);
 
         if (movedAssets.Count == 0) return 0;
@@ -140,7 +142,7 @@ public class BulkAssetService : IBulkAssetService
                         && a.ContentType == AssetContentType.Color
                         && !dto.AssetIds.Contains(a.Id))
             .OrderBy(a => a.SortOrder)
-            .ToListAsync();
+            .ToListAsync(ct);
         var existingInGroup = await FilterByAccessAsync(allExisting, userId, CollectionRoles.Editor);
 
         // Build final ordered list
@@ -173,15 +175,15 @@ public class BulkAssetService : IBulkAssetService
             finalOrder[i].SortOrder = i;
         }
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Bulk moved {Count} colors to group {GroupId} for user {UserId}",
             movedAssets.Count, dto.TargetGroupId, userId);
-        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = movedAssets.Count });
+        await _notifier.NotifyAsync(userId, "AssetsBulkMoved", new { count = movedAssets.Count }, ct);
         return movedAssets.Count;
     }
 
-    public async Task<int> BulkTagAsync(BulkTagDto dto, string userId)
+    public async Task<int> BulkTagAsync(BulkTagDto dto, string userId, CancellationToken ct = default)
     {
         if (dto.AssetIds == null || dto.AssetIds.Count == 0)
             throw new ArgumentException("Asset IDs are required.");
@@ -191,14 +193,14 @@ public class BulkAssetService : IBulkAssetService
         // Verify all assets the user can access
         var allTagAssets = await _context.Assets
             .Where(a => dto.AssetIds.Contains(a.Id))
-            .ToListAsync();
+            .ToListAsync(ct);
         var assets = await FilterByAccessAsync(allTagAssets, userId, CollectionRoles.Editor);
 
         // Verify tags belong to user
         var validTagIds = await _context.Tags
             .Where(t => dto.TagIds.Contains(t.Id) && t.UserId == userId)
             .Select(t => t.Id)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         int count = 0;
 
@@ -206,10 +208,12 @@ public class BulkAssetService : IBulkAssetService
         {
             foreach (var tagId in validTagIds)
             {
+                ct.ThrowIfCancellationRequested();
+
                 if (dto.Remove)
                 {
                     var junction = await _context.AssetTags
-                        .FirstOrDefaultAsync(at => at.AssetId == asset.Id && at.TagId == tagId);
+                        .FirstOrDefaultAsync(at => at.AssetId == asset.Id && at.TagId == tagId, ct);
                     if (junction != null)
                     {
                         _context.AssetTags.Remove(junction);
@@ -219,7 +223,7 @@ public class BulkAssetService : IBulkAssetService
                 else
                 {
                     var exists = await _context.AssetTags
-                        .AnyAsync(at => at.AssetId == asset.Id && at.TagId == tagId);
+                        .AnyAsync(at => at.AssetId == asset.Id && at.TagId == tagId, ct);
                     if (!exists)
                     {
                         _context.AssetTags.Add(new AssetTag { AssetId = asset.Id, TagId = tagId });
@@ -229,7 +233,7 @@ public class BulkAssetService : IBulkAssetService
             }
         }
 
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Bulk tag operation ({Action}) on {Count} asset-tag pairs for user {UserId}",
             dto.Remove ? "remove" : "add", count, userId);

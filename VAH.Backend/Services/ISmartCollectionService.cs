@@ -9,8 +9,8 @@ namespace VAH.Backend.Services;
 public interface ISmartCollectionService
 {
     /// <summary>Get all available smart collection definitions for a user.</summary>
-    Task<List<SmartCollectionDefinition>> GetDefinitionsAsync(string userId);
+    Task<List<SmartCollectionDefinition>> GetDefinitionsAsync(string userId, CancellationToken ct = default);
 
     /// <summary>Get items matching a smart collection's criteria.</summary>
-    Task<PagedResult<Asset>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId);
+    Task<PagedResult<Asset>> GetItemsAsync(string smartCollectionId, PaginationParams pagination, string userId, CancellationToken ct = default);
 }
