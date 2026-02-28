@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { fetchPermissions, grantPermission, updatePermission, revokePermission } from '../api/permissionsApi';
+import { useState } from 'react';
+import useSharePermissions from '../hooks/useSharePermissions';
 import './ShareDialog.css';
 
 const ROLES = [
@@ -9,59 +9,15 @@ const ROLES = [
 ];
 
 export default function ShareDialog({ collectionId, collectionName, onClose }) {
-  const [permissions, setPermissions] = useState([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const loadPermissions = async () => {
-    try {
-      const data = await fetchPermissions(collectionId);
-      setPermissions(data);
-    } catch (err) {
-      setError('Không thể tải danh sách quyền.');
-    }
-  };
-
-  useEffect(() => {
-    loadPermissions();
-  }, [collectionId]);
+  const { permissions, loading, error, grant, updateRole, revoke } = useSharePermissions(collectionId);
 
   const handleGrant = async (e) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await grantPermission(collectionId, { userEmail: email.trim(), role });
-      setEmail('');
-      setRole('viewer');
-      await loadPermissions();
-    } catch (err) {
-      setError(err.response?.data?.message || err.response?.data || 'Lỗi khi cấp quyền.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateRole = async (permId, newRole) => {
-    try {
-      await updatePermission(collectionId, permId, { role: newRole });
-      await loadPermissions();
-    } catch (err) {
-      setError('Lỗi khi cập nhật quyền.');
-    }
-  };
-
-  const handleRevoke = async (permId) => {
-    if (!confirm('Bạn có chắc muốn thu hồi quyền này?')) return;
-    try {
-      await revokePermission(collectionId, permId);
-      await loadPermissions();
-    } catch (err) {
-      setError('Lỗi khi thu hồi quyền.');
-    }
+    await grant(email, role);
+    setEmail('');
+    setRole('viewer');
   };
 
   return (
@@ -104,13 +60,13 @@ export default function ShareDialog({ collectionId, collectionName, onClose }) {
               </div>
               <select
                 value={p.role}
-                onChange={e => handleUpdateRole(p.id, e.target.value)}
+                onChange={e => updateRole(p.id, e.target.value)}
               >
                 {ROLES.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
-              <button className="share-revoke-btn" onClick={() => handleRevoke(p.id)} title="Thu hồi">
+              <button className="share-revoke-btn" onClick={() => revoke(p.id)} title="Thu hồi">
                 ✕
               </button>
             </div>
