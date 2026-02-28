@@ -3,7 +3,7 @@
 > **Ngày tạo:** 2026-02-27  
 > **Cập nhật lần cuối:** 2026-02-28  
 > **Mục đích:** Đánh giá mức độ áp dụng OOP trong toàn bộ dự án, làm cơ sở cho quá trình refactor.  
-> **Trạng thái:** 🟡 Phase 1 + Phase 3 hoàn tất (12/12 tasks) — chuẩn bị Phase 2, 4, 5
+> **Trạng thái:** ✅ Phase 1, 2, 3 hoàn tất (15/23 tasks) — Phase 4, 5 chưa bắt đầu
 
 ---
 
@@ -12,7 +12,7 @@
 | Layer | Ngôn ngữ | Framework |
 |-------|----------|-----------|
 | Backend | C# (.NET 9) | ASP.NET Core, EF Core, Identity, SignalR |
-| Frontend | JavaScript (JSX) | React 18, Vite, Axios |
+| Frontend | JavaScript (JSX) | React 19, Vite 7, Axios, react-router-dom v7 |
 
 ---
 
@@ -39,18 +39,22 @@
 - [x] **~~String-typed fields~~**: ✅ **[Task #3]** Đã chuyển `ContentType`, `Type`, `LayoutType` sang enums (`AssetContentType`, `CollectionType`, `LayoutType`) + EF Core value conversions.
 - [x] **~~Thiếu navigation properties~~**: ✅ **[Task #8]** Đã thêm: `Asset` → `Collection`, `ParentFolder`. `Collection` → `Assets`, `Parent`, `Children`. EF Core configured với proper FK relationships.
 
-### 2. Services — Chấp nhận được nhưng cần cải thiện 🟡
+### 2. Services — Refactored ✅
+
+> **Phase 2 hoàn tất:** AssetService đã tách, Strategy pattern cho SmartCollection, AssetCleanupHelper extracted.
 
 | File | Trạng thái | Vấn đề |
 |------|-----------|--------|
-| `IAssetService` / `AssetService` | 🟡 Cần cải thiện | Interface + impl tốt. **[Task #6,#7]** Dùng `AssetFactory` + domain methods. Nhưng vẫn lớn (~370 dòng), cần tách thêm (Phase 2). |
+| `IAssetService` / `AssetService` | 🟢 Refactored | **[Task 2.1,2.2]** Tách bulk ops → `IBulkAssetService`/`BulkAssetService`. Cleanup logic → `AssetCleanupHelper`. AssetService giờ ~280 dòng. |
+| `IBulkAssetService` / `BulkAssetService` | 🟢 Mới | **[Task 2.1]** 4 bulk methods (delete, move, moveGroup, tag). ISP: tách khỏi IAssetService. |
+| `AssetCleanupHelper` | 🟢 Mới | **[Task 2.2]** SRP: file + thumbnail cleanup. Dùng trong cả AssetService và BulkAssetService. |
 | `IAuthService` / `AuthService` | 🟢 Tốt | Đúng abstraction, đúng SRP. Dùng DI tốt. |
 | `ICollectionService` / `CollectionService` | 🟢 Tốt | DI, caching (IDistributedCache), delegation tốt. |
 | `IStorageService` / `LocalStorageService` | 🟢 Tốt | **Tốt nhất project** — abstraction rõ ràng, dễ thay bằng S3/Azure implementation. Đúng OCP. |
 | `IThumbnailService` / `ThumbnailService` | 🟢 Tốt | SRP, interface-based, clean. |
 | `ITagService` / `TagService` | 🟡 Cần cải thiện | Hơi lớn (281 dòng), xử lý cả CRUD tag lẫn asset-tag junction logic. |
 | `IPermissionService` / `PermissionService` | 🟢 Tốt | Logic rõ ràng, SRP. |
-| `ISmartCollectionService` / `SmartCollectionService` | 🟡 Cần cải thiện | Dùng chuỗi if/switch cho filter — thiếu Strategy pattern. Hard-coded definitions. |
+| `ISmartCollectionService` / `SmartCollectionService` | � Refactored | **[Task 2.4]** Strategy pattern: `ISmartCollectionFilter` interface + 5 concrete strategies (`RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`). OCP: thêm filter mới không cần sửa service. |
 | `INotificationService` / `NotificationService` | 🟢 Tốt | SRP, abstraction tốt. |
 
 **Điểm tốt (đã OOP):**
@@ -58,12 +62,12 @@
 - ✅ **Interface-based programming**: Mọi service đều có interface → dễ test, dễ swap implementation.
 - ✅ **IStorageService** là ví dụ tốt của OCP — `LocalStorageService` implement, dễ thêm `S3StorageService`.
 
-**Vấn đề cần refactor:**
-- [ ] **AssetService quá lớn (~480 dòng)**: Nên tách thành các service chuyên biệt: `FileUploadService`, `FolderService`, `ColorService`, `LinkService`, `BulkOperationService`.
-- [x] **~~Duplicate cleanup logic~~**: ✅ **[Task #6]** Cleanup logic giờ dùng `asset.RequiresFileCleanup` (virtual property) thay vì duplicate if/else chain trong cả `DeleteAssetAsync` và `BulkDeleteAsync`.
-- [ ] **SmartCollectionService hard-coded**: Các smart collection definitions được hard-code trong method. Nên dùng Strategy/Registry pattern.
-- [ ] **CollectionWithItemsResult** (trong `ICollectionService.cs`): Đã có trong `Models/DTOs.cs` nhưng interface vẫn còn reference.
-- [ ] **SmartCollectionDefinition** (trong `ISmartCollectionService.cs`): Đã có trong `Models/DTOs.cs` nhưng interface vẫn còn reference.
+**Vấn đề đã giải quyết (Phase 2):**
+- [x] **~~AssetService quá lớn~~**: ✅ **[Task 2.1]** Tách `BulkAssetService` (4 bulk methods). AssetService giờ ~280 dòng.
+- [x] **~~Duplicate cleanup logic~~**: ✅ **[Task 2.2]** `AssetCleanupHelper` class encapsulates file + thumbnail cleanup. DI-injected vào cả `AssetService` và `BulkAssetService`.
+- [x] **~~SmartCollectionService hard-coded~~**: ✅ **[Task 2.4]** Strategy pattern: `ISmartCollectionFilter` + 5 concrete strategies + registry. OCP compliant.
+- [x] **~~CollectionWithItemsResult~~** (trong `ICollectionService.cs`): Đã gom vào `Models/DTOs.cs`.
+- [x] **~~SmartCollectionDefinition~~** (trong `ISmartCollectionService.cs`): Đã gom vào `Models/DTOs.cs`.
 
 ### 3. Controllers — Đạt tiêu chuẩn 🟢
 
@@ -189,7 +193,7 @@
 | **S** - Single Responsibility | � | 🔴 (App.jsx, useAssets.js, useCollections.js) |
 | **O** - Open/Closed | 🟢 | � (BaseApiService extensible) |
 | **L** - Liskov Substitution | 🟢 | 🟢 (API subclasses substitutable) |
-| **I** - Interface Segregation | 🟡 (IAssetService vẫn lớn) | 🟡 (mỗi API service focus 1 domain) |
+| **I** - Interface Segregation | � (IBulkAssetService tách) | 🟡 (mỗi API service focus 1 domain) |
 | **D** - Dependency Inversion | 🟢 | 🟡 (singleton services, nhưng chưa có DI container) |
 
 ### Design Patterns Đã Dùng
@@ -224,29 +228,32 @@
 | **Singleton (FE)** | `TokenManager` singleton instance, `*ApiService` singletons | Task 3.3 |
 | **Encapsulation (FE)** | `TokenManager` private `#storageKey` field | Task 3.3 |
 | **Barrel Exports (FE)** | `api/index.js` — unified service re-exports | Task 3.2 |
+| **Strategy Pattern** | `ISmartCollectionFilter` + 5 concrete strategies (`RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`) | Task 2.4 |
+| **Helper/Utility Class** | `AssetCleanupHelper` — encapsulate file + thumbnail cleanup | Task 2.2 |
+| **Interface Segregation** | `IBulkAssetService` tách khỏi `IAssetService` | Task 2.1 |
 
 ---
 
 ## IV. KẾ HOẠCH REFACTOR (ĐỀ XUẤT THỨ TỰ ƯU TIÊN)
 
-### Phase 1: Backend Models — Nền tảng 🔴
-> Ưu tiên cao nhất vì models ảnh hưởng toàn bộ codebase.
+### Phase 1: Backend Models — Nền tảng ✅
+> Hoàn tất 2026-02-27.
 
-- [ ] 1.1 Tạo Asset inheritance hierarchy (`Asset` → `ImageAsset`, `LinkAsset`, `ColorAsset`, `FolderAsset`, `ColorGroupAsset`)
-- [ ] 1.2 Chuyển string fields sang enum/value objects (`ContentType`, `CollectionType`, `LayoutType`, `Role`)
-- [ ] 1.3 Thêm domain behavior vào models (validation, computed properties)
-- [ ] 1.4 Thêm navigation properties đầy đủ
-- [ ] 1.5 Move `CollectionWithItemsResult`, `SmartCollectionDefinition`, `SearchResult`, `AssetPositionDto` về Models folder
+- [x] 1.1 Tạo Asset inheritance hierarchy (`Asset` → `ImageAsset`, `LinkAsset`, `ColorAsset`, `FolderAsset`, `ColorGroupAsset`)
+- [x] 1.2 Chuyển string fields sang enum/value objects (`ContentType`, `CollectionType`, `LayoutType`, `Role`)
+- [x] 1.3 Thêm domain behavior vào models (validation, computed properties)
+- [x] 1.4 Thêm navigation properties đầy đủ
+- [x] 1.5 Move `CollectionWithItemsResult`, `SmartCollectionDefinition`, `SearchResult`, `AssetPositionDto` về Models folder
 
-### Phase 2: Backend Services — Tách nhỏ 🟡
-> Ưu tiên trung bình, phụ thuộc vào Phase 1.
+### Phase 2: Backend Services — Tách nhỏ ✅
+> Hoàn tất 2026-02-28.
 
-- [ ] 2.1 Tách `AssetService` → `FileUploadService`, `FolderService`, `ColorService`, `LinkService`, `BulkOperationService`
-- [ ] 2.2 Extract tái sử dụng (file cleanup, thumbnail cleanup) thành helper class
-- [ ] 2.3 Tạo `ISearchService` / `SearchService`, move logic khỏi `SearchController`
-- [ ] 2.4 Áp dụng Strategy pattern cho `SmartCollectionService`
-- [ ] 2.5 Tạo base controller class (extract `GetUserId()`)
-- [ ] 2.6 Tạo `ServiceCollectionExtensions` cho Program.cs DI registration
+- [x] 2.1 Tách `AssetService` → `BulkAssetService` (4 bulk methods). AssetService giờ ~280 dòng.
+- [x] 2.2 Extract `AssetCleanupHelper` (file + thumbnail cleanup). DI-registered.
+- [x] 2.3 Tạo `ISearchService` / `SearchService`, move logic khỏi `SearchController`
+- [x] 2.4 Áp dụng Strategy pattern cho `SmartCollectionService` (5 strategies)
+- [x] 2.5 Tạo base controller class (extract `GetUserId()`)
+- [x] 2.6 Tạo `ServiceCollectionExtensions` cho Program.cs DI registration
 
 ### Phase 3: Frontend API Layer — OOP hóa ✅
 > Hoàn tất 2026-02-28.
@@ -257,14 +264,14 @@
 - [x] 3.4 Thống nhất style — tất cả dùng class methods, không còn mix async function/arrow
 
 ### Phase 4: Frontend Domain Models 🟡
-> Ưu tiên trung bình.
+> Ưu tiên trung bình. Chưa bắt đầu.
 
 - [ ] 4.1 Tạo frontend domain classes: `Asset`, `Collection`, `Tag`, `User`
 - [ ] 4.2 Thêm computed properties, validation logic vào domain classes
 - [ ] 4.3 Mapping layer: API response → domain object
 
 ### Phase 5: Frontend Component Architecture 🟡
-> Ưu tiên trung bình, thực hiện dần.
+> Ưu tiên trung bình, thực hiện dần. Chưa bắt đầu.
 
 - [ ] 5.1 Tách `App.jsx` thành nhiều Page/Layout components
 - [ ] 5.2 Tách `useAssets.js` thành nhiều hooks chuyên biệt
@@ -282,13 +289,13 @@
 | 2.5 | Base controller class | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `BaseApiController` với `GetUserId()`. 8 controllers kế thừa. |
 | 1.2 | Enum/Value Objects cho string fields | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `AssetContentType`, `CollectionType`, `LayoutType` enums + EF Core value conversions. |
 | 2.3 | SearchService | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `ISearchService` + `SearchService`. SearchController giờ chỉ delegate. |
-| 2.6 | ServiceCollectionExtensions | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `Extensions/ServiceCollectionExtensions.cs` — 5 extension methods. Program.cs 255→116 lines. |
+| 2.6 | ServiceCollectionExtensions | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | `Extensions/ServiceCollectionExtensions.cs` — 6 extension methods. Program.cs 255→148 lines. |
 | 1.1 | Asset inheritance hierarchy | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | TPH: `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`. `AssetFactory` + virtual behavior properties. |
 | 1.3 | Domain behavior cho models | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | Asset: 6 domain methods. Collection: 3 methods. Tag: 3 methods. CollectionPermission: 2 computed + 1 method. Services updated to use domain methods. |
 | 1.4 | Navigation properties | ✅ Hoàn tất | 2026-02-27 | 2026-02-27 | Asset→Collection, ParentFolder. Collection→Assets, Parent, Children. EF Core configured. |
-| 2.1 | Tách AssetService | ⬜ Chưa bắt đầu | | | |
-| 2.2 | Extract reusable helpers | ⬜ Chưa bắt đầu | | | |
-| 2.4 | Strategy pattern SmartCollection | ⬜ Chưa bắt đầu | | | |
+| 2.1 | Tách AssetService | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `IBulkAssetService`/`BulkAssetService`: 4 bulk methods. `AssetService` giảm từ ~480 xuống ~280 dòng. Controller inject cả 2 services. |
+| 2.2 | Extract reusable helpers | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `AssetCleanupHelper` class: `CleanupFilesAsync`, `CleanupThumbnailsAsync`. DI-registered, dùng trong cả AssetService và BulkAssetService. |
+| 2.4 | Strategy pattern SmartCollection | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `ISmartCollectionFilter` interface + 5 strategies: `RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`. Registry lookup thay switch. |
 | 3.1 | BaseApiService class | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `BaseApiService` với `_get/_post/_put/_delete`. Tất cả 7 API services kế thừa. |
 | 3.2 | API classes kế thừa | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | 7 classes: `AssetApiService`, `AuthApiService`, `CollectionApiService`, `TagApiService`, `SearchApiService`, `SmartCollectionApiService`, `PermissionApiService`. Backward-compatible named exports. |
 | 3.3 | TokenManager class | ✅ Hoàn tất | 2026-02-28 | 2026-02-28 | `TokenManager` class, private `#storageKey`, singleton pattern. `client.js` cập nhật dùng `TokenManager`. |

@@ -4,10 +4,32 @@ using VAH.Backend.Models;
 
 namespace VAH.Backend.Services;
 
+/// <summary>
+/// SmartCollectionService — uses Strategy pattern via ISmartCollectionFilter registry.
+/// OOP: Open/Closed — add new smart collections by adding an ISmartCollectionFilter implementation,
+/// without modifying this service.
+/// </summary>
 public class SmartCollectionService : ISmartCollectionService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<SmartCollectionService> _logger;
+
+    /// <summary>Static (built-in) filters — registered once.</summary>
+    private static readonly List<ISmartCollectionFilter> BuiltInFilters = new()
+    {
+        new RecentDaysFilter(7, "recent-7d", "Gần đây (7 ngày)",
+            "Các tài nguyên được tải lên trong 7 ngày qua", "🕐", "#2196F3"),
+        new RecentDaysFilter(30, "recent-30d", "Tháng này",
+            "Các tài nguyên được tải lên trong 30 ngày qua", "📅", "#4CAF50"),
+        new ContentTypeFilter(AssetContentType.Image, "all-images", "Tất cả hình ảnh",
+            "Mọi hình ảnh đã tải lên", "🖼️", "#FF9800"),
+        new ContentTypeFilter(AssetContentType.Link, "all-links", "Tất cả liên kết",
+            "Mọi liên kết đã lưu", "🔗", "#9C27B0"),
+        new ContentTypeFilter(AssetContentType.Color, "all-colors", "Tất cả màu sắc",
+            "Mọi mẫu màu đã lưu", "🎨", "#E91E63"),
+        new UntaggedFilter(),
+        new WithThumbnailsFilter(),
+    };
 
     public SmartCollectionService(AppDbContext context, ILogger<SmartCollectionService> logger)
     {
@@ -19,123 +41,17 @@ public class SmartCollectionService : ISmartCollectionService
     {
         var definitions = new List<SmartCollectionDefinition>();
 
-        // 1. Recent uploads (last 7 days)
-        var recentCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.CreatedAt >= DateTime.UtcNow.AddDays(-7));
-        definitions.Add(new SmartCollectionDefinition
+        // 1. Built-in filters
+        foreach (var filter in BuiltInFilters)
         {
-            Id = "recent-7d",
-            Name = "Gần đây (7 ngày)",
-            Description = "Các tài nguyên được tải lên trong 7 ngày qua",
-            Icon = "🕐",
-            Color = "#2196F3",
-            Count = recentCount
-        });
+            definitions.Add(await filter.GetDefinitionAsync(_context, userId));
+        }
 
-        // 2. Recent uploads (last 30 days)
-        var monthCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.CreatedAt >= DateTime.UtcNow.AddDays(-30));
-        definitions.Add(new SmartCollectionDefinition
+        // 2. Dynamic tag-based filters (top 10 most used tags)
+        var tagFilters = await BuildTagFiltersAsync(userId);
+        foreach (var filter in tagFilters)
         {
-            Id = "recent-30d",
-            Name = "Tháng này",
-            Description = "Các tài nguyên được tải lên trong 30 ngày qua",
-            Icon = "📅",
-            Color = "#4CAF50",
-            Count = monthCount
-        });
-
-        // 3. All images
-        var imageCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Image);
-        definitions.Add(new SmartCollectionDefinition
-        {
-            Id = "all-images",
-            Name = "Tất cả hình ảnh",
-            Description = "Mọi hình ảnh đã tải lên",
-            Icon = "🖼️",
-            Color = "#FF9800",
-            Count = imageCount
-        });
-
-        // 4. All links
-        var linkCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Link);
-        definitions.Add(new SmartCollectionDefinition
-        {
-            Id = "all-links",
-            Name = "Tất cả liên kết",
-            Description = "Mọi liên kết đã lưu",
-            Icon = "🔗",
-            Color = "#9C27B0",
-            Count = linkCount
-        });
-
-        // 5. All colors
-        var colorCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Color);
-        definitions.Add(new SmartCollectionDefinition
-        {
-            Id = "all-colors",
-            Name = "Tất cả màu sắc",
-            Description = "Mọi mẫu màu đã lưu",
-            Icon = "🎨",
-            Color = "#E91E63",
-            Count = colorCount
-        });
-
-        // 6. Untagged assets
-        var untaggedCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && !a.IsFolder &&
-                !_context.AssetTags.Any(at => at.AssetId == a.Id));
-        definitions.Add(new SmartCollectionDefinition
-        {
-            Id = "untagged",
-            Name = "Chưa gắn tag",
-            Description = "Tài nguyên chưa được gắn tag nào",
-            Icon = "🏷️",
-            Color = "#607D8B",
-            Count = untaggedCount
-        });
-
-        // 7. Large files (files that have thumbnails — images)
-        var largeCount = await _context.Assets
-            .CountAsync(a => a.UserId == userId && a.ContentType == AssetContentType.Image && a.ThumbnailLg != null);
-        definitions.Add(new SmartCollectionDefinition
-        {
-            Id = "with-thumbnails",
-            Name = "Có thumbnail",
-            Description = "Hình ảnh đã được tạo thumbnail",
-            Icon = "📐",
-            Color = "#00BCD4",
-            Count = largeCount
-        });
-
-        // 8. Per-tag smart collections (top 10 most used tags)
-        var topTags = await _context.Tags
-            .Where(t => t.UserId == userId)
-            .Select(t => new
-            {
-                t.Id,
-                t.Name,
-                t.Color,
-                Count = _context.AssetTags.Count(at => at.TagId == t.Id)
-            })
-            .OrderByDescending(t => t.Count)
-            .Take(10)
-            .ToListAsync();
-
-        foreach (var tag in topTags.Where(t => t.Count > 0))
-        {
-            definitions.Add(new SmartCollectionDefinition
-            {
-                Id = $"tag-{tag.Id}",
-                Name = $"Tag: {tag.Name}",
-                Description = $"Tài nguyên được gắn tag '{tag.Name}'",
-                Icon = "🏷️",
-                Color = tag.Color ?? "#78909C",
-                Count = tag.Count
-            });
+            definitions.Add(await filter.GetDefinitionAsync(_context, userId));
         }
 
         return definitions;
@@ -146,19 +62,14 @@ public class SmartCollectionService : ISmartCollectionService
         IQueryable<Asset> query = _context.Assets
             .Where(a => a.UserId == userId && !a.IsFolder);
 
-        // Apply smart collection filter
-        query = smartCollectionId switch
+        // Find matching filter from registry
+        var filter = FindFilter(smartCollectionId)
+                     ?? await FindDynamicFilterAsync(smartCollectionId, userId);
+
+        if (filter != null)
         {
-            "recent-7d" => query.Where(a => a.CreatedAt >= DateTime.UtcNow.AddDays(-7)),
-            "recent-30d" => query.Where(a => a.CreatedAt >= DateTime.UtcNow.AddDays(-30)),
-            "all-images" => query.Where(a => a.ContentType == AssetContentType.Image),
-            "all-links" => query.Where(a => a.ContentType == AssetContentType.Link),
-            "all-colors" => query.Where(a => a.ContentType == AssetContentType.Color),
-            "untagged" => query.Where(a => !_context.AssetTags.Any(at => at.AssetId == a.Id)),
-            "with-thumbnails" => query.Where(a => a.ContentType == AssetContentType.Image && a.ThumbnailLg != null),
-            _ when smartCollectionId.StartsWith("tag-") => ApplyTagFilter(query, smartCollectionId),
-            _ => query
-        };
+            query = filter.ApplyFilter(query, _context);
+        }
 
         // Sorting
         query = pagination.SortBy?.ToLower() switch
@@ -166,7 +77,7 @@ public class SmartCollectionService : ISmartCollectionService
             "filename" => pagination.SortOrder == "desc"
                 ? query.OrderByDescending(a => a.FileName)
                 : query.OrderBy(a => a.FileName),
-            _ => query.OrderByDescending(a => a.CreatedAt) // default
+            _ => query.OrderByDescending(a => a.CreatedAt)
         };
 
         var totalCount = await query.CountAsync();
@@ -184,15 +95,44 @@ public class SmartCollectionService : ISmartCollectionService
         };
     }
 
-    private IQueryable<Asset> ApplyTagFilter(IQueryable<Asset> query, string smartCollectionId)
+    /// <summary>Look up a built-in filter by ID.</summary>
+    private static ISmartCollectionFilter? FindFilter(string id)
     {
-        if (int.TryParse(smartCollectionId.Replace("tag-", ""), out var tagId))
-        {
-            var assetIdsWithTag = _context.AssetTags
-                .Where(at => at.TagId == tagId)
-                .Select(at => at.AssetId);
-            query = query.Where(a => assetIdsWithTag.Contains(a.Id));
-        }
-        return query;
+        return BuiltInFilters.FirstOrDefault(f => f.Id == id);
+    }
+
+    /// <summary>Build a dynamic TagFilter if the ID matches the tag-{id} pattern.</summary>
+    private async Task<ISmartCollectionFilter?> FindDynamicFilterAsync(string smartCollectionId, string userId)
+    {
+        if (!smartCollectionId.StartsWith("tag-")) return null;
+
+        if (!int.TryParse(smartCollectionId.Replace("tag-", ""), out var tagId)) return null;
+
+        var tag = await _context.Tags
+            .Where(t => t.Id == tagId && t.UserId == userId)
+            .Select(t => new { t.Id, t.Name, t.Color })
+            .FirstOrDefaultAsync();
+
+        return tag != null ? new TagFilter(tag.Id, tag.Name, tag.Color) : null;
+    }
+
+    /// <summary>Build TagFilter strategies for the user's top-10 most-used tags.</summary>
+    private async Task<List<TagFilter>> BuildTagFiltersAsync(string userId)
+    {
+        var topTags = await _context.Tags
+            .Where(t => t.UserId == userId)
+            .Select(t => new
+            {
+                t.Id,
+                t.Name,
+                t.Color,
+                Count = _context.AssetTags.Count(at => at.TagId == t.Id)
+            })
+            .Where(t => t.Count > 0)
+            .OrderByDescending(t => t.Count)
+            .Take(10)
+            .ToListAsync();
+
+        return topTags.Select(t => new TagFilter(t.Id, t.Name, t.Color)).ToList();
     }
 }
