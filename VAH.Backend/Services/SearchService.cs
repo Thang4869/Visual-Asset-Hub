@@ -17,7 +17,7 @@ public class SearchService : ISearchService
     }
 
     /// <inheritdoc />
-    public async Task<SearchResult> SearchAsync(string userId, string? query, string? type, int? collectionId, int page = 1, int pageSize = 50)
+    public async Task<SearchResult> SearchAsync(string userId, string? query, string? type, int? collectionId, int page = 1, int pageSize = 50, CancellationToken ct = default)
     {
         pageSize = Math.Min(pageSize, 100);
         page = Math.Max(page, 1);
@@ -45,12 +45,12 @@ public class SearchService : ISearchService
         if (collectionId.HasValue)
             assetQuery = assetQuery.Where(a => a.CollectionId == collectionId.Value);
 
-        var totalAssets = await assetQuery.CountAsync();
+        var totalAssets = await assetQuery.CountAsync(ct);
         var assets = await assetQuery
             .OrderByDescending(a => a.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         // ── Search Collections (user-scoped: system + own) ──
         var collections = new List<Collection>();
@@ -63,11 +63,11 @@ public class SearchService : ISearchService
                     (c.Name.ToLower().Contains(term) ||
                      c.Description.ToLower().Contains(term)));
 
-            totalCollections = await collQuery.CountAsync();
+            totalCollections = await collQuery.CountAsync(ct);
             collections = await collQuery
                 .OrderBy(c => c.Order)
                 .Take(10) // Show max 10 matching collections
-                .ToListAsync();
+                .ToListAsync(ct);
         }
 
         return new SearchResult

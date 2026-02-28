@@ -8,32 +8,23 @@ namespace VAH.Backend.Controllers;
 /// Health check endpoint for monitoring and load balancer readiness.
 /// </summary>
 [Route("api/[controller]")]
-public class HealthController : BaseApiController
+[Produces("application/json")]
+public class HealthController(AppDbContext context, IWebHostEnvironment env) : BaseApiController
 {
-    private readonly AppDbContext _context;
-    private readonly IWebHostEnvironment _env;
-
-    public HealthController(AppDbContext context, IWebHostEnvironment env)
-    {
-        _context = context;
-        _env = env;
-    }
-
-    /// <summary>
-    /// Basic health check — verifies API is running and DB is reachable.
-    /// GET /api/health
-    /// </summary>
+    /// <summary>Basic health check — verifies API is running and DB is reachable.</summary>
     [HttpGet]
-    public async Task<IActionResult> GetHealth()
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetHealth(CancellationToken ct)
     {
         var dbHealthy = false;
         try
         {
-            dbHealthy = await _context.Database.CanConnectAsync();
+            dbHealthy = await context.Database.CanConnectAsync(ct);
         }
         catch { /* swallow */ }
 
-        var uploadsPath = Path.Combine(_env.WebRootPath ?? "", "uploads");
+        var uploadsPath = Path.Combine(env.WebRootPath ?? "", "uploads");
         var storageHealthy = Directory.Exists(uploadsPath);
 
         var result = new
@@ -47,7 +38,7 @@ public class HealthController : BaseApiController
             },
             info = new
             {
-                environment = _env.EnvironmentName,
+                environment = env.EnvironmentName,
                 version = typeof(HealthController).Assembly.GetName().Version?.ToString() ?? "1.0.0",
             }
         };

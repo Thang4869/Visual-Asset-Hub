@@ -23,6 +23,11 @@ class CollectionApiService extends BaseApiService {
     return this._post('', payload);
   }
 
+  /** Update a collection (partial) — PATCH semantics */
+  update(id, payload) {
+    return this._patch(`/${id}`, { id, ...payload });
+  }
+
   /** Delete a collection */
   delete(id) {
     return this._delete(`/${id}`);
@@ -35,5 +40,6 @@ const collectionApiService = new CollectionApiService();
 export const fetchAllCollections = (...args) => collectionApiService.fetchAll(...args);
 export const fetchCollectionItems = (...args) => collectionApiService.fetchItems(...args);
 export const createCollection = (...args) => collectionApiService.create(...args);
+export const updateCollection = (...args) => collectionApiService.update(...args);
 export const deleteCollection = (...args) => collectionApiService.delete(...args);
 export default collectionApiService;

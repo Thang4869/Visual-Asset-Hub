@@ -178,5 +178,6 @@ export default function useCollections({ confirm, prompt: showPrompt, alert: sho
     handleCreateCollection,
     handleDeleteCollection,
     refreshItems,
+    fetchCollections,
   };
 }

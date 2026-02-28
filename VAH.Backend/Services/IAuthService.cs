@@ -7,6 +7,6 @@ namespace VAH.Backend.Services;
 /// </summary>
 public interface IAuthService
 {
-    Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
-    Task<AuthResponseDto> LoginAsync(LoginDto dto);
+    Task<AuthResponseDto> RegisterAsync(RegisterDto dto, CancellationToken ct = default);
+    Task<AuthResponseDto> LoginAsync(LoginDto dto, CancellationToken ct = default);
 }

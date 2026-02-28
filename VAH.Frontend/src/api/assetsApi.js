@@ -24,27 +24,27 @@ class AssetApiService extends BaseApiService {
 
   /** Create a folder */
   createFolder(payload) {
-    return this._post('/create-folder', payload);
+    return this._post('/folders', payload);
   }
 
   /** Create a link */
   createLink(payload) {
-    return this._post('/create-link', payload);
+    return this._post('/links', payload);
   }
 
   /** Create a color */
   createColor(payload) {
-    return this._post('/create-color', payload);
+    return this._post('/colors', payload);
   }
 
   /** Create a color group */
   createColorGroup(payload) {
-    return this._post('/create-color-group', payload);
+    return this._post('/color-groups', payload);
   }
 
-  /** Update asset (rename, move, etc.) */
+  /** Update asset (rename, move, etc.) — PATCH semantics */
   updateAsset(id, payload) {
-    return this._put(`/${id}`, payload);
+    return this._patch(`/${id}`, payload);
   }
 
   /** Update asset position (canvas) */

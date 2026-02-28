@@ -9,8 +9,8 @@ namespace VAH.Backend.Services;
 /// </summary>
 public interface IBulkAssetService
 {
-    Task<int> BulkDeleteAsync(List<int> assetIds, string userId);
-    Task<int> BulkMoveAsync(BulkMoveDto dto, string userId);
-    Task<int> BulkMoveGroupAsync(BulkMoveGroupDto dto, string userId);
-    Task<int> BulkTagAsync(BulkTagDto dto, string userId);
+    Task<int> BulkDeleteAsync(List<int> assetIds, string userId, CancellationToken ct = default);
+    Task<int> BulkMoveAsync(BulkMoveDto dto, string userId, CancellationToken ct = default);
+    Task<int> BulkMoveGroupAsync(BulkMoveGroupDto dto, string userId, CancellationToken ct = default);
+    Task<int> BulkTagAsync(BulkTagDto dto, string userId, CancellationToken ct = default);
 }

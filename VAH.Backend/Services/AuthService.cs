@@ -26,7 +26,7 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
-    public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
+    public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
         // Check if user already exists
         var existingUser = await _userManager.FindByEmailAsync(dto.Email);
@@ -52,7 +52,7 @@ public class AuthService : IAuthService
         return GenerateTokenResponse(user);
     }
 
-    public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
+    public async Task<AuthResponseDto> LoginAsync(LoginDto dto, CancellationToken ct = default)
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user == null)

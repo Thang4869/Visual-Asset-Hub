@@ -2,6 +2,22 @@ using System.ComponentModel.DataAnnotations;
 
 namespace VAH.Backend.Models;
 
+// ──── Asset Creation DTOs ────
+
+public class CreateAssetDto
+{
+    [Required, MaxLength(500)]
+    public string FileName { get; set; } = string.Empty;
+
+    [Required, MaxLength(2048)]
+    public string FilePath { get; set; } = string.Empty;
+
+    [Range(1, int.MaxValue)]
+    public int CollectionId { get; set; } = 1;
+
+    public int? ParentFolderId { get; set; }
+}
+
 public class CreateFolderDto
 {
     [Required, MaxLength(255)]
@@ -139,6 +155,43 @@ public class BulkTagDto
 
     /// <summary>If true, removes these tags. If false (default), adds them.</summary>
     public bool Remove { get; set; } = false;
+}
+
+// ──── Collection Creation DTO ────
+
+public class CreateCollectionDto
+{
+    [Required, MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    public int? ParentId { get; set; }
+
+    [MaxLength(20)]
+    public string? Color { get; set; }
+
+    public CollectionType? Type { get; set; }
+    public LayoutType? LayoutType { get; set; }
+}
+
+// ──── Collection Update DTO ────
+
+public class UpdateCollectionDto
+{
+    [MaxLength(255)]
+    public string? Name { get; set; }
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    [MaxLength(20)]
+    public string? Color { get; set; }
+
+    public CollectionType? Type { get; set; }
+    public int? Order { get; set; }
+    public LayoutType? LayoutType { get; set; }
 }
 
 // ──── Duplicate DTO ────

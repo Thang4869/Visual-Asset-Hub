@@ -59,6 +59,16 @@ export default class BaseApiService {
   }
 
   /**
+   * PATCH request and return response data (partial update).
+   * @param {string} [path=''] - Path appended to the endpoint
+   * @param {*} data - Request body (partial fields)
+   */
+  async _patch(path = '', data = {}) {
+    const res = await this.client.patch(`${this.endpoint}${path}`, data);
+    return res.data;
+  }
+
+  /**
    * DELETE request and return response data.
    * @param {string} [path=''] - Path appended to the endpoint
    */

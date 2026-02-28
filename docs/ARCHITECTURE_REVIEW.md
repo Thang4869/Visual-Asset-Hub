@@ -1,7 +1,7 @@
 # Visual Asset Hub — Đánh giá Kiến trúc & Lộ trình Phát triển
 
-> **Cập nhật lần cuối:** 28/02/2026  
-> **Phiên bản:** 5.0 — Hoàn thành 4 giai đoạn phát triển + OOP refactoring 5/5 Phases + Session #4 (Context Menu, TreeView, Clipboard, Shared-Collection Access)
+> **Cập nhật lần cuối:** 01/03/2026  
+> **Phiên bản:** 6.0 — Session #6: OOP Refactor Phase 1 (AssetsController SRP Split + CreateAssetDto + AssetFactory.Duplicate)
 
 ---
 
@@ -12,49 +12,49 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 ### Kiến trúc tổng thể
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────────┐
 │                            CLIENTS                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
-│  │  React 19 SPA│  │  Mobile App  │  │  Public API  │            │
-│  │  (Vite 7)    │  │  (future)    │  │  (future)    │            │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘            │
-└─────────┼─────────────────┼─────────────────┼────────────────────┘
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  React 19 SPA│  │  Mobile App  │  │  Public API  │             │
+│  │  (Vite 7)    │  │  (future)    │  │  (future)    │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+└─────────┼─────────────────┼─────────────────┼─────────────────────┘
           │ HTTP + WebSocket│                 │
           ▼                 ▼                 ▼
-┌──────────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────────┐
 │                     REVERSE PROXY (Nginx)                         │
-│  SPA fallback • Gzip • Cache /assets/ 1 year • Port 80           │
-└───────────────────────────┬──────────────────────────────────────┘
+│  SPA fallback • Gzip • Cache /assets/ 1 year • Port 80            │
+└───────────────────────────┬───────────────────────────────────────┘
                             │
                             ▼
-┌──────────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────────┐
 │                   ASP.NET Core 9.0 Backend                        │
-│  ┌────────────────────────────────────────────────────────────┐   │
-│  │ Middleware:                                                  │   │
-│  │  ExceptionHandler → CORS → Serilog → RateLimiter →          │   │
-│  │  StaticFiles → Auth → Controllers + SignalR Hub              │   │
-│  ├────────────────────────────────────────────────────────────┤   │
-│  │ 8 Controllers (44 endpoints):                               │   │
-│  │  Assets(17) • Auth(2) • Collections(5) • Search(1) •        │   │
-│  │  Tags(10) • SmartCollections(2) • Permissions(6) • Health(1)│   │
-│  ├────────────────────────────────────────────────────────────┤   │
-│  │ 12 Services + Helpers:                                       │   │
-│  │  Asset • BulkAsset • Collection • Auth • Storage •           │   │
-│  │  Thumbnail • Tag • Notification • SmartCollection •          │   │
-│  │  Permission • Search • AssetCleanupHelper                    │   │
-│  ├────────────────────────────────────────────────────────────┤   │
-│  │ EF Core 9 (SQLite dev / PostgreSQL prod) • 5 DbSets         │   │
-│  │ ASP.NET Identity • Auto-Migrate on Startup                   │   │
-│  └────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │ Middleware:                                                 │  │
+│  │  ExceptionHandler → CORS → Serilog → RateLimiter →          │  │
+│  │  StaticFiles → Auth → Controllers + SignalR Hub             │  │
+│  ├─────────────────────────────────────────────────────────────┤  │
+│  9 Controllers (47 endpoints):                               │  │
+│  │  Assets(15) • BulkAssets(4) • Auth(2) • Collections(6) •    │  │
+│  │  Search(1) • Tags(10) • SmartCollections(2) • Perms(6) • H(1)│  │
+│  ├─────────────────────────────────────────────────────────────┤  │
+│  │ 12 Services + Helpers:                                      │  │
+│  │  Asset • BulkAsset • Collection • Auth • Storage •          │  │
+│  │  Thumbnail • Tag • Notification • SmartCollection •         │  │
+│  │  Permission • Search • AssetCleanupHelper                   │  │
+│  ├─────────────────────────────────────────────────────────────┤  │
+│  │ EF Core 9 (SQLite dev / PostgreSQL prod) • 5 DbSets         │  │
+│  │ ASP.NET Identity • Auto-Migrate on Startup                  │  │
+│  └─────────────────────────────────────────────────────────────┘  │
 │  Port 5027 • JWT Bearer • SignalR (/hubs/assets)                  │
-└──────────┬───────────────────┬──────────────────┬────────────────┘
+└──────────┬───────────────────┬──────────────────┬─────────────────┘
            │                   │                  │
            ▼                   ▼                  ▼
-    ┌─────────────┐    ┌─────────────┐    ┌────────────────┐
+    ┌──────────────┐    ┌─────────────┐    ┌────────────────┐
     │ PostgreSQL 17│    │  Redis 7    │    │ Local Storage  │
     │ (Docker)     │    │  (Cache)    │    │ wwwroot/uploads│
     │ Port 5432    │    │  Port 6379  │    │ + /thumbs      │
-    └─────────────┘    └─────────────┘    └────────────────┘
+    └──────────────┘    └─────────────┘    └────────────────┘
 ```
 
 ### Tech Stack
@@ -155,7 +155,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | **Authorization** | ✅ RESOLVED | User-scoped data access. Mọi query filter theo UserId | Đã khắc phục |
 | **User isolation** | ✅ RESOLVED | `UserId` FK trên Asset + Collection. System collections (null) shared, user data isolated | Đã khắc phục |
 | **Data ownership** | ✅ RESOLVED | Service layer enforce `UserId == currentUser` trên mọi CRUD operation | Đã khắc phục |
-| **Input validation** | 🟡 MEDIUM | Chỉ có `[Required]` trên FileName/FilePath. DTO không validate | SQL injection risk thấp (EF Core parameterize), nhưng logic bugs cao. Có thể tạo asset với collectionId không tồn tại |
+| **Input validation** | ✅ IMPROVED (Session #6) | CreateAssetDto có `[Required]`, `[MaxLength]`, `[Range]` validation. Các DTO khác cần review thêm | SQL injection risk thấp (EF Core parameterize). Asset creation giờ validate đúng |
 | **File upload protection** | 🟡 MEDIUM | Không giới hạn size, type, số lượng file | Server bị DoS bằng upload file lớn. Upload `.exe`, `.php` shell |
 | **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` |
 | **CORS policy** | ✅ RESOLVED | Config-driven origins (từ `appsettings`), `AllowCredentials` cho SignalR. Không phải `AllowAnyOrigin` | Giới hạn domain được phép gọi API |
@@ -165,6 +165,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
 | **Service layer** | ✅ RESOLVED | Interface-based DI, 12 services tách biệt (11 interface-backed + AssetCleanupHelper). BulkAssetService tách từ AssetService. SearchService extracted từ controller. Strategy pattern cho SmartCollection. Domain methods trên entities | Clean separation |
+| **Controller SRP** | ✅ RESOLVED (Session #6) | AssetsController split → AssetsController (13 CRUD) + BulkAssetsController (4 bulk ops). Mỗi controller inject đúng 1 service. CreateAssetDto thay raw entity | SRP compliant, ISP compliant |
 | **Repository pattern** | 🟡 MEDIUM | Service layer gọi `_context` trực tiếp (không qua Repository) | Coupling với EF Core, nhưng acceptable cho project size này |
 | **Domain separation** | ✅ IMPROVED | Models có domain behavior, Enums tách riêng, DTOs gom vào Models/DTOs.cs | Rich Domain Model thay vì Anemic |
 | **Exception handling** | ✅ RESOLVED | Global ExceptionHandlingMiddleware (RFC 7807) | Structured error responses |
@@ -281,29 +282,36 @@ Chi tiết exception chỉ hiện ở Development environment.
 
 ---
 
-## 3. API Reference (44 Endpoints)
+## 3. API Reference (45 Endpoints)
 
-### 3.1 Assets — `api/Assets` [Authorize] (17 endpoints)
+### 3.1 Assets — `api/Assets` [Authorize] (14 endpoints) + Bulk (4 endpoints)
 
-| # | Method | Route | Mô tả |
-|---|--------|-------|-------|
-| 1 | GET | `/api/Assets` | Danh sách assets phân trang |
-| 2 | POST | `/api/Assets` | Tạo asset mới |
-| 3 | POST | `/api/Assets/upload` | Upload multi-file (validation: size, ext, MIME) |
-| 4 | PUT | `/api/Assets/{id}/position` | Cập nhật vị trí trên canvas |
-| 5 | POST | `/api/Assets/create-folder` | Tạo thư mục |
-| 6 | POST | `/api/Assets/create-color` | Tạo asset màu sắc |
-| 7 | POST | `/api/Assets/create-color-group` | Tạo nhóm màu |
-| 8 | POST | `/api/Assets/create-link` | Tạo liên kết (URL validation) |
-| 9 | PUT | `/api/Assets/{id}` | Cập nhật asset (partial) |
-| 10 | DELETE | `/api/Assets/{id}` | Xóa asset + file vật lý + thumbnails |
-| 11 | POST | `/api/Assets/reorder` | Sắp xếp lại thứ tự |
-| 12 | GET | `/api/Assets/group/{groupId}` | Assets theo nhóm |
-| 13 | POST | `/api/Assets/bulk-delete` | Xóa hàng loạt |
-| 14 | POST | `/api/Assets/bulk-move` | Di chuyển hàng loạt |
-| 15 | POST | `/api/Assets/bulk-move-group` | Di chuyển màu giữa các group với vị trí chính xác |
-| 16 | POST | `/api/Assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
-| 17 | POST | `/api/Assets/{id}/duplicate` | Duplicate asset (clone + optional target folder) |
+| # | Method | Route | Status | Mô tả |
+|---|--------|-------|--------|-------|
+| 1 | GET | `/api/Assets` | 200 | Danh sách assets phân trang |
+| 2 | GET | `/api/Assets/{id}` | 200/404 | Chi tiết asset (Session #6.2) |
+| 3 | POST | `/api/Assets` | 201 | Tạo asset mới (CreateAssetDto) |
+| 4 | POST | `/api/Assets/upload` | 201 | Upload multi-file (validation: size, ext, MIME) |
+| 5 | PATCH | `/api/Assets/{id}` | 200 | Cập nhật asset (partial, Session #6.2) |
+| 6 | PUT | `/api/Assets/{id}` | 200 | Cập nhật asset (backward compat alias) |
+| 7 | PUT | `/api/Assets/{id}/position` | 200 | Cập nhật vị trí trên canvas |
+| 8 | DELETE | `/api/Assets/{id}` | 204 | Xóa asset + file vật lý + thumbnails |
+| 9 | POST | `/api/Assets/{id}/duplicate` | 201 | Duplicate asset (clone + optional target folder) |
+| 10 | POST | `/api/Assets/reorder` | 204 | Sắp xếp lại thứ tự |
+| 11 | GET | `/api/Assets/group/{groupId}` | 200 | Assets theo nhóm |
+| 12 | POST | `/api/Assets/folders` | 201 | Tạo thư mục (REST noun, Session #6.2) |
+| 13 | POST | `/api/Assets/colors` | 201 | Tạo asset màu sắc (REST noun) |
+| 14 | POST | `/api/Assets/color-groups` | 201 | Tạo nhóm màu (REST noun) |
+| 15 | POST | `/api/Assets/links` | 201 | Tạo liên kết (REST noun, URL validation) |
+
+**BulkAssetsController** — `api/Assets` [Authorize] (4 endpoints, tách từ Session #6)
+
+| # | Method | Route | Status | Mô tả |
+|---|--------|-------|--------|-------|
+| 1 | POST | `/api/Assets/bulk-delete` | 200 | Xóa hàng loạt |
+| 2 | POST | `/api/Assets/bulk-move` | 200 | Di chuyển hàng loạt |
+| 3 | POST | `/api/Assets/bulk-move-group` | 200 | Di chuyển màu giữa các group với vị trí chính xác |
+| 4 | POST | `/api/Assets/bulk-tag` | 200 | Gắn/gỡ tag hàng loạt |
 
 ### 3.2 Auth — `api/Auth` [RateLimited]
 
@@ -319,8 +327,9 @@ Chi tiết exception chỉ hiện ở Development environment.
 | 1 | GET | `/api/Collections` | Tất cả collections (own + system + shared) |
 | 2 | GET | `/api/Collections/{id}/items` | Items + sub-collections (permission-aware) |
 | 3 | POST | `/api/Collections` | Tạo collection mới |
-| 4 | PUT | `/api/Collections/{id}` | Cập nhật (cần editor+ permission nếu shared) |
-| 5 | DELETE | `/api/Collections/{id}` | Xóa (owner only) |
+| 4 | PATCH | `/api/Collections/{id}` | Cập nhật partial (Session #6.2) |
+| 5 | PUT | `/api/Collections/{id}` | Cập nhật (backward compat alias) |
+| 6 | DELETE | `/api/Collections/{id}` | Xóa (owner only) |
 
 ### 3.4 Search — `api/Search` [Authorize]
 
@@ -610,7 +619,8 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng API endpoints | 44 |
+| Tổng API endpoints | 47 (was 44, +GET/{id}, +PATCH assets, +PATCH collections) |
+| Backend controllers | 9 (was 8, split AssetsController → Assets + BulkAssets in Session #6) |
 | Backend services | 12 (11 interface-backed + AssetCleanupHelper) |
 | Frontend hooks | 11 |
 | Frontend components | 17 |
@@ -621,8 +631,8 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 | Database indexes | 22 |
 | Docker services | 4 |
 | EF Migrations | 5 (InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges) |
-| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor 5/5 Phases (23/23) + Session #4 UX features** |
+| Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor 5/5 Phases (23/23) + Session #4-6** |
 
 ---
 
-> *Tất cả 4 giai đoạn phát triển + 5 OOP refactoring phases đã hoàn thành (23/23 tasks). Session #4 bổ sung: Context Menu, TreeViewPanel, Clipboard System, Pin System, ConfirmDialog, Shared-Collection Access Control, Duplicate Asset API. Hệ thống sẵn sàng deploy production qua Docker Compose với PostgreSQL, Redis, SignalR real-time, RBAC sharing, và non-root containers.*
+> *Tất cả 4 giai đoạn phát triển + 5 OOP refactoring phases đã hoàn thành (23/23 tasks). Session #4 bổ sung: Context Menu, TreeViewPanel, Clipboard System, Pin System, ConfirmDialog, Shared-Collection Access Control, Duplicate Asset API. Session #5: Rename Collection fix, UpdateCollectionDto, Global Keyboard Shortcuts. Session #6: OOP Refactor Phase 1 — AssetsController SRP split (→ BulkAssetsController), CreateAssetDto, AssetFactory.Duplicate/FromDto. Xem OOP Refactor Roadmap đầy đủ trong FIX_REPORT_20260227.md.*

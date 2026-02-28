@@ -61,14 +61,14 @@ public class Collection
     /// <summary>Check if user has access (owner or system collection).</summary>
     public bool IsAccessibleBy(string userId) => IsSystemCollection || IsOwnedBy(userId);
 
-    /// <summary>Apply partial update from another collection object.</summary>
-    public void ApplyUpdate(Collection source)
+    /// <summary>Apply partial update from DTO. Only non-null fields are modified.</summary>
+    public void ApplyUpdate(UpdateCollectionDto dto)
     {
-        Name = source.Name?.Trim() ?? Name;
-        Description = source.Description ?? Description;
-        Color = source.Color ?? Color;
-        Type = source.Type;
-        Order = source.Order;
-        LayoutType = source.LayoutType;
+        if (dto.Name != null) Name = dto.Name.Trim();
+        if (dto.Description != null) Description = dto.Description;
+        if (dto.Color != null) Color = dto.Color;
+        if (dto.Type.HasValue) Type = dto.Type.Value;
+        if (dto.Order.HasValue) Order = dto.Order.Value;
+        if (dto.LayoutType.HasValue) LayoutType = dto.LayoutType.Value;
     }
 }
