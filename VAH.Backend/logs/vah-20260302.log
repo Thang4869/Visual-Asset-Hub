@@ -1,0 +1,4 @@
+2026-03-02 00:05:32.267 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-03-02 00:05:32.267 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-03-02 00:05:32.275 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 890548.039ms
+2026-03-02 00:05:32.275 +07:00 [WRN] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 890528.209ms
