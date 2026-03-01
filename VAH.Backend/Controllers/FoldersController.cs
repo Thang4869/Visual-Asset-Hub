@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VAH.Backend.Features.Assets.Common;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
 
@@ -22,9 +23,8 @@ public class FoldersController(IAssetService assetService) : BaseApiController
         [FromBody] CreateFolderDto dto, CancellationToken ct = default)
     {
         var folder = await assetService.CreateFolderAsync(dto, GetUserId(), ct);
-        return CreatedAtAction(
-            actionName: nameof(AssetsController.GetAssetById),
-            controllerName: "Assets",
+        return CreatedAtRoute(
+            routeName: AssetRouteNames.GetAssetById,
             routeValues: new { id = folder.Id },
             value: folder);
     }

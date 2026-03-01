@@ -38,7 +38,7 @@ builder.Services.AddRateLimitingPolicies();
 builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddIdentityAndAuth(builder.Configuration);
 builder.Services.AddCachingServices(builder.Configuration);
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
 
 // --- Kestrel limits ---
 builder.WebHost.ConfigureKestrel(options =>

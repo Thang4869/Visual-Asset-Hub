@@ -4,9 +4,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using VAH.Backend.Configuration;
 using VAH.Backend.Data;
+using VAH.Backend.Features.Assets.Application;
+using VAH.Backend.Features.Assets.Application.Duplicate;
+using VAH.Backend.Features.Assets.Infrastructure.Contexts;
+using VAH.Backend.Features.Assets.Infrastructure.Files;
 using VAH.Backend.Middleware;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
@@ -192,10 +199,20 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Register all application-specific services (storage, assets, collections, etc.).
     /// </summary>
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
+        services.Configure<AssetOptions>(configuration.GetSection(AssetOptions.SectionName));
+
         // ── MediatR (CQRS pipeline) ──
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssetService>());
+
+        services.AddScoped<IUserContextProvider, UserContextProvider>();
+        services.AddScoped<IFileMapperService, FileMapperService>();
+        services.AddScoped<IAssetDuplicateStrategy, InPlaceDuplicateStrategy>();
+        services.AddScoped<IAssetDuplicateStrategy, TargetFolderDuplicateStrategy>();
+        services.AddScoped<IAssetDuplicateStrategyFactory, AssetDuplicateStrategyFactory>();
+        services.AddScoped<IAssetApplicationService, AssetApplicationService>();
 
         // ── Global Exception Handler (RFC 7807) ──
         services.AddExceptionHandler<GlobalExceptionHandler>();
