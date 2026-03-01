@@ -1,6 +1,6 @@
 # Visual Asset Hub (VAH)
 
-**Digital Asset Management** — Ứng dụng web quản lý tài nguyên số với kiến trúc modular-monolith và Assets vertical slice.
+**Digital Asset Management** — Ứng dụng web quản lý tài nguyên số (ảnh, link, màu sắc) với phân quyền, real-time sync, và giao diện Dark Navy hiện đại.
 
 ![.NET 9](https://img.shields.io/badge/.NET-9.0-purple)
 ![React 19](https://img.shields.io/badge/React-19.2-blue)
@@ -80,79 +80,82 @@ npm run dev
 
 ---
 
-## API Endpoints (current)
+## API Endpoints (43 total)
 
-### Auth
+### Auth — 2 endpoints [RateLimited]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| POST | `/api/v1/auth/register` | Đăng ký → JWT |
-| POST | `/api/v1/auth/login` | Đăng nhập → JWT |
+| POST | `/api/Auth/register` | Đăng ký → JWT |
+| POST | `/api/Auth/login` | Đăng nhập → JWT |
 
-### Assets (Commands/Queries + Bulk + Layout)
+### Assets — 16 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/v1/assets` | List (paged, sorted) |
-| GET | `/api/v1/assets/{id}` | Chi tiết asset |
-| POST | `/api/v1/assets` | Tạo asset mới |
-| POST | `/api/v1/assets/upload` | Upload multi-file |
-| PATCH | `/api/v1/assets/{id}` | Cập nhật một phần |
-| DELETE | `/api/v1/assets/{id}` | Xóa asset |
-| POST | `/api/v1/assets/{id}/duplicate` | Duplicate asset |
-| PUT | `/api/v1/assets/{id}/position` | Cập nhật vị trí canvas |
-| POST | `/api/v1/assets/reorder` | Sắp xếp lại thứ tự |
-| POST | `/api/v1/assets/bulk-delete` | Xóa hàng loạt |
-| POST | `/api/v1/assets/bulk-move` | Di chuyển hàng loạt |
-| POST | `/api/v1/assets/bulk-move-group` | Di chuyển màu giữa nhóm |
-| POST | `/api/v1/assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
+| GET | `/api/Assets` | List (paged, sorted) |
+| POST | `/api/Assets` | Tạo asset mới |
+| POST | `/api/Assets/upload` | Upload multi-file (validation: size, ext, MIME) |
+| PUT | `/api/Assets/{id}/position` | Vị trí canvas |
+| POST | `/api/Assets/create-folder` | Tạo thư mục |
+| POST | `/api/Assets/create-color` | Tạo asset màu sắc |
+| POST | `/api/Assets/create-color-group` | Tạo nhóm màu |
+| POST | `/api/Assets/create-link` | Tạo liên kết (URL validation) |
+| PUT | `/api/Assets/{id}` | Cập nhật asset |
+| DELETE | `/api/Assets/{id}` | Xóa asset + file + thumbnails |
+| POST | `/api/Assets/reorder` | Sắp xếp lại thứ tự |
+| GET | `/api/Assets/group/{groupId}` | Assets theo nhóm |
+| POST | `/api/Assets/bulk-delete` | Xóa hàng loạt |
+| POST | `/api/Assets/bulk-move` | Di chuyển hàng loạt |
+| POST | `/api/Assets/bulk-move-group` | Di chuyển màu giữa các group |
+| POST | `/api/Assets/bulk-tag` | Gắn/gỡ tag hàng loạt |
 
-### Collections
+### Collections — 5 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/v1/collections` | List (own + system + shared) |
-| GET | `/api/v1/collections/{id}/items` | Items + sub-collections |
-| POST | `/api/v1/collections` | Tạo mới |
-| PATCH | `/api/v1/collections/{id}` | Cập nhật |
-| DELETE | `/api/v1/collections/{id}` | Xóa |
+| GET | `/api/Collections` | List (own + system + shared) |
+| GET | `/api/Collections/{id}/items` | Items + sub-collections |
+| POST | `/api/Collections` | Tạo mới |
+| PUT | `/api/Collections/{id}` | Cập nhật |
+| DELETE | `/api/Collections/{id}` | Xóa (owner only) |
 
-### Tags
+### Tags — 10 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/v1/tags` | List tags |
-| GET | `/api/v1/tags/{id}` | Chi tiết tag |
-| POST | `/api/v1/tags` | Tạo tag |
-| PUT | `/api/v1/tags/{id}` | Cập nhật tag |
-| DELETE | `/api/v1/tags/{id}` | Xóa tag |
-| GET | `/api/v1/tags/asset/{assetId}` | Tags của asset |
-| PUT | `/api/v1/tags/asset/{assetId}` | Set tags |
-| POST | `/api/v1/tags/asset/{assetId}/add` | Thêm tags |
-| POST | `/api/v1/tags/asset/{assetId}/remove` | Gỡ tags |
-| POST | `/api/v1/tags/migrate` | Migrate legacy |
+| GET | `/api/Tags` | List tags |
+| GET | `/api/Tags/{id}` | Chi tiết tag |
+| POST | `/api/Tags` | Tạo tag (dedup normalized) |
+| PUT | `/api/Tags/{id}` | Cập nhật tag |
+| DELETE | `/api/Tags/{id}` | Xóa tag |
+| GET | `/api/Tags/asset/{assetId}` | Tags của asset |
+| PUT | `/api/Tags/asset/{assetId}` | Set tags (replace) |
+| POST | `/api/Tags/asset/{assetId}/add` | Thêm tags |
+| POST | `/api/Tags/asset/{assetId}/remove` | Gỡ tags |
+| POST | `/api/Tags/migrate` | Migrate legacy → M2M |
 
-### Smart Collections
+### Smart Collections — 2 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/v1/smartcollections` | Danh sách smart collections |
-| GET | `/api/v1/smartcollections/{id}/items` | Items phân trang |
+| GET | `/api/SmartCollections` | Danh sách (8 built-in + per-tag) |
+| GET | `/api/SmartCollections/{id}/items` | Items phân trang |
 
-### Search
+### Search — 1 endpoint [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/v1/search` | Tìm kiếm assets + collections |
+| GET | `/api/Search` | Tìm kiếm assets + collections |
 
-### Permissions
+### Permissions — 6 endpoints [Authorize]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/v1/collections/{collectionId}/permissions` | List permissions |
-| POST | `/api/v1/collections/{collectionId}/permissions` | Cấp quyền |
-| PUT | `/api/v1/collections/{collectionId}/permissions/{permissionId}` | Cập nhật role |
-| DELETE | `/api/v1/collections/{collectionId}/permissions/{permissionId}` | Thu hồi |
-| GET | `/api/v1/collections/{collectionId}/permissions/my-role` | Role hiện tại |
-| GET | `/api/v1/shared-collections` | Collections được chia sẻ |
+| GET | `.../permissions` | List permissions |
+| POST | `.../permissions` | Cấp quyền (owner only, by email) |
+| PUT | `.../permissions/{permissionId}` | Cập nhật role |
+| DELETE | `.../permissions/{permissionId}` | Thu hồi |
+| GET | `.../permissions/my-role` | Role hiện tại |
+| GET | `/api/shared-collections` | Collections được chia sẻ |
 
-### Health
+### Health — 1 endpoint [No Auth]
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| GET | `/api/v1/health` | DB + Storage checks, env info |
+| GET | `/api/Health` | DB + Storage checks, env info |
 
 ---
 
@@ -186,13 +189,11 @@ npm run dev
 | File | Nội dung |
 |------|----------|
 | [docs/ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md) | Kiến trúc hệ thống, tech stack, roadmap |
-| [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) | Tài liệu kỹ thuật chi tiết (nguồn sự thật hiện tại) |
-| [docs/IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) | Hướng dẫn cài đặt, vận hành, xử lý sự cố |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Lịch sử thay đổi tóm tắt gần nhất |
-| [docs/FIX_REPORT_20260227.md](docs/FIX_REPORT_20260227.md) | Lịch sử chi tiết theo session (legacy log được giữ lại) |
+| [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) | Tài liệu kỹ thuật chi tiết (models, services, APIs) |
+| [docs/IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) | Hướng dẫn cài đặt, sử dụng, troubleshooting |
+| [docs/FIX_REPORT_20260227.md](docs/FIX_REPORT_20260227.md) | Lịch sử phát triển & sửa lỗi |
 | [docs/OOP_ASSESSMENT.md](docs/OOP_ASSESSMENT.md) | Đánh giá OOP, design patterns, tiến trình refactor |
-| [docs/PHASE1_ARCHIVE.md](docs/PHASE1_ARCHIVE.md) | Lưu trữ lịch sử Phase 1 |
-| [docs/GLOSSARY.md](docs/GLOSSARY.md) | Bảng thuật ngữ chuẩn dùng chung cho toàn bộ tài liệu |
+| [docs/PHASE1_REPORT.md](docs/PHASE1_REPORT.md) | Báo cáo Phase 1 (historical snapshot) |
 
 ---
 

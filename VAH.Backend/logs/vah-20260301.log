@@ -794,3 +794,100 @@
 2026-03-01 19:28:26.634 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui-bundle.js responded 304 in 0.120ms
 2026-03-01 19:28:26.635 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.js responded 304 in 0.324ms
 2026-03-01 19:28:26.878 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/v1/swagger.json responded 200 in 23.794ms
+2026-03-01 23:49:13.894 +07:00 [INF] () Starting VAH Backend...
+2026-03-01 23:49:15.199 +07:00 [INF] () Using in-memory distributed cache (no Redis configured)
+2026-03-01 23:49:17.345 +07:00 [INF] (Microsoft.Hosting.Lifetime) Now listening on: http://localhost:5027
+2026-03-01 23:49:17.354 +07:00 [INF] (Microsoft.Hosting.Lifetime) Application started. Press Ctrl+C to shut down.
+2026-03-01 23:49:17.357 +07:00 [INF] (Microsoft.Hosting.Lifetime) Hosting environment: Development
+2026-03-01 23:49:17.358 +07:00 [INF] (Microsoft.Hosting.Lifetime) Content root path: B:\1A\VAH.Backend
+2026-03-01 23:49:44.079 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.html responded 304 in 81.441ms
+2026-03-01 23:49:44.152 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.css responded 304 in 21.781ms
+2026-03-01 23:49:44.152 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui.css responded 304 in 21.743ms
+2026-03-01 23:49:44.152 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui-bundle.js responded 304 in 22.276ms
+2026-03-01 23:49:44.196 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/index.js responded 304 in 0.613ms
+2026-03-01 23:49:44.196 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/swagger-ui-standalone-preset.js responded 304 in 31.326ms
+2026-03-01 23:49:44.513 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/favicon-32x32.png responded 304 in 0.336ms
+2026-03-01 23:49:44.645 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /swagger/v1/swagger.json responded 200 in 148.413ms
+2026-03-01 23:50:29.914 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/SmartCollections responded 401 in 1312.167ms
+2026-03-01 23:50:29.914 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 401 in 1315.547ms
+2026-03-01 23:50:29.914 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 401 in 1323.842ms
+2026-03-01 23:50:29.914 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 401 in 1311.937ms
+2026-03-01 23:50:29.914 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 401 in 1316.633ms
+2026-03-01 23:50:29.924 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/SmartCollections responded 401 in 2.583ms
+2026-03-01 23:50:29.926 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 401 in 0.549ms
+2026-03-01 23:50:29.934 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 401 in 0.943ms
+2026-03-01 23:50:30.481 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 401 in 0.211ms
+2026-03-01 23:50:30.481 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 401 in 0.521ms
+2026-03-01 23:50:30.489 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 401 in 0.362ms
+2026-03-01 23:50:30.491 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 401 in 0.460ms
+2026-03-01 23:50:39.747 +07:00 [INF] (VAH.Backend.Services.AuthService) User logged in: vanthang48692109@gmail.com
+2026-03-01 23:50:39.774 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /api/v1/Auth/login responded 200 in 504.488ms
+2026-03-01 23:50:39.860 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 19.760ms
+2026-03-01 23:50:39.860 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 23.286ms
+2026-03-01 23:50:39.899 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=043tHC6TH2dqOEH1-XzWxw)
+2026-03-01 23:50:39.903 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=v1uDWL5QJWkDoCLshcpwWA)
+2026-03-01 23:50:39.961 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 200 in 120.516ms
+2026-03-01 23:50:39.968 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 200 in 3.806ms
+2026-03-01 23:50:40.009 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/SmartCollections responded 200 in 169.320ms
+2026-03-01 23:50:40.014 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 200 in 173.348ms
+2026-03-01 23:50:40.020 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/SmartCollections responded 200 in 8.879ms
+2026-03-01 23:50:40.027 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 200 in 11.770ms
+2026-03-01 23:50:41.012 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-03-01 23:50:41.012 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 disconnected
+2026-03-01 23:50:41.022 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 1126.077ms
+2026-03-01 23:50:41.022 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /hubs/assets responded 101 in 1147.472ms
+2026-03-01 23:50:41.638 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 1.468ms
+2026-03-01 23:50:41.640 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 200 in 7.296ms
+2026-03-01 23:50:41.640 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 200 in 13.299ms
+2026-03-01 23:50:41.643 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP POST /hubs/assets/negotiate responded 200 in 1.716ms
+2026-03-01 23:50:41.645 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections responded 200 in 2.197ms
+2026-03-01 23:50:41.645 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/SmartCollections responded 200 in 12.243ms
+2026-03-01 23:50:41.647 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Tags responded 200 in 4.667ms
+2026-03-01 23:50:41.656 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/SmartCollections responded 200 in 8.868ms
+2026-03-01 23:50:41.734 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=OgZQbqqPo_lOluxaqliBng)
+2026-03-01 23:50:41.751 +07:00 [INF] (VAH.Backend.Hubs.AssetHub) SignalR: User 306883b5-2e60-4a40-b2b4-81ebac512207 connected (ConnectionId=qQJWghWzg_1BE_vjq7sNwA)
+2026-03-01 23:50:48.411 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/8/items responded 200 in 142.440ms
+2026-03-01 23:50:49.591 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 23.306ms
+2026-03-01 23:50:50.138 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 7.966ms
+2026-03-01 23:50:51.154 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/5/items responded 200 in 13.951ms
+2026-03-01 23:50:52.033 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/5/items responded 200 in 21.858ms
+2026-03-01 23:50:52.087 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_ef3d5d43-1c01-44ee-83f4-7a93fe30ca45.webp responded 304 in 19.713ms
+2026-03-01 23:50:52.087 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_0b60ce12-a8dc-46c9-b4e9-cffe97c95bfb.webp responded 304 in 19.716ms
+2026-03-01 23:50:52.087 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_278a501b-36c0-4eeb-8dc2-0ce37767fbc9.webp responded 304 in 19.363ms
+2026-03-01 23:50:52.087 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /uploads/thumbs/md_26c8a3f8-b392-47fe-b6f8-8bdf6761af34.webp responded 304 in 19.066ms
+2026-03-01 23:50:53.117 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 6.252ms
+2026-03-01 23:50:55.003 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/5/items responded 200 in 4.294ms
+2026-03-01 23:50:55.315 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/2/items responded 200 in 5.033ms
+2026-03-01 23:50:55.978 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/1/items responded 200 in 5.593ms
+2026-03-01 23:50:56.296 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 5.192ms
+2026-03-01 23:50:56.603 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 5.178ms
+2026-03-01 23:50:56.978 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/8/items responded 200 in 3.620ms
+2026-03-01 23:50:57.541 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 5.542ms
+2026-03-01 23:50:58.391 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 5.204ms
+2026-03-01 23:50:59.012 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/8/items responded 200 in 4.064ms
+2026-03-01 23:50:59.576 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 4.120ms
+2026-03-01 23:51:00.020 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/8/items responded 200 in 6.419ms
+2026-03-01 23:51:00.421 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 5.018ms
+2026-03-01 23:51:00.748 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 4.882ms
+2026-03-01 23:51:01.132 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/5/items responded 200 in 2.722ms
+2026-03-01 23:51:01.570 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/2/items responded 200 in 4.466ms
+2026-03-01 23:51:01.945 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/1/items responded 200 in 3.265ms
+2026-03-01 23:51:02.279 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/2/items responded 200 in 3.424ms
+2026-03-01 23:51:02.720 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/5/items responded 200 in 2.972ms
+2026-03-01 23:51:05.058 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/1/items responded 200 in 3.195ms
+2026-03-01 23:51:05.400 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/2/items responded 200 in 3.379ms
+2026-03-01 23:51:05.834 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/8/items responded 200 in 4.285ms
+2026-03-01 23:51:09.571 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 4.467ms
+2026-03-01 23:51:11.483 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/8/items responded 200 in 3.604ms
+2026-03-01 23:51:11.862 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 3.574ms
+2026-03-01 23:51:12.279 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 5.653ms
+2026-03-01 23:51:12.673 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/5/items responded 200 in 2.761ms
+2026-03-01 23:51:13.632 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/2/items responded 200 in 2.125ms
+2026-03-01 23:51:14.108 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/1/items responded 200 in 3.380ms
+2026-03-01 23:51:14.619 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/2/items responded 200 in 2.728ms
+2026-03-01 23:51:15.305 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/5/items responded 200 in 4.517ms
+2026-03-01 23:51:16.685 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 3.876ms
+2026-03-01 23:51:17.359 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 2.765ms
+2026-03-01 23:51:21.680 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/3/items responded 200 in 3.558ms
+2026-03-01 23:51:25.098 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/7/items responded 200 in 2.320ms
+2026-03-01 23:51:26.278 +07:00 [INF] (Serilog.AspNetCore.RequestLoggingMiddleware) HTTP GET /api/v1/Collections/1/items responded 200 in 3.232ms
