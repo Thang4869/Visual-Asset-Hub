@@ -1,7 +1,7 @@
 # Visual Asset Hub — Đánh giá Kiến trúc & Lộ trình Phát triển
 
-> **Cập nhật lần cuối:** 01/03/2026  
-> **Phiên bản:** 6.0 — Session #6: OOP Refactor Phase 1 (AssetsController SRP Split + CreateAssetDto + AssetFactory.Duplicate)
+> **Cập nhật lần cuối:** 02/03/2026  
+> **Phiên bản:** 6.1 — Đồng bộ kiến trúc Feature Slice cho Assets (Command/Query/Application/Infrastructure)
 
 ---
 
@@ -34,9 +34,9 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 │  │  ExceptionHandler → CORS → Serilog → RateLimiter →          │  │
 │  │  StaticFiles → Auth → Controllers + SignalR Hub             │  │
 │  ├─────────────────────────────────────────────────────────────┤  │
-│  9 Controllers (47 endpoints):                               │  │
-│  │  Assets(15) • BulkAssets(4) • Auth(2) • Collections(6) •    │  │
-│  │  Search(1) • Tags(10) • SmartCollections(2) • Perms(6) • H(1)│  │
+│  Controllers theo Feature + Domain (~46 endpoints):            │  │
+│  │  AssetsCommand/Query • AssetLayout • BulkAssets •           │  │
+│  │  Auth • Collections • Search • Tags • SmartCollections • ...│  │
 │  ├─────────────────────────────────────────────────────────────┤  │
 │  │ 12 Services + Helpers:                                      │  │
 │  │  Asset • BulkAsset • Collection • Auth • Storage •          │  │
@@ -116,7 +116,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 ```
  Request ──►
- 1. UseGlobalExceptionHandler()     ← Bắt mọi exception → ProblemDetails JSON
+ 1. UseExceptionHandler()           ← Bắt mọi exception → ProblemDetails JSON
  2. UseCors("Frontend")             ← CORS cho SPA + SignalR
  3. UseSerilogRequestLogging()      ← HTTP request/response logging
  4. UseRateLimiter()                ← Fixed window rate limiting
@@ -124,7 +124,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
  6. UseSwagger()                    ← Dev only
  7. UseAuthentication()             ← JWT Bearer validation
  8. UseAuthorization()              ← Authorization policies
- 9. MapControllers()                ← 43 REST API endpoints
+ 9. MapControllers()                ← REST API endpoints
 10. MapHub<AssetHub>("/hubs/assets") ← SignalR WebSocket hub
  ◄── Response
 ```
@@ -155,8 +155,8 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | **Authorization** | ✅ RESOLVED | User-scoped data access. Mọi query filter theo UserId | Đã khắc phục |
 | **User isolation** | ✅ RESOLVED | `UserId` FK trên Asset + Collection. System collections (null) shared, user data isolated | Đã khắc phục |
 | **Data ownership** | ✅ RESOLVED | Service layer enforce `UserId == currentUser` trên mọi CRUD operation | Đã khắc phục |
-| **Input validation** | ✅ IMPROVED (Session #6) | CreateAssetDto có `[Required]`, `[MaxLength]`, `[Range]` validation. Các DTO khác cần review thêm | SQL injection risk thấp (EF Core parameterize). Asset creation giờ validate đúng |
-| **File upload protection** | 🟡 MEDIUM | Không giới hạn size, type, số lượng file | Server bị DoS bằng upload file lớn. Upload `.exe`, `.php` shell |
+| **Input validation** | ✅ IMPROVED | DTO validation đã được áp dụng ở nhiều endpoint (bao gồm upload/duplicate request models trong Assets feature) | Giảm rủi ro dữ liệu đầu vào không hợp lệ |
+| **File upload protection** | ✅ RESOLVED | Có giới hạn size/type/số lượng qua `FileUploadConfig` + flow mapping `UploadedFileDto` | Giảm rủi ro DoS và upload file không hợp lệ |
 | **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` |
 | **CORS policy** | ✅ RESOLVED | Config-driven origins (từ `appsettings`), `AllowCredentials` cho SignalR. Không phải `AllowAnyOrigin` | Giới hạn domain được phép gọi API |
 
@@ -165,10 +165,10 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
 | **Service layer** | ✅ RESOLVED | Interface-based DI, 12 services tách biệt (11 interface-backed + AssetCleanupHelper). BulkAssetService tách từ AssetService. SearchService extracted từ controller. Strategy pattern cho SmartCollection. Domain methods trên entities | Clean separation |
-| **Controller SRP** | ✅ RESOLVED (Session #6) | AssetsController split → AssetsController (13 CRUD) + BulkAssetsController (4 bulk ops). Mỗi controller inject đúng 1 service. CreateAssetDto thay raw entity | SRP compliant, ISP compliant |
+| **Controller SRP** | ✅ RESOLVED | Assets đã tách theo Command/Query + AssetLayout + BulkAssets; endpoint theo trách nhiệm rõ ràng | SRP compliant, dễ mở rộng theo vertical slice |
 | **Repository pattern** | 🟡 MEDIUM | Service layer gọi `_context` trực tiếp (không qua Repository) | Coupling với EF Core, nhưng acceptable cho project size này |
 | **Domain separation** | ✅ IMPROVED | Models có domain behavior, Enums tách riêng, DTOs gom vào Models/DTOs.cs | Rich Domain Model thay vì Anemic |
-| **Exception handling** | ✅ RESOLVED | Global ExceptionHandlingMiddleware (RFC 7807) | Structured error responses |
+| **Exception handling** | ✅ RESOLVED | Global Exception Handler + ProblemDetails (RFC 7807) | Structured error responses |
 | **Logging strategy** | ✅ RESOLVED | Serilog structured logging (Console + File sinks) | Full audit trail |
 | **Pagination** | ✅ RESOLVED | `PagedResult<T>` + `PaginationParams` | Scalable data access |
 | **Query optimization** | 🟡 MEDIUM | Indexes đã khai báo, nhưng N+1 risk vẫn có ở một số services | Cần review Include strategies |
@@ -217,7 +217,7 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | **Environment separation** | 🟡 MEDIUM | `API_URL` hardcode trong frontend. Swagger chỉ tắt theo env check | Không thể deploy staging/production mà không sửa source code |
 | **CI/CD** | 🟡 MEDIUM | Không có pipeline | Deploy thủ công → error-prone, chậm, không rollback |
 | **Structured logging** | ✅ RESOLVED | Serilog + Console + File sinks, structured request logging | Full audit trail |
-| **Monitoring** | ✅ RESOLVED | HealthController + `/api/Health` endpoint, Docker healthchecks | System status visible |
+| **Monitoring** | ✅ RESOLVED | HealthController + `/api/v1/Health` endpoint, Docker healthchecks | System status visible |
 | **Rate limiting** | ✅ RESOLVED | Fixed window 100 req/min + Upload 20 req/min | DoS protection |
 | **Caching** | ✅ RESOLVED | Redis/In-memory distributed cache, CollectionService cached (TTL 5m) | 80%+ DB reads reduced |
 | **HTTPS enforcement** | 🟡 MEDIUM | Default profile là HTTP | Data truyền plaintext → sniff được nội dung + các thông tin nhạy cảm |
@@ -282,84 +282,84 @@ Chi tiết exception chỉ hiện ở Development environment.
 
 ---
 
-## 3. API Reference (45 Endpoints)
+## 3. API Reference (đã đồng bộ route prefix `/api/v1`)
 
-### 3.1 Assets — `api/Assets` [Authorize] (14 endpoints) + Bulk (4 endpoints)
-
-| # | Method | Route | Status | Mô tả |
-|---|--------|-------|--------|-------|
-| 1 | GET | `/api/Assets` | 200 | Danh sách assets phân trang |
-| 2 | GET | `/api/Assets/{id}` | 200/404 | Chi tiết asset (Session #6.2) |
-| 3 | POST | `/api/Assets` | 201 | Tạo asset mới (CreateAssetDto) |
-| 4 | POST | `/api/Assets/upload` | 201 | Upload multi-file (validation: size, ext, MIME) |
-| 5 | PATCH | `/api/Assets/{id}` | 200 | Cập nhật asset (partial, Session #6.2) |
-| 6 | PUT | `/api/Assets/{id}` | 200 | Cập nhật asset (backward compat alias) |
-| 7 | PUT | `/api/Assets/{id}/position` | 200 | Cập nhật vị trí trên canvas |
-| 8 | DELETE | `/api/Assets/{id}` | 204 | Xóa asset + file vật lý + thumbnails |
-| 9 | POST | `/api/Assets/{id}/duplicate` | 201 | Duplicate asset (clone + optional target folder) |
-| 10 | POST | `/api/Assets/reorder` | 204 | Sắp xếp lại thứ tự |
-| 11 | GET | `/api/Assets/group/{groupId}` | 200 | Assets theo nhóm |
-| 12 | POST | `/api/Assets/folders` | 201 | Tạo thư mục (REST noun, Session #6.2) |
-| 13 | POST | `/api/Assets/colors` | 201 | Tạo asset màu sắc (REST noun) |
-| 14 | POST | `/api/Assets/color-groups` | 201 | Tạo nhóm màu (REST noun) |
-| 15 | POST | `/api/Assets/links` | 201 | Tạo liên kết (REST noun, URL validation) |
-
-**BulkAssetsController** — `api/Assets` [Authorize] (4 endpoints, tách từ Session #6)
+### 3.1 Assets — `api/v1/assets` [Authorize] (Query/Command/Layout + Bulk + domain-create)
 
 | # | Method | Route | Status | Mô tả |
 |---|--------|-------|--------|-------|
-| 1 | POST | `/api/Assets/bulk-delete` | 200 | Xóa hàng loạt |
-| 2 | POST | `/api/Assets/bulk-move` | 200 | Di chuyển hàng loạt |
-| 3 | POST | `/api/Assets/bulk-move-group` | 200 | Di chuyển màu giữa các group với vị trí chính xác |
-| 4 | POST | `/api/Assets/bulk-tag` | 200 | Gắn/gỡ tag hàng loạt |
+| 1 | GET | `/api/v1/assets` | 200 | Danh sách assets phân trang |
+| 2 | GET | `/api/v1/assets/{id}` | 200/404 | Chi tiết asset |
+| 3 | POST | `/api/v1/assets` | 201 | Tạo asset mới (CreateAssetDto) |
+| 4 | POST | `/api/v1/assets/upload` | 201 | Upload multi-file |
+| 5 | PATCH | `/api/v1/assets/{id}` | 200 | Cập nhật asset (partial) |
+| 6 | PUT | `/api/v1/assets/{id}` | 200 | Cập nhật asset (backward compat alias) |
+| 7 | PUT | `/api/v1/assets/{id}/position` | 200 | Cập nhật vị trí trên canvas |
+| 8 | DELETE | `/api/v1/assets/{id}` | 204 | Xóa asset + file vật lý + thumbnails |
+| 9 | POST | `/api/v1/assets/{id}/duplicate` | 201 | Duplicate asset |
+| 10 | POST | `/api/v1/assets/reorder` | 204 | Sắp xếp lại thứ tự |
+| 11 | GET | `/api/v1/assets/group/{groupId}` | 200 | Assets theo nhóm |
+| 12 | POST | `/api/v1/assets/folders` | 201 | Tạo thư mục |
+| 13 | POST | `/api/v1/assets/colors` | 201 | Tạo asset màu sắc |
+| 14 | POST | `/api/v1/assets/color-groups` | 201 | Tạo nhóm màu |
+| 15 | POST | `/api/v1/assets/links` | 201 | Tạo liên kết |
 
-### 3.2 Auth — `api/Auth` [RateLimited]
+**BulkAssetsController** — `api/v1/assets` [Authorize] (4 endpoints)
 
-| # | Method | Route | Mô tả |
-|---|--------|-------|-------|
-| 1 | POST | `/api/Auth/register` | Đăng ký → JWT token + user info |
-| 2 | POST | `/api/Auth/login` | Đăng nhập → JWT token + user info |
+| # | Method | Route | Status | Mô tả |
+|---|--------|-------|--------|-------|
+| 1 | POST | `/api/v1/assets/bulk-delete` | 200 | Xóa hàng loạt |
+| 2 | POST | `/api/v1/assets/bulk-move` | 200 | Di chuyển hàng loạt |
+| 3 | POST | `/api/v1/assets/bulk-move-group` | 200 | Di chuyển màu giữa các group với vị trí chính xác |
+| 4 | POST | `/api/v1/assets/bulk-tag` | 200 | Gắn/gỡ tag hàng loạt |
 
-### 3.3 Collections — `api/Collections` [Authorize]
-
-| # | Method | Route | Mô tả |
-|---|--------|-------|-------|
-| 1 | GET | `/api/Collections` | Tất cả collections (own + system + shared) |
-| 2 | GET | `/api/Collections/{id}/items` | Items + sub-collections (permission-aware) |
-| 3 | POST | `/api/Collections` | Tạo collection mới |
-| 4 | PATCH | `/api/Collections/{id}` | Cập nhật partial (Session #6.2) |
-| 5 | PUT | `/api/Collections/{id}` | Cập nhật (backward compat alias) |
-| 6 | DELETE | `/api/Collections/{id}` | Xóa (owner only) |
-
-### 3.4 Search — `api/Search` [Authorize]
-
-| # | Method | Route | Mô tả |
-|---|--------|-------|-------|
-| 1 | GET | `/api/Search?q=&type=&collectionId=&page=&pageSize=` | Tìm kiếm assets + collections |
-
-### 3.5 Tags — `api/Tags` [Authorize]
+### 3.2 Auth — `api/v1/Auth` [RateLimited]
 
 | # | Method | Route | Mô tả |
 |---|--------|-------|-------|
-| 1 | GET | `/api/Tags` | Tất cả tags của user |
-| 2 | GET | `/api/Tags/{id}` | Chi tiết tag |
-| 3 | POST | `/api/Tags` | Tạo tag (dedup normalized) |
-| 4 | PUT | `/api/Tags/{id}` | Cập nhật tag |
-| 5 | DELETE | `/api/Tags/{id}` | Xóa tag |
-| 6 | GET | `/api/Tags/asset/{assetId}` | Tags của 1 asset |
-| 7 | PUT | `/api/Tags/asset/{assetId}` | Set toàn bộ tags (replace) |
-| 8 | POST | `/api/Tags/asset/{assetId}/add` | Thêm tags |
-| 9 | POST | `/api/Tags/asset/{assetId}/remove` | Gỡ tags |
-| 10 | POST | `/api/Tags/migrate` | Migrate comma-separated → M2M |
+| 1 | POST | `/api/v1/Auth/register` | Đăng ký → JWT token + user info |
+| 2 | POST | `/api/v1/Auth/login` | Đăng nhập → JWT token + user info |
 
-### 3.6 Smart Collections — `api/SmartCollections` [Authorize]
+### 3.3 Collections — `api/v1/Collections` [Authorize]
 
 | # | Method | Route | Mô tả |
 |---|--------|-------|-------|
-| 1 | GET | `/api/SmartCollections` | Danh sách smart collections (8 built-in + per-tag) |
-| 2 | GET | `/api/SmartCollections/{id}/items` | Items phân trang |
+| 1 | GET | `/api/v1/Collections` | Tất cả collections (own + system + shared) |
+| 2 | GET | `/api/v1/Collections/{id}/items` | Items + sub-collections (permission-aware) |
+| 3 | POST | `/api/v1/Collections` | Tạo collection mới |
+| 4 | PATCH | `/api/v1/Collections/{id}` | Cập nhật partial |
+| 5 | PUT | `/api/v1/Collections/{id}` | Cập nhật (backward compat alias) |
+| 6 | DELETE | `/api/v1/Collections/{id}` | Xóa (owner only) |
 
-### 3.7 Permissions — `api/collections/{collectionId}/permissions` [Authorize]
+### 3.4 Search — `api/v1/Search` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/v1/Search?q=&type=&collectionId=&page=&pageSize=` | Tìm kiếm assets + collections |
+
+### 3.5 Tags — `api/v1/Tags` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/v1/Tags` | Tất cả tags của user |
+| 2 | GET | `/api/v1/Tags/{id}` | Chi tiết tag |
+| 3 | POST | `/api/v1/Tags` | Tạo tag (dedup normalized) |
+| 4 | PUT | `/api/v1/Tags/{id}` | Cập nhật tag |
+| 5 | DELETE | `/api/v1/Tags/{id}` | Xóa tag |
+| 6 | GET | `/api/v1/Tags/asset/{assetId}` | Tags của 1 asset |
+| 7 | PUT | `/api/v1/Tags/asset/{assetId}` | Set toàn bộ tags (replace) |
+| 8 | POST | `/api/v1/Tags/asset/{assetId}/add` | Thêm tags |
+| 9 | POST | `/api/v1/Tags/asset/{assetId}/remove` | Gỡ tags |
+| 10 | POST | `/api/v1/Tags/migrate` | Migrate comma-separated → M2M |
+
+### 3.6 Smart Collections — `api/v1/SmartCollections` [Authorize]
+
+| # | Method | Route | Mô tả |
+|---|--------|-------|-------|
+| 1 | GET | `/api/v1/SmartCollections` | Danh sách smart collections (8 built-in + per-tag) |
+| 2 | GET | `/api/v1/SmartCollections/{id}/items` | Items phân trang |
+
+### 3.7 Permissions — `api/v1/collections/{collectionId}/permissions` [Authorize]
 
 | # | Method | Route | Mô tả |
 |---|--------|-------|-------|
@@ -368,13 +368,13 @@ Chi tiết exception chỉ hiện ở Development environment.
 | 3 | PUT | `.../permissions/{permissionId}` | Cập nhật role (owner only) |
 | 4 | DELETE | `.../permissions/{permissionId}` | Thu hồi (owner only) |
 | 5 | GET | `.../permissions/my-role` | Role hiện tại |
-| 6 | GET | `/api/shared-collections` | Collections được chia sẻ cho user |
+| 6 | GET | `/api/v1/shared-collections` | Collections được chia sẻ cho user |
 
-### 3.8 Health — `api/Health` [No Auth]
+### 3.8 Health — `api/v1/Health` [No Auth]
 
 | # | Method | Route | Mô tả |
 |---|--------|-------|-------|
-| 1 | GET | `/api/Health` | DB + Storage checks, env info (200/503) |
+| 1 | GET | `/api/v1/Health` | DB + Storage checks, env info (200/503) |
 
 ---
 
@@ -507,7 +507,7 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 |---------|-------|------|------------|-------------|
 | `postgres` | postgres:17-alpine | 5432 | — | `pg_isready` |
 | `redis` | redis:7-alpine | 6379 | — | `redis-cli ping` |
-| `backend` | Build `./VAH.Backend` | 5027 | postgres, redis | `wget /api/Health` |
+| `backend` | Build `./VAH.Backend` | 5027 | postgres, redis | `wget /api/v1/Health` |
 | `frontend` | Build `./VAH.Frontend` | 3000→80 | backend | — |
 
 ### 5.2 Named Volumes
@@ -619,8 +619,8 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng API endpoints | 47 (was 44, +GET/{id}, +PATCH assets, +PATCH collections) |
-| Backend controllers | 9 (was 8, split AssetsController → Assets + BulkAssets in Session #6) |
+| Tổng API endpoints | ~46 (có legacy aliases được `ApiExplorerSettings(IgnoreApi = true)`) |
+| Backend controllers | 16 (gồm AssetsCommand + AssetsQuery + các domain controllers khác) |
 | Backend services | 12 (11 interface-backed + AssetCleanupHelper) |
 | Frontend hooks | 11 |
 | Frontend components | 17 |
@@ -635,4 +635,4 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 ---
 
-> *Tất cả 4 giai đoạn phát triển + 5 OOP refactoring phases đã hoàn thành (23/23 tasks). Session #4 bổ sung: Context Menu, TreeViewPanel, Clipboard System, Pin System, ConfirmDialog, Shared-Collection Access Control, Duplicate Asset API. Session #5: Rename Collection fix, UpdateCollectionDto, Global Keyboard Shortcuts. Session #6: OOP Refactor Phase 1 — AssetsController SRP split (→ BulkAssetsController), CreateAssetDto, AssetFactory.Duplicate/FromDto. Xem OOP Refactor Roadmap đầy đủ trong FIX_REPORT_20260227.md.*
+> *Tài liệu này đã được đồng bộ tối thiểu theo trạng thái hiện tại: route prefix `/api/v1`, Assets theo Feature Slice (Command/Query/Application/Infrastructure), và wiring qua DI/Strategy/Options. Các phần roadmap lịch sử được giữ nguyên để tham chiếu tiến trình dự án.*
