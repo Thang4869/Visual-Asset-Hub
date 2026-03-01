@@ -5,6 +5,36 @@
 
 ---
 
+## Executive Summary
+
+### System Goal
+
+Visual Asset Hub (VAH) is a modern web application for managing digital assets including images, links, and color palettes. It provides a dark-themed interface with drag-and-drop functionality, hierarchical collections, many-to-many tagging, role-based access control (RBAC) for sharing, and real-time synchronization across devices. The system supports both individual creators and small teams, with production-ready features like file upload restrictions, thumbnails, search, and bulk operations.
+
+### Current Architecture in 5 Bullets
+
+- **Client:** React 19 Single Page Application (SPA) built with Vite 7, featuring a dark navy theme, drag-and-drop uploads, and responsive grid/masonry views.
+- **Backend:** ASP.NET Core 9 API with endpoints (see Swagger), using Entity Framework Core for data access, SignalR for real-time updates, and a service layer with dependency injection.
+- **Database:** Dual-provider support for SQLite (development) and PostgreSQL (production), with entity tables and indexes (see EF migrations).
+- **Cache & Storage:** Redis for distributed caching (with in-memory fallback), local file storage for uploads and auto-generated thumbnails.
+- **Real-time:** SignalR WebSocket hub for live notifications, scoped to user groups for security.
+
+### Top 5 Architecture Decisions
+
+- **Feature Slice Pattern:** Separated Assets into Command, Query, and Application layers for better maintainability and testability.
+- **User-Scoped Data Isolation:** All entities include UserId foreign keys, enforced at service layer to prevent data leakage.
+- **Dual Database Provider:** Conditional EF Core configuration for SQLite/PostgreSQL to support dev/prod environments seamlessly.
+- **Service Layer with Interfaces:** Services abstracted behind interfaces for clean dependency injection and mockability.
+- **Docker Multi-Stage Builds:** Optimized container images with separate build/runtime stages, non-root users, and health checks.
+
+### Top 5 Remaining Risks + Status
+
+- **XSS / URL Injection (MEDIUM):** Potential malicious links in asset URLs; [see section 2.1](#21-bảo-mật-security).
+- **Optimistic Concurrency (MEDIUM):** No RowVersion on entities, risking silent overwrites; [see section 2.3](#23-database--dữ-liệu).
+- **Horizontal Scaling (HIGH):** SQLite limits to single instance; requires PostgreSQL + shared storage; [see section 2.4](#24-storage--mở-rộng).
+- **HTTPS Enforcement (MEDIUM):** Default HTTP in dev; needs redirect/HSTS in prod; [see section 2.6](#26-devops--production-readiness).
+- **Frontend Environment Separation (MEDIUM):** Hardcoded API_URL; needs VITE_API_URL per env; [see section 2.5](#25-frontend-architecture).
+
 ## 1. Tổng quan hệ thống
 
 Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh, link, bảng màu) với giao diện dark theme hiện đại, hỗ trợ kéo thả, tổ chức theo collection phân cấp, tag many-to-many, chia sẻ RBAC và real-time sync.
@@ -34,16 +64,16 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 │  │  ExceptionHandler → CORS → Serilog → RateLimiter →          │  │
 │  │  StaticFiles → Auth → Controllers + SignalR Hub             │  │
 │  ├─────────────────────────────────────────────────────────────┤  │
-│  Controllers theo Feature + Domain (~46 endpoints):            │  │
+│  │ Controllers theo Feature + Domain (see Swagger):            │  │
 │  │  AssetsCommand/Query • AssetLayout • BulkAssets •           │  │
 │  │  Auth • Collections • Search • Tags • SmartCollections • ...│  │
 │  ├─────────────────────────────────────────────────────────────┤  │
-│  │ 12 Services + Helpers:                                      │  │
+│  │ Services + Helpers (see Services folder):                                      │  │
 │  │  Asset • BulkAsset • Collection • Auth • Storage •          │  │
 │  │  Thumbnail • Tag • Notification • SmartCollection •         │  │
 │  │  Permission • Search • AssetCleanupHelper                   │  │
 │  ├─────────────────────────────────────────────────────────────┤  │
-│  │ EF Core 9 (SQLite dev / PostgreSQL prod) • 5 DbSets         │  │
+│  │ EF Core 9 (SQLite dev / PostgreSQL prod) • Entity tables (see EF migrations)         │  │
 │  │ ASP.NET Identity • Auto-Migrate on Startup                  │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 │  Port 5027 • JWT Bearer • SignalR (/hubs/assets)                  │
@@ -141,7 +171,15 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 | `AssetTags` | 2 | AssetId, TagId | Composite PK + 1 index |
 | `CollectionPermissions` | 6 | UserId, CollectionId | Unique composite + 1 index |
 
-**Tổng: 22 indexes** — tối ưu cho common query patterns.
+**Tổng: indexes (see EF migrations)** — tối ưu cho common query patterns.
+
+## Source of Truth
+
+- API Endpoints: Swagger UI at /swagger
+- Backend Structure: VAH.Backend/ folder
+- Frontend Structure: VAH.Frontend/ folder
+- Database Schema: EF Migrations in VAH.Backend/Migrations/ and AppDbContextModelSnapshot.cs
+- Deployment: docker-compose.yml and Dockerfiles in respective folders
 
 **Quan hệ giữa bảng:**
 
@@ -149,16 +187,16 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 ## 2.1 Bảo mật (Security)
 
-| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả nếu không cải thiện |
+| Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả nếu không cải thiện | Mitigation | DoD | Priority |
 | --- | --- | --- | --- |
-| **Authentication** | ✅ RESOLVED | JWT Bearer + ASP.NET Identity. `[Authorize]` trên tất cả endpoints (trừ Auth, Health) | Đã khắc phục |
-| **Authorization** | ✅ RESOLVED | User-scoped data access. Mọi query filter theo UserId | Đã khắc phục |
-| **User isolation** | ✅ RESOLVED | `UserId` FK trên Asset + Collection. System collections (null) shared, user data isolated | Đã khắc phục |
-| **Data ownership** | ✅ RESOLVED | Service layer enforce `UserId == currentUser` trên mọi CRUD operation | Đã khắc phục |
-| **Input validation** | ✅ IMPROVED | DTO validation đã được áp dụng ở nhiều endpoint (bao gồm upload/duplicate request models trong Assets feature) | Giảm rủi ro dữ liệu đầu vào không hợp lệ |
-| **File upload protection** | ✅ RESOLVED | Có giới hạn size/type/số lượng qua `FileUploadConfig` + flow mapping `UploadedFileDto` | Giảm rủi ro DoS và upload file không hợp lệ |
-| **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` |
-| **CORS policy** | ✅ RESOLVED | Config-driven origins (từ `appsettings`), `AllowCredentials` cho SignalR. Không phải `AllowAnyOrigin` | Giới hạn domain được phép gọi API |
+| **Authentication** | ✅ RESOLVED | JWT Bearer + ASP.NET Identity. `[Authorize]` trên tất cả endpoints (trừ Auth, Health) | Đã khắc phục | - | - | - |
+| **Authorization** | ✅ RESOLVED | User-scoped data access. Mọi query filter theo UserId | Đã khắc phục | - | - | - |
+| **User isolation** | ✅ RESOLVED | `UserId` FK trên Asset + Collection. System collections (null) shared, user data isolated | Đã khắc phục | - | - | - |
+| **Data ownership** | ✅ RESOLVED | Service layer enforce `UserId == currentUser` trên mọi CRUD operation | Đã khắc phục | - | - | - |
+| **Input validation** | ✅ IMPROVED | DTO validation đã được áp dụng ở nhiều endpoint (bao gồm upload/duplicate request models trong Assets feature) | Giảm rủi ro dữ liệu đầu vào không hợp lệ | - | - | - |
+| **File upload protection** | ✅ RESOLVED | Có giới hạn size/type/số lượng qua `FileUploadConfig` + flow mapping `UploadedFileDto` | Giảm rủi ro DoS và upload file không hợp lệ | - | - | - |
+| **XSS / Injection** | 🟡 MEDIUM | React auto-escape JSX, nhưng `dangerouslySetInnerHTML` potential qua link URL | URL độc hại (`javascript:`) có thể được lưu trong `FilePath` và render qua `<a href>` | Allow-list schemes (http/https), validate/sanitize on backend + safe rendering rules on frontend | All URLs validated, no raw href in JSX | P1 |
+| **CORS policy** | ✅ RESOLVED | Config-driven origins (từ `appsettings`), `AllowCredentials` cho SignalR. Không phải `AllowAnyOrigin` | Giới hạn domain được phép gọi API | - | - | - |
 
 ## 2.2 Kiến trúc Backend
 
@@ -178,49 +216,49 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Schema versioning** | ✅ RESOLVED | EF Core Migrations (5 migrations: InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges). Auto-migrate on startup | Schema version controlled |
-| **Indexing** | ✅ RESOLVED | Composite indexes, FK indexes, UserId indexes đã khai báo trong AppDbContext | Optimized query performance |
-| **Full-text search** | ✅ RESOLVED | Server-side search via SearchService (LIKE queries, paginated) | Search qua API, có pagination |
-| **Tags system** | ✅ RESOLVED | Proper many-to-many (Tags table + AssetTags junction) với Tag entity, domain methods | Normalized, query-friendly |
-| **Concurrency** | 🟡 MEDIUM | Không optimistic concurrency (no `RowVersion/ConcurrencyToken`) | 2 user sửa cùng asset → last write wins → data corruption âm thầm |
-| **FK constraints** | ✅ RESOLVED | Full FK constraints + navigation properties trong OnModelCreating. DeleteBehavior.Restrict cho self-ref | Referential integrity enforced |
+| **Schema versioning** | ✅ RESOLVED | EF Core Migrations (5 migrations: InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges). Auto-migrate on startup | Schema version controlled | - | - | - |
+| **Indexing** | ✅ RESOLVED | Composite indexes, FK indexes, UserId indexes đã khai báo trong AppDbContext | Optimized query performance | - | - | - |
+| **Full-text search** | ✅ RESOLVED | Server-side search via SearchService (LIKE queries, paginated) | Search qua API, có pagination | - | - | - |
+| **Tags system** | ✅ RESOLVED | Proper many-to-many (Tags table + AssetTags junction) với Tag entity, domain methods | Normalized, query-friendly | - | - | - |
+| **Concurrency** | 🟡 MEDIUM | Không optimistic concurrency (no `RowVersion/ConcurrencyToken`) | 2 user sửa cùng asset → last write wins → data corruption âm thầm | Add RowVersion/ConcurrencyToken for key entities + return 409 on conflicts + client handling | Assets support concurrency control, conflicts return 409 | P1 |
+| **FK constraints** | ✅ RESOLVED | Full FK constraints + navigation properties trong OnModelCreating. DeleteBehavior.Restrict cho self-ref | Referential integrity enforced | - | - | - |
 | **SQLite limitations** | 🔴 HIGH (khi scale) | Single-writer lock, file-based, max recommend ~100 concurrent reads | Không hỗ trợ multi-server. Write contention khi >5 concurrent users |
 
 ## 2.4 Storage & Mở rộng
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **File storage abstraction** | ✅ RESOLVED | `IStorageService` / `LocalStorageService`. Swap sang S3/Azure chỉ cần implement interface | Clean abstraction |
-| **CDN** | 🟡 MEDIUM | Không có | Mọi request file đi qua backend server → bandwidth bottleneck |
-| **Cloud storage readiness** | ✅ IMPROVED | IStorageService interface sẵn sàng cho cloud implementation | Chỉ cần thêm AzureBlobStorageService / S3StorageService |
-| **Horizontal scaling** | 🔴 HIGH | SQLite file + local wwwroot | Không thể chạy 2+ instance. Sticky session bắt buộc → single point of failure |
-| **Thumbnail/preview** | ✅ RESOLVED | ThumbnailService sinh thumbnail + medium preview cho images | Bandwidth optimized |
-| **Cleanup/orphan files** | ✅ RESOLVED | `asset.RequiresFileCleanup` virtual property, IStorageService.DeleteFile() gọi khi delete asset | No orphan files |
+| **File storage abstraction** | ✅ RESOLVED | `IStorageService` / `LocalStorageService`. Swap sang S3/Azure chỉ cần implement interface | Clean abstraction | - | - | - |
+| **CDN** | 🟡 MEDIUM | Không có | Mọi request file đi qua backend server → bandwidth bottleneck | - | - | - |
+| **Cloud storage readiness** | ✅ IMPROVED | IStorageService interface sẵn sàng cho cloud implementation | Chỉ cần thêm AzureBlobStorageService / S3StorageService | - | - | - |
+| **Horizontal scaling** | 🔴 HIGH | SQLite file + local wwwroot | Không thể chạy 2+ instance. Sticky session bắt buộc → single point of failure | Explicitly require Postgres + shared storage; document SignalR scale strategy | Deployment docs include scaling requirements | P1 |
+| **Thumbnail/preview** | ✅ RESOLVED | ThumbnailService sinh thumbnail + medium preview cho images | Bandwidth optimized | - | - | - |
+| **Cleanup/orphan files** | ✅ RESOLVED | `asset.RequiresFileCleanup` virtual property, IStorageService.DeleteFile() gọi khi delete asset | No orphan files | - | - | - |
 
 ## 2.5 Frontend Architecture
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **State management** | ✅ RESOLVED | `AppContext` + `AppProvider` (Context API) + `ConfirmContext` (dialog). `useAppContext()` hook. App.jsx 477 dòng (thêm TreeView, clipboard paste, folder multi-select). State centralised, không còn prop-drilling | Clean separation |
-| **API abstraction** | ✅ RESOLVED | Class-based API layer: `BaseApiService` → 7 subclasses. `TokenManager` singleton. Barrel exports `api/index.js` | OOP-compliant, consistent, extensible |
-| **Data fetching** | 🟡 MEDIUM | Manual `useEffect` + `useState` pattern | Không cache, dedup, background refetch, stale-while-revalidate. Re-fetch toàn bộ khi navigate |
-| **Routing** | ✅ RESOLVED | React Router v7.13, URL sync qua useParams/useNavigate. 4 routes: /login, /, /collections/:id, /collections/:id/folder/:folderId | Shareable URLs, browser navigation works |
-| **Code splitting** | 🟢 LOW | Không cần thiết hiện tại (8 components nhỏ) | Sẽ thành vấn đề khi bundle >500KB |
-| **Error boundary** | ✅ RESOLVED | `ErrorBoundary.jsx` class component wrapping app | Graceful error fallback UI |
-| **Loading/empty states** | 🟢 LOW | `loading` boolean nhưng chưa có skeleton UI | UX không mượt nhưng không phải risk kỹ thuật |
+| **State management** | ✅ RESOLVED | `AppContext` + `AppProvider` (Context API) + `ConfirmContext` (dialog). `useAppContext()` hook. App.jsx 477 dòng (thêm TreeView, clipboard paste, folder multi-select). State centralised, không còn prop-drilling | Clean separation | - | - | - |
+| **API abstraction** | ✅ RESOLVED | Class-based API layer: `BaseApiService` → 7 subclasses. `TokenManager` singleton. Barrel exports `api/index.js` | OOP-compliant, consistent, extensible | - | - | - |
+| **Data fetching** | 🟡 MEDIUM | Manual `useEffect` + `useState` pattern | Không cache, dedup, background refetch, stale-while-revalidate. Re-fetch toàn bộ khi navigate | - | - | - |
+| **Routing** | ✅ RESOLVED | React Router v7.13, URL sync qua useParams/useNavigate. 4 routes: /login, /, /collections/:id, /collections/:id/folder/:folderId | Shareable URLs, browser navigation works | - | - | - |
+| **Code splitting** | 🟢 LOW | Không cần thiết hiện tại (8 components nhỏ) | Sẽ thành vấn đề khi bundle >500KB | - | - | - |
+| **Error boundary** | ✅ RESOLVED | `ErrorBoundary.jsx` class component wrapping app | Graceful error fallback UI | - | - | - |
+| **Loading/empty states** | 🟢 LOW | `loading` boolean nhưng chưa có skeleton UI | UX không mượt nhưng không phải risk kỹ thuật | - | - | - |
 
 ## 2.6 DevOps & Production Readiness
 
 | Vấn đề | Mức rủi ro | Hiện trạng | Hậu quả |
 | --- | --- | --- | --- |
-| **Dockerization** | ✅ RESOLVED | Multi-stage Dockerfile + docker-compose (backend + postgres + redis + frontend) | Deploy reproducible |
-| **Environment separation** | 🟡 MEDIUM | `API_URL` hardcode trong frontend. Swagger chỉ tắt theo env check | Không thể deploy staging/production mà không sửa source code |
-| **CI/CD** | 🟡 MEDIUM | Không có pipeline | Deploy thủ công → error-prone, chậm, không rollback |
-| **Structured logging** | ✅ RESOLVED | Serilog + Console + File sinks, structured request logging | Full audit trail |
-| **Monitoring** | ✅ RESOLVED | HealthController + `/api/v1/Health` endpoint, Docker healthchecks | System status visible |
-| **Rate limiting** | ✅ RESOLVED | Fixed window 100 req/min + Upload 20 req/min | DoS protection |
-| **Caching** | ✅ RESOLVED | Redis/In-memory distributed cache, CollectionService cached (TTL 5m) | 80%+ DB reads reduced |
-| **HTTPS enforcement** | 🟡 MEDIUM | Default profile là HTTP | Data truyền plaintext → sniff được nội dung + các thông tin nhạy cảm |
+| **Dockerization** | ✅ RESOLVED | Multi-stage Dockerfile + docker-compose (backend + postgres + redis + frontend) | Deploy reproducible | - | - | - |
+| **Environment separation** | 🟡 MEDIUM | `API_URL` hardcode trong frontend. Swagger chỉ tắt theo env check | Không thể deploy staging/production mà không sửa source code | - | - | - | Remove hardcoded API_URL; standardize VITE_API_URL per environment | Frontend builds use environment-specific API_URL | P1 |
+| **CI/CD** | 🟡 MEDIUM | Không có pipeline | Deploy thủ công → error-prone, chậm, không rollback | - | - | - |
+| **Structured logging** | ✅ RESOLVED | Serilog + Console + File sinks, structured request logging | Full audit trail | - | - | - |
+| **Monitoring** | ✅ RESOLVED | HealthController + `/api/v1/Health` endpoint, Docker healthchecks | System status visible | - | - | - |
+| **Rate limiting** | ✅ RESOLVED | Fixed window 100 req/min + Upload 20 req/min | DoS protection | - | - | - |
+| **Caching** | ✅ RESOLVED | Redis/In-memory distributed cache, CollectionService cached (TTL 5m) | 80%+ DB reads reduced | - | - | - |
+| **HTTPS enforcement** | 🟡 MEDIUM | Default profile là HTTP | Data truyền plaintext → sniff được nội dung + các thông tin nhạy cảm | Redirect + HSTS in reverse proxy for production | Production deployments enforce HTTPS | P1 |
 
 ## 2.7 Testability
 
@@ -234,9 +272,9 @@ Visual Asset Hub (VAH) là ứng dụng web quản lý tài nguyên số (ảnh,
 ## 2.8 Đánh giá khả năng Scale hiện tại
 
 ```text
-Concurrent Users:  ~5-10 (SQLite write lock, JWT auth)
-Data Volume:       ~10,000 assets (server-side pagination, 22 indexes)
-File Storage:      ~5-10GB (local disk, orphan cleanup on delete)
+Concurrent Users:  Low concurrency (SQLite limitation)
+Data Volume:       Large data volumes (pagination, indexes)
+File Storage:      Significant storage (local disk, cleanup)
 Deployment:        Single instance (Docker Compose) or multi-instance (PostgreSQL)
 Availability:      Docker healthchecks, graceful degradation (Redis optional)
 ```
@@ -283,6 +321,10 @@ Chi tiết exception chỉ hiện ở Development environment.
 ---
 
 ## 3. API Reference (đã đồng bộ route prefix `/api/v1`)
+
+**Note:** API reference is synced with Swagger at `/swagger`. When routes change, update Swagger and this doc.
+
+For backward-compat aliases, see notes below.
 
 ### 3.1 Assets — `api/v1/assets` [Authorize] (Query/Command/Layout + Bulk + domain-create)
 
@@ -375,6 +417,14 @@ Chi tiết exception chỉ hiện ở Development environment.
 | # | Method | Route | Mô tả |
 |---|--------|-------|-------|
 | 1 | GET | `/api/v1/Health` | DB + Storage checks, env info (200/503) |
+
+### Auth Rules
+
+| Endpoint Type | Auth Required | Notes |
+|---------------|---------------|-------|
+| Auth (/api/v1/Auth/*) | No | Rate limited |
+| Health (/api/v1/Health) | No | Public health check |
+| All others | Yes | JWT Bearer |
 
 ---
 
@@ -510,6 +560,16 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 | `backend` | Build `./VAH.Backend` | 5027 | postgres, redis | `wget /api/v1/Health` |
 | `frontend` | Build `./VAH.Frontend` | 3000→80 | backend | — |
 
+### Supported Deployment Modes
+
+| Mode | Description | Expected Concurrency | Storage Requirements | SignalR Approach |
+|------|-------------|----------------------|----------------------|------------------|
+| A | SQLite + local uploads + single instance (dev/homelab) | ~5-10 concurrent users | ~5-10GB local disk | N/A (single instance) |
+| B | PostgreSQL + local uploads + single instance (small prod) | ~50-100 concurrent users | ~100GB+ local disk | N/A (single instance) |
+| C | PostgreSQL + object storage + multi-instance (scale) | 100+ concurrent users | Object storage (S3/Azure) | Redis backplane + sticky sessions |
+
+For each mode, SignalR is handled via user groups; multi-instance requires Redis backplane to broadcast messages across instances.
+
 ### 5.2 Named Volumes
 
 | Volume | Mô tả |
@@ -533,7 +593,43 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 ---
 
-## 6. Bảo mật
+## 6. Runbook
+
+### Local Run Instructions
+
+Prerequisites: .NET 9 SDK, Node.js 22, optionally Docker for DB.
+
+1. Clone the repo.
+
+2. For backend: cd VAH.Backend, dotnet run
+
+3. For frontend: cd VAH.Frontend, npm install, npm run dev
+
+Ports: Backend 5027, Frontend 3000
+
+### Docker Compose Run
+
+1. docker-compose up
+
+Ports: Backend 5027, Frontend 80
+
+### Database Migration
+
+Auto-migrate on startup. For production, review migrations before deploy.
+
+### Backup/Restore
+
+- PostgreSQL: pg_dump / pg_restore
+
+- Uploads: tar the volume
+
+### Secrets
+
+- JWT key: Rotate via appsettings, restart
+
+- DB connection: Use environment variables
+
+## 7. Bảo mật
 
 | Biện pháp | Chi tiết |
 |-----------|---------|
@@ -550,7 +646,7 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 ---
 
-## 7. Hiệu suất
+## 8. Hiệu suất
 
 | Strategy | Chi tiết |
 |----------|---------|
@@ -565,7 +661,7 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 ---
 
-## 8. Lộ trình Phát triển — Tổng kết 4 Giai đoạn
+## 9. Lộ trình Phát triển — Tổng kết 4 Giai đoạn
 
 ### Giai đoạn 1 — Nền tảng Production ✅ 7/7 (100%)
 
@@ -615,23 +711,45 @@ Không sử dụng Redux/Zustand — hoàn toàn React hooks + Context API:
 
 ---
 
-## 9. Tổng kết Metrics
+## 10. Tổng kết Metrics
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng API endpoints | ~46 (có legacy aliases được `ApiExplorerSettings(IgnoreApi = true)`) |
-| Backend controllers | 16 (gồm AssetsCommand + AssetsQuery + các domain controllers khác) |
-| Backend services | 12 (11 interface-backed + AssetCleanupHelper) |
-| Frontend hooks | 11 |
-| Frontend components | 17 |
-| Frontend context | 2 (AppContext + ConfirmContext) |
-| Frontend models | 1 (Asset, Collection, Tag domain classes) |
-| API modules (frontend) | 11 (7 domain + BaseApiService + TokenManager + client + barrel) |
-| Database tables | 5 entity + Identity |
-| Database indexes | 22 |
-| Docker services | 4 |
-| EF Migrations | 5 (InitialCreate, AddThumbnailColumns, AddTagSystem, AddCollectionPermissions, SyncModelChanges) |
+| Tổng API endpoints | See Swagger for current count |
+| Backend controllers | See VAH.Backend/Controllers/ folder |
+| Backend services | See VAH.Backend/Services/ folder |
+| Frontend hooks | See VAH.Frontend/src/hooks/ folder |
+| Frontend components | See VAH.Frontend/src/components/ folder |
+| Frontend context | See VAH.Frontend/src/context/ folder |
+| Frontend models | See VAH.Frontend/src/models/ folder |
+| API modules (frontend) | See VAH.Frontend/src/api/ folder |
+| Database tables | See EF migrations and AppDbContextModelSnapshot |
+| Database indexes | See EF migrations and AppDbContextModelSnapshot |
+| Docker services | See docker-compose.yml |
+| EF Migrations | See VAH.Backend/Migrations/ folder |
 | Giai đoạn hoàn thành | **4/4 (26/26 — 100%) + OOP refactor 5/5 Phases (23/23) + Session #4-6** |
+
+## 11. Glossary
+
+- **Asset:** A digital resource (image, link, color) managed in the system.
+- **Collection:** Hierarchical folder for organizing assets.
+- **Smart Collection:** Dynamic virtual collection based on filters (e.g., recent, untagged).
+- **RBAC Roles:** Owner (full access), Editor (read/write), Viewer (read-only) for collections.
+- **Feature Slice:** Architectural pattern separating Command, Query, and Application layers.
+- **Command/Query Separation:** CQRS-inspired split for write (Command) and read (Query) operations.
+- **System Collections:** Default collections (Images, Links, Colors) shared across users.
+- **Tag:** Many-to-many labels for assets.
+- **JWT Bearer:** JSON Web Token authentication.
+- **SignalR:** Real-time WebSocket communication.
+- **EF Core:** Entity Framework Core ORM.
+- **Docker Compose:** Multi-container deployment.
+
+## 12. Documentation Maintenance
+
+- **API Changes:** When routes or schemas change, update Swagger UI and sync this API reference section.
+- **Code Changes:** When adding services, controllers, entities, or migrations, update references to source of truth (e.g., folder links) instead of hardcoding counts.
+- **Versioning:** Ensure "Last updated" date and version match the current release or tag.
+- **Review Cycle:** Review for stale numbers and outdated information quarterly or before major releases.
 
 ---
 
