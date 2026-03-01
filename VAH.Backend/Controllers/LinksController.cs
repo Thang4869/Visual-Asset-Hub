@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VAH.Backend.Features.Assets.Common;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
 
@@ -22,9 +23,8 @@ public class LinksController(IAssetService assetService) : BaseApiController
         [FromBody] CreateLinkDto dto, CancellationToken ct = default)
     {
         var link = await assetService.CreateLinkAsync(dto, GetUserId(), ct);
-        return CreatedAtAction(
-            actionName: nameof(AssetsController.GetAssetById),
-            controllerName: "Assets",
+        return CreatedAtRoute(
+            routeName: AssetRouteNames.GetAssetById,
             routeValues: new { id = link.Id },
             value: link);
     }

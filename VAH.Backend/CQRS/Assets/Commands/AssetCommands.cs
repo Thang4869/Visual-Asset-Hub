@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MediatR;
 using VAH.Backend.Models;
 
@@ -10,7 +11,7 @@ public sealed record CreateAssetCommand(
 
 /// <summary>Command: Upload one or more files to a collection.</summary>
 public sealed record UploadFilesCommand(
-    List<IFormFile> Files,
+    IReadOnlyCollection<UploadedFileDto> Files,
     int CollectionId,
     int? FolderId,
     string UserId) : IRequest<List<AssetResponseDto>>;

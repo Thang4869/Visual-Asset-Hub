@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using VAH.Backend.Data;
 using VAH.Backend.Models;
@@ -126,7 +127,7 @@ public class AssetService : IAssetService
         return asset.ToDto();
     }
 
-    public async Task<List<AssetResponseDto>> UploadFilesAsync(List<IFormFile> files, int collectionId, int? folderId, string userId, CancellationToken ct = default)
+    public async Task<List<AssetResponseDto>> UploadFilesAsync(IReadOnlyCollection<UploadedFileDto> files, int collectionId, int? folderId, string userId, CancellationToken ct = default)
     {
         if (files == null || files.Count == 0)
             throw new ArgumentException("No files uploaded.");
@@ -167,17 +168,18 @@ public class AssetService : IAssetService
                     $"File type '{extension}' is not allowed. Allowed: {string.Join(", ", _uploadConfig.AllowedExtensions)}");
 
             // Validate MIME type
+            var contentType = file.ContentType;
             var isAllowedMime = _uploadConfig.AllowedMimeTypePrefixes
-                .Any(prefix => file.ContentType?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true);
-            if (!isAllowedMime && !string.IsNullOrEmpty(file.ContentType))
+                .Any(prefix => contentType?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true);
+            if (!isAllowedMime && !string.IsNullOrEmpty(contentType))
                 _logger.LogWarning("Unexpected MIME type: {MimeType} for file {FileName}", file.ContentType, file.FileName);
 
             // Upload via storage service
-            await using var stream = file.OpenReadStream();
-            var filePath = await _storage.UploadAsync(stream, file.FileName, file.ContentType ?? "application/octet-stream");
+            await using var stream = file.OpenStream();
+            var filePath = await _storage.UploadAsync(stream, file.FileName, contentType ?? "application/octet-stream");
 
             // Create correct subtype based on MIME type
-            var asset = file.ContentType?.StartsWith("image") == true
+            var asset = contentType?.StartsWith("image") == true
                 ? (Asset)AssetFactory.CreateImage(file.FileName, filePath, collectionId, assetOwner, folderId)
                 : AssetFactory.CreateFile(file.FileName, filePath, collectionId, assetOwner, folderId);
 

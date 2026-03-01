@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VAH.Backend.Features.Assets.Common;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
 
@@ -22,9 +23,8 @@ public class ColorGroupsController(IAssetService assetService) : BaseApiControll
         [FromBody] CreateColorGroupDto dto, CancellationToken ct = default)
     {
         var group = await assetService.CreateColorGroupAsync(dto, GetUserId(), ct);
-        return CreatedAtAction(
-            actionName: nameof(AssetsController.GetAssetById),
-            controllerName: "Assets",
+        return CreatedAtRoute(
+            routeName: AssetRouteNames.GetAssetById,
             routeValues: new { id = group.Id },
             value: group);
     }
