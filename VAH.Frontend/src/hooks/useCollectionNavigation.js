@@ -47,11 +47,12 @@ export default function useCollectionNavigation() {
   // ── Folder-level navigation ──
 
   const openFolder = useCallback(
-    (folder) => {
+    (folder, collectionOverride = null) => {
       setFolderPath((prev) => [...prev, folder]);
       setCurrentFolderId(folder.id);
-      if (selectedCollection) {
-        navigate(`/collections/${selectedCollection.id}/folder/${folder.id}`);
+      const targetCollectionId = collectionOverride?.id || selectedCollection?.id || folder?.collectionId;
+      if (targetCollectionId) {
+        navigate(`/collections/${targetCollectionId}/folder/${folder.id}`);
       }
     },
     [selectedCollection, navigate],

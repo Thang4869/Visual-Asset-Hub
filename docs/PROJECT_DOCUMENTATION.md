@@ -659,7 +659,7 @@ GET    /                      → List<Collection>
 
 ### 6.1 client.js — Axios Instance
 
-- **Base URL:** `VITE_API_URL` hoặc `http://localhost:5027/api`
+- **Base URL:** `VITE_API_URL` hoặc `http://localhost:5027/api/v1`
 - **Timeout:** 30s
 - **Request interceptor:** Gắn `Authorization: Bearer <token>` từ localStorage
 - **Response interceptor:** Auto-clear token + reload khi 401
@@ -838,7 +838,7 @@ backend:
   Cors__AllowedOrigins__0: http://localhost:3000
 
 frontend:
-  VITE_API_URL: http://backend:5027/api
+  VITE_API_URL: http://backend:5027/api/v1
 ```
 
 ---

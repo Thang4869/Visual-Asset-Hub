@@ -1,6 +1,6 @@
 # Visual Asset Hub — Báo cáo Thay đổi & Sửa lỗi
 
-> **Cập nhật lần cuối:** 01/03/2026 — Session #6.8
+> **Cập nhật lần cuối:** 01/03/2026 — Session #6.11
 
 ---
 
@@ -1837,4 +1837,99 @@ Invalid values → automatic 400 ValidationProblemDetails (via `[ApiController]`
 #### Kết quả build:
 ```
 dotnet build --no-incremental → 0 errors, 0 warnings ✅
+```
+
+---
+
+## Session #6.9 — Frontend Runtime Fix (AppProvider)
+
+### ReferenceError: Cannot access 'handleCopy' before initialization
+**Vấn đề:** App bị crash khi mount `AppProvider` với lỗi runtime:
+```
+ReferenceError: Cannot access 'handleCopy' before initialization
+```
+
+**Nguyên nhân:** Trong `AppContext`, `useEffect` keyboard shortcuts được khai báo trước các callback `const` (`handleCopy`, `handleCut`, `handlePaste`, `handleDeleteAsset`, `handleRenameAsset`). JavaScript rơi vào Temporal Dead Zone khi dependency array của `useEffect` tham chiếu tới các biến chưa khởi tạo.
+
+**Fix:** Di chuyển toàn bộ block `useEffect` keyboard shortcuts xuống sau phần khai báo các handler liên quan, giữ nguyên logic xử lý phím tắt.
+
+### Console `onboarding.js:30` — Uncaught (in promise) undefined
+**Đánh giá:** Không thuộc source code của project (`VAH.Frontend/src` không có file `onboarding.js`). Stack trace cho thấy đây là script tiêm từ extension/browser runtime (`content-script.js`).
+
+**Hành động:** Không thay đổi code app cho lỗi này; có thể bỏ qua khi debug app hoặc thử tắt extension trình duyệt để xác nhận môi trường sạch.
+
+### Files đã thay đổi (Session #6.9)
+
+| File | Action |
+|------|--------|
+| `VAH.Frontend/src/context/AppContext.js` | Reordered keyboard shortcut `useEffect` to eliminate TDZ runtime crash |
+| `docs/FIX_REPORT_20260227.md` | Added root cause + fix notes for AppProvider runtime error |
+
+### Kết quả build:
+```
+npm run build (VAH.Frontend) → success ✅
+```
+
+---
+
+## Session #6.11 — Pinned Sidebar Navigation Fix
+
+### Không mở được thư mục ghim / item ghim trong thư mục
+**Vấn đề:** Click item ghim ở sidebar không mở được đúng thư mục đích; item ghim bên trong thư mục không được focus đúng.
+
+**Nguyên nhân:** Logic `handleNavigateToPinned` dùng `setTimeout` + callback `openFolder()` dựa trên `selectedCollection` trong closure cũ. Khi nhảy giữa collections, route folder có thể được tạo theo collection trước đó (stale state), khiến điều hướng sai.
+
+**Fix:**
+- Bỏ flow điều hướng dựa trên `setTimeout`.
+- Mở rộng `openFolder(folder, collectionOverride)` để điều hướng bằng collection đích rõ ràng.
+- Cập nhật `handleNavigateToPinned` để:
+  - chọn đúng collection đích,
+  - mở đúng folder theo collection đó,
+  - set selected asset deterministically (không delay).
+
+### Files đã thay đổi (Session #6.11)
+
+| File | Action |
+|------|--------|
+| `VAH.Frontend/src/hooks/useCollectionNavigation.js` | `openFolder` supports explicit target collection override |
+| `VAH.Frontend/src/context/AppContext.js` | Reworked pinned navigation flow, removed timeout-based routing |
+| `docs/FIX_REPORT_20260227.md` | Added pinned navigation bug root cause + fix |
+
+### Kết quả build:
+```
+npm run build (VAH.Frontend) → success ✅
+```
+
+---
+
+## Session #6.10 — API Version Mismatch 404 Fix
+
+### 404 cho Collections / Tags / SmartCollections
+**Vấn đề:** Frontend gọi các URL dạng:
+```
+GET http://localhost:5027/api/Collections
+GET http://localhost:5027/api/Tags
+GET http://localhost:5027/api/SmartCollections
+```
+và nhận `404 Not Found`.
+
+**Nguyên nhân:** Backend đã chuyển toàn bộ controller sang route prefix `api/v1/[controller]`, nhưng cấu hình runtime ở frontend/docker vẫn dùng base URL `.../api` (thiếu `/v1`).
+
+**Fix:**
+- Chuẩn hoá `VITE_API_URL` trong frontend để luôn resolve về `.../api/v1` (tương thích ngược với input `.../api` hoặc host root).
+- Sửa SignalR hub URL derivation để không phụ thuộc chuỗi `/api` hardcoded.
+- Cập nhật `docker-compose.yml` sang `VITE_API_URL=http://localhost:5027/api/v1` và healthcheck backend `GET /api/v1/Health`.
+
+### Files đã thay đổi (Session #6.10)
+
+| File | Action |
+|------|--------|
+| `VAH.Frontend/src/api/client.js` | Added API base URL normalization to enforce `/api/v1` |
+| `VAH.Frontend/src/hooks/useSignalR.js` | Hub URL now derived from normalized API base URL |
+| `docker-compose.yml` | Updated frontend `VITE_API_URL` and backend healthcheck to `api/v1` |
+| `docs/FIX_REPORT_20260227.md` | Added root cause + fix details for API 404 mismatch |
+
+### Kết quả build:
+```
+npm run build (VAH.Frontend) → success ✅
 ```

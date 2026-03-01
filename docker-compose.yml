@@ -66,7 +66,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5027/api/Health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5027/api/v1/Health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -78,7 +78,7 @@ services:
       context: ./VAH.Frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://localhost:5027/api
+        - VITE_API_URL=http://localhost:5027/api/v1
     container_name: vah-frontend
     ports:
       - "3000:80"
