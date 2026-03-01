@@ -1,8 +1,19 @@
 import axios from 'axios';
 import tokenManager from './TokenManager';
 
+function normalizeApiBaseUrl(rawUrl) {
+  const fallback = 'http://localhost:5027/api/v1';
+  const input = (rawUrl || fallback).trim().replace(/\/+$/, '');
+
+  if (/\/api\/v\d+$/i.test(input)) return input;
+  if (/\/api$/i.test(input)) return `${input}/v1`;
+  return `${input}/api/v1`;
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5027/api/v1',
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Accept': 'application/json',
@@ -54,6 +65,7 @@ apiClient.interceptors.response.use(
 );
 
 export const STATIC_URL = import.meta.env.VITE_STATIC_URL || 'http://localhost:5027';
+export { API_BASE_URL, normalizeApiBaseUrl };
 
 /**
  * Build a full URL for a static asset (image, uploaded file, etc.)

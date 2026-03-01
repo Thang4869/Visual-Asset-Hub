@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
-import { getToken } from '../api/client';
+import { getToken, API_BASE_URL } from '../api/client';
 
-const HUB_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5027/api').replace('/api', '') + '/hubs/assets';
+const HUB_URL = API_BASE_URL.replace(/\/api(?:\/v\d+)?$/i, '') + '/hubs/assets';
 
 /**
  * Hook for real-time SignalR notifications.
