@@ -30,11 +30,11 @@ public interface ISmartCollectionFilter
 ```
 
 Concrete strategies:
-- `TypeFilter` → filters by `ContentType`
-- `TagFilter` → filters by tag name via `AssetTags` join
+- `TypeFilter`      → filters by `ContentType`
+- `TagFilter`       → filters by tag name via `AssetTags` join
 - `DateRangeFilter` → filters by `CreatedAt` between start/end
-- `FolderFilter` → filters by `ParentFolderId`
-- `RecentFilter` → orders by `CreatedAt DESC`, takes N
+- `FolderFilter`    → filters by `ParentFolderId`
+- `RecentFilter`    → orders by `CreatedAt DESC`, takes N
 
 ### Registration
 All `ISmartCollectionFilter` implementations are registered individually and consumed via `IEnumerable<ISmartCollectionFilter>`:

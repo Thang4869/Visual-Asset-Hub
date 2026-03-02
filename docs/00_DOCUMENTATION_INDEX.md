@@ -1,9 +1,9 @@
-# 📚 VAH — Documentation Index
+# 📚 VAH — Documentation Index ( Mục lục tài liệu)
 
 > **Visual Asset Hub** — Digital Asset Management Platform  
 > Stack: .NET 9 · React 19 · PostgreSQL 17 · Redis  
 > Last Updated: 2026-03-02  
-> **Status**: ✅ All 30+ documentation files created and verified against source code
+> **Status**: ✅ Tất cả hơn 30+ tập tin tài liệu đã được tạo và kiểm chứng so với mã nguồn.
 
 ---
 
@@ -12,22 +12,22 @@
 ```
 docs/
 │
-├── 00_DOCUMENTATION_INDEX.md              ← BẠN ĐANG Ở ĐÂY
+├── 00_DOCUMENTATION_INDEX.md             ← BẠN ĐANG Ở ĐÂY
 ├── 00_DOCS_MAINTENANCE_GUIDE.md          # Quản lý cập nhật docs (khi nào sửa file nào)
 │
-├── 01_DESIGN_PHILOSOPHY/                  # Tư duy thiết kế & Quy ước kiến trúc
-│   ├── ARCHITECTURE_CONVENTIONS.md        # Tiêu chuẩn OOP cho .NET 9 & React 19
+├── 01_DESIGN_PHILOSOPHY/                 # Tư duy thiết kế & Quy ước kiến trúc
+│   ├── ARCHITECTURE_CONVENTIONS.md       # Tiêu chuẩn OOP cho .NET 9 & React 19
 │   ├── DESIGN_PRINCIPLES.md              # SOLID, Clean Architecture, DDD rationale
-│   └── PATTERN_CATALOG.md               # Catalog tất cả Design Patterns đang dùng
+│   └── PATTERN_CATALOG.md                # Catalog tất cả Design Patterns đang dùng
 │
-├── 02_STANDARDS/                          # Quy định chung (Coding Standards)
+├── 02_STANDARDS/                         # Quy định chung (Coding Standards)
 │   ├── CODING_STANDARDS_BACKEND.md       # .NET 9 coding conventions & XML Documentation
 │   ├── CODING_STANDARDS_FRONTEND.md      # React 19 conventions & JSDoc
 │   ├── API_CONVENTIONS.md                # REST API design rules & versioning
 │   ├── DATABASE_CONVENTIONS.md           # EF Core, migrations, naming conventions
 │   └── DOCUMENTATION_STANDARDS.md        # XML Doc / JSDoc / ADR format guide
 │
-├── 03_ARCHITECTURE/                       # Kiến trúc hệ thống (System-level)
+├── 03_ARCHITECTURE/                      # Kiến trúc hệ thống (System-level)
 │   ├── ARCHITECTURE_REVIEW.md            # [Existing] Full architecture review
 │   ├── SYSTEM_TOPOLOGY.md                # Infrastructure & deployment topology
 │   ├── DOMAIN_MODEL.md                   # Entity relationships, aggregates, invariants
@@ -41,7 +41,7 @@ docs/
 │       ├── ADR-005_JWT_SIGNALR_AUTH.md
 │       └── ADR-006_STRATEGY_SMART_COLLECTIONS.md
 │
-├── 04_MODULES/                            # Chi tiết từng Module (Domain Modules)
+├── 04_MODULES/                           # Chi tiết từng Module (Domain Modules)
 │   ├── MODULE_TEMPLATE.md                # Template chuẩn cho mô tả module
 │   ├── ASSET_MODULE.md                   # Core: Asset Management (CRUD, Upload, Types)
 │   ├── COLLECTION_MODULE.md              # Core: Collection Management
@@ -51,24 +51,24 @@ docs/
 │   ├── SEARCH_MODULE.md                  # Supporting: Search & Filtering
 │   ├── PERMISSION_MODULE.md              # Generic: RBAC Permissions
 │   ├── SMART_COLLECTION_MODULE.md        # Core: Smart Collections (Strategy Pattern)
-│   └── REALTIME_MODULE.md               # Generic: SignalR Real-time Sync
+│   └── REALTIME_MODULE.md                # Generic: SignalR Real-time Sync
 │
-├── 05_FRONTEND/                           # Frontend-specific documentation
+├── 05_FRONTEND/                          # Frontend-specific documentation
 │   ├── COMPONENT_CATALOG.md              # All React components & responsibilities
 │   ├── STATE_MANAGEMENT.md               # Context, hooks architecture
 │   └── API_LAYER.md                      # Class-based API services (OOP)
 │
-├── 06_OPERATIONS/                         # Vận hành & Triển khai
+├── 06_OPERATIONS/                        # Vận hành & Triển khai
 │   ├── IMPLEMENTATION_GUIDE.md           # [Existing] Setup & deployment guide
 │   ├── RUNBOOK.md                        # Operational procedures & playbooks
-│   └── TROUBLESHOOTING.md               # Common issues & resolutions
+│   └── TROUBLESHOOTING.md                # Common issues & resolutions
 │
-├── 07_CHANGELOG/                          # Nhật ký thay đổi
+├── 07_CHANGELOG/                         # Nhật ký thay đổi
 │   ├── CHANGELOG.md                      # Version history (Keep a Changelog format)
 │   ├── TECHNICAL_DEBT.md                 # Tracked debt items & prioritization
 │   └── REFACTOR_LOG.md                   # Completed refactorings & impact analysis
 │
-└── 08_REPORTS/                            # Báo cáo lịch sử (Historical Reports)
+└── 08_REPORTS/                           # Báo cáo lịch sử (Historical Reports)
     ├── INDEX.md                          # Report registry & migration status
     ├── OOP_ASSESSMENT.md                 # [Legacy] OOP assessment results
     ├── PHASE1_REPORT.md                  # [Legacy] Phase 1 completion report

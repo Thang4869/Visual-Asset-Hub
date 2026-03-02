@@ -20,18 +20,18 @@ Introduce **CQRS (Command Query Responsibility Segregation)** using **MediatR 14
 
 **Command Side:**
 ```
-UploadAssetsCommand → UploadAssetsHandler → IAssetService
-UpdateAssetCommand → UpdateAssetHandler → IAssetService
-DeleteAssetCommand → DeleteAssetHandler → IAssetService
-DuplicateAssetCommand → DuplicateAssetHandler → IAssetDuplicateStrategyFactory
-UpdateAssetPositionCommand → UpdateAssetPositionHandler → IAssetService
+UploadAssetsCommand         → UploadAssetsHandler        → IAssetService
+UpdateAssetCommand          → UpdateAssetHandler         → IAssetService
+DeleteAssetCommand          → DeleteAssetHandler         → IAssetService
+DuplicateAssetCommand       → DuplicateAssetHandler      → IAssetDuplicateStrategyFactory
+UpdateAssetPositionCommand  → UpdateAssetPositionHandler → IAssetService
 ```
 
 **Query Side:**
 ```
-GetAssetsQuery → GetAssetsHandler → IAssetService
-GetAssetByIdQuery → GetAssetByIdHandler → IAssetService
-GetAssetsByFolderQuery → GetAssetsByFolderHandler → IAssetService
+GetAssetsQuery          → GetAssetsHandler          → IAssetService
+GetAssetByIdQuery       → GetAssetByIdHandler       → IAssetService
+GetAssetsByFolderQuery  → GetAssetsByFolderHandler  → IAssetService
 ```
 
 **Controller Split:**
