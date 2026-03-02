@@ -4,6 +4,150 @@
 
 ---
 
+## 1. Data Flow Diagram
+
+End-to-end request flow cho các thao tác chính.
+
+### 1.1 Upload Flow
+
+```
+User (Browser)
+  │  POST /api/v1/assets/upload (multipart/form-data)
+  ▼
+Nginx (port 80)
+  │  proxy_pass → backend:5027, max body 100MB
+  ▼
+ASP.NET Middleware Pipeline
+  │  GlobalExceptionHandler → CORS → RateLimit (20/min upload)
+  │  → Auth (JWT Bearer) → Controller
+  ▼
+AssetsCommandController.Upload()
+  │  Extract UserId from JWT claims
+  ▼
+AssetService.CreateAssetFromUploadAsync()
+  │
+  ├──① Validate: size ≤50MB, extension whitelist, MIME check
+  │
+  ├──② IStorageService.SaveFileAsync()
+  │     └── LocalStorageService: wwwroot/uploads/{guid}.{ext}
+  │
+  ├──③ AssetFactory.CreateImage() / CreateFile()
+  │     └── TPH subtype based on ContentType
+  │
+  ├──④ AppDbContext.Assets.Add() → SaveChangesAsync()
+  │     └── PostgreSQL / SQLite (env-dependent)
+  │
+  ├──⑤ IThumbnailService.GenerateThumbnailsAsync()
+  │     └── ImageSharp: sm(150px) + md(400px) + lg(800px) WebP
+  │     └── Save to wwwroot/uploads/thumbs/{size}_{id}.webp
+  │
+  ├──⑥ IDistributedCache.RemoveAsync("collections:*")
+  │     └── Redis / In-memory fallback
+  │
+  └──⑦ INotificationService.NotifyAssetCreated()
+        └── SignalR Hub → all user's connected clients
+              └── Frontend: useSignalR hook → state update → re-render
+```
+
+### 1.2 Read Flow (GET Assets)
+
+```
+Browser → Nginx → Auth → AssetsQueryController.GetAssets()
+  │
+  ▼
+AssetService.GetAssetsAsync(paginationParams, userId)
+  │
+  ├── AppDbContext.Assets
+  │     .Where(a => a.UserId == userId)
+  │     .Where(a => a.CollectionId == collectionId)
+  │     .Include(a => a.AssetTags).ThenInclude(at => at.Tag)
+  │     .OrderBy(a => a.SortOrder)
+  │     .Skip/Take (pagination)
+  │
+  └── Return PagedResult<Asset> → JSON serialize → 200 OK
+        └── Frontend: axios → useAssets hook → AssetGrid render
+```
+
+### 1.3 Cache Invalidation Flow
+
+```
+Write operation (Create/Update/Delete Asset or Collection)
+  │
+  ├──① AppDbContext.SaveChangesAsync()
+  │
+  ├──② IDistributedCache.RemoveAsync("collections:{userId}")
+  │     └── Redis DEL / In-memory remove
+  │
+  └──③ SignalR Hub.SendAsync("AssetChanged", payload)
+        │
+        └── All connected clients of same user
+              └── useSignalR → setAssets() / fetchCollections()
+                    └── Next GET → cache MISS → fresh DB query → cache SET (5min abs / 2min slide)
+```
+
+---
+
+## 1.4 Service Dependency Graph
+
+Which service depends on which — answers "what breaks if I change X?"
+
+```
+                    ┌─────────────────────┐
+                    │   Controllers        │
+                    │  (thin, delegate)    │
+                    └──────────┬──────────┘
+                               │ inject via DI
+        ┌──────────┬──────────┼──────────┬──────────┐
+        ▼          ▼          ▼          ▼          ▼
+  ┌──────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐
+  │ Asset    │ │ Bulk   │ │Collect.│ │ Search │ │Permission│
+  │ Service  │ │ Asset  │ │Service │ │Service │ │ Service  │
+  │          │ │Service │ │        │ │        │ │          │
+  └──┬──┬──┬┘ └──┬──┬──┘ └───┬────┘ └───┬────┘ └────┬─────┘
+     │  │  │     │  │        │          │           │
+     │  │  ├─────┤  │        │          │           │
+     │  │  │     │  │        │          │           │
+     ▼  ▼  ▼     ▼  ▼        ▼          ▼           ▼
+  ┌──────────────────────────────────────────────────────┐
+  │                    AppDbContext                        │
+  │              (EF Core 9, 5 DbSets)                    │
+  └──────────────────────────────────────────────────────┘
+     │                    │                    │
+     ▼                    ▼                    ▼
+  ┌────────┐       ┌──────────┐        ┌──────────────┐
+  │Storage │       │Thumbnail │        │Notification  │
+  │Service │       │ Service  │        │  Service     │
+  │(IStorage│       │(ImageSharp│        │ (SignalR Hub)│
+  │Service) │       │pipeline) │        │              │
+  └────────┘       └──────────┘        └──────────────┘
+```
+
+### Dependency Matrix
+
+| Service | Depends On | Depended By | Blast Radius if Changed |
+|---------|-----------|-------------|------------------------|
+| **AssetService** | DbContext, IStorageService, IThumbnailService, INotificationService, IPermissionService | Controllers, BulkAssetService | 🔴 High — core CRUD |
+| **BulkAssetService** | DbContext, AssetCleanupHelper, IPermissionService, INotificationService | BulkAssetsController | 🟡 Medium |
+| **CollectionService** | DbContext, IDistributedCache | Controllers | 🟡 Medium — cached |
+| **SearchService** | DbContext | SearchController | 🟢 Low — isolated |
+| **TagService** | DbContext | TagsController | 🟢 Low — isolated |
+| **PermissionService** | DbContext, IDistributedCache | AssetService, BulkAssetService, Controllers | 🟠 High — authz dependency |
+| **SmartCollectionService** | DbContext, ISmartCollectionFilter[] (5 strategies) | SmartCollectionsController | 🟢 Low — Strategy pattern isolates changes |
+| **StorageService** | File system (wwwroot/) | AssetService, ThumbnailService | 🟠 High — all file I/O |
+| **ThumbnailService** | IStorageService, ImageSharp | AssetService | 🟢 Low — post-processing only |
+| **NotificationService** | SignalR IHubContext | AssetService, BulkAssetService, CollectionService | 🟢 Low — fire-and-forget |
+| **AuthService** | UserManager, SignInManager, JWT config | AuthController | 🟢 Low — isolated |
+| **AssetCleanupHelper** | IStorageService | AssetService, BulkAssetService | 🟢 Low — utility |
+
+### Key Observations
+
+1. **AppDbContext is the single dependency bottleneck** — all 12 services depend on it. This is the main coupling risk identified in ARCHITECTURE_REVIEW.md §6.3.
+2. **PermissionService is a hidden critical path** — AssetService and BulkAssetService both depend on it for authz checks. A bug here = auth bypass.
+3. **No circular dependencies** — the graph is a clean DAG (Directed Acyclic Graph).
+4. **IStorageService is the swap point** — only AssetService and ThumbnailService touch it. Cloud migration blast radius is contained.
+
+---
+
 ## 2. Backend — `VAH.Backend/`
 
 ### 2.1 Cấu hình dự án (`VAH.Backend.csproj`)

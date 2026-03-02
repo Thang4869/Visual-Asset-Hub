@@ -389,3 +389,126 @@ HTTP GET /api/Collections responded 200 in 12.345ms
 2. Extension trong whitelist (27 types)
 3. MIME type trong allowed prefixes (13 prefixes)
 4. Kestrel body limit 100MB
+
+---
+
+## 9. Deployment Rollback Strategy
+
+### Database Migration Rollback
+
+EF Core migrations CÓ THỂ rollback bằng cách chỉ định migration trước đó:
+
+```bash
+# Xem danh sách migrations đã apply
+dotnet ef migrations list
+
+# Rollback về migration cụ thể (ví dụ: revert migration cuối)
+dotnet ef database update <PreviousMigrationName>
+
+# Rollback TẤT CẢ migrations (xóa toàn bộ schema — NGUY HIỂM)
+dotnet ef database update 0
+```
+
+**Quan trọng:**
+- **Luôn backup database trước khi apply migration mới** (xem §10)
+- Migrations có destructive operations (DROP COLUMN, DROP TABLE) **không thể rollback data** — chỉ rollback schema
+- Khuyến nghị: viết rollback SQL script cho mỗi migration có destructive ops
+
+### Application Rollback (Docker)
+
+```bash
+# Xem image versions đã build
+docker images | grep vah
+
+# Rollback bằng cách chạy lại image cũ
+docker-compose down
+# Sửa docker-compose.yml image tag về version cũ, hoặc:
+docker-compose up -d --no-build    # dùng cached image
+
+# Hoặc nếu dùng git tag cho deployment:
+git checkout v1.2.3
+docker-compose up --build -d
+```
+
+### Emergency Rollback Checklist
+
+1. ☐ Stop traffic (nếu có load balancer: drain)
+2. ☐ `docker-compose down` (stop all services)
+3. ☐ Restore database from backup (xem §10)
+4. ☐ Rollback EF migration nếu cần: `dotnet ef database update <target>`
+5. ☐ Deploy previous version: `git checkout <tag> && docker-compose up --build -d`
+6. ☐ Verify: health endpoint, login, asset CRUD
+7. ☐ Notify users if applicable
+
+---
+
+## 10. Backup & Restore
+
+### PostgreSQL Backup
+
+```bash
+# Manual backup (chạy từ host hoặc Docker exec)
+docker exec vah-postgres pg_dump -U vah_user vah_database > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Compressed backup
+docker exec vah-postgres pg_dump -U vah_user -Fc vah_database > backup.dump
+
+# Upload volumes backup
+tar czf uploads_backup_$(date +%Y%m%d).tar.gz VAH.Backend/wwwroot/uploads/
+```
+
+### PostgreSQL Restore
+
+```bash
+# Restore từ SQL dump
+docker exec -i vah-postgres psql -U vah_user vah_database < backup_20260301_120000.sql
+
+# Restore từ compressed dump
+docker exec -i vah-postgres pg_restore -U vah_user -d vah_database --clean < backup.dump
+
+# Restore uploads
+tar xzf uploads_backup_20260301.tar.gz -C .
+```
+
+### Automated Backup (recommended — chưa implement)
+
+Thêm cron job hoặc systemd timer:
+```bash
+# /etc/cron.d/vah-backup (chạy mỗi ngày lúc 3:00 AM)
+0 3 * * * root docker exec vah-postgres pg_dump -U vah_user -Fc vah_database > /backups/vah_$(date +\%Y\%m\%d).dump && find /backups -mtime +30 -delete
+```
+
+> ⚠️ **CHƯA IMPLEMENT.** Đây là critical operational gap được xác định trong [ARCHITECTURE_REVIEW.md §18](ARCHITECTURE_REVIEW.md) (Failure Mode FM5) và §26 (Assumption Critique A3). Ưu tiên setup trước khi production deployment.
+
+---
+
+## 11. Compliance & Regulatory Statement
+
+### Current Status
+
+VAH hiện tại **không target regulated industries** và chưa có compliance requirement cụ thể.
+
+### Data Residency
+
+- **Single-region deployment** (§2 Constraint C8 trong ARCHITECTURE_REVIEW.md)
+- Tất cả data (database + uploaded files) nằm trên cùng server / cloud region
+- Không có geo-replication hay cross-border data transfer
+
+### GDPR Applicability (nếu target EU users)
+
+| Requirement | Current Status | Gap |
+|-------------|---------------|-----|
+| Right to access (Art. 15) | 🟡 Partial — user can view own assets via UI | No export-all-data endpoint |
+| Right to erasure (Art. 17) | ❌ Not implemented | No "delete my account + all data" flow |
+| Data portability (Art. 20) | ❌ Not implemented | No bulk export in machine-readable format |
+| Breach notification (Art. 33) | ❌ No process | No incident response plan |
+| Privacy by design (Art. 25) | ✅ User data isolation (UserId FK on all entities) | — |
+| Consent for processing | 🟡 Implicit (registration = consent) | No explicit consent flow |
+
+### Recommendation
+
+Nếu VAH hướng tới SaaS cho EU users:
+1. **P1:** Implement "Delete My Account" endpoint (cascade delete user + all assets + files)
+2. **P2:** Implement data export (JSON/ZIP of all user assets + metadata)
+3. **P3:** Privacy policy page + explicit consent checkbox at registration
+4. Xem thêm: [ARCHITECTURE_REVIEW.md §18](ARCHITECTURE_REVIEW.md) — Missing Runbook: "User data deletion request (GDPR-style)"
