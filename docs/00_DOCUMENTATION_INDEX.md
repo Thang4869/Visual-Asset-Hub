@@ -13,6 +13,7 @@
 docs/
 │
 ├── 00_DOCUMENTATION_INDEX.md              ← BẠN ĐANG Ở ĐÂY
+├── 00_DOCS_MAINTENANCE_GUIDE.md          # Quản lý cập nhật docs (khi nào sửa file nào)
 │
 ├── 01_DESIGN_PHILOSOPHY/                  # Tư duy thiết kế & Quy ước kiến trúc
 │   ├── ARCHITECTURE_CONVENTIONS.md        # Tiêu chuẩn OOP cho .NET 9 & React 19
