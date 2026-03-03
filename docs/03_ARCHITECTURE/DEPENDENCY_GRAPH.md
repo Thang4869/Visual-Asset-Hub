@@ -164,4 +164,34 @@ Request →
 
 ---
 
+## §6 — Blast Radius Analysis
+
+> **Source**: Migrated from `PROJECT_DOCUMENTATION.md` §1.4
+
+### Service Dependency Impact Matrix
+
+| Service | Depends On | Depended By | Blast Radius if Changed |
+|---------|-----------|-------------|------------------------|
+| **AssetService** | DbContext, IStorageService, IThumbnailService, INotificationService, IPermissionService | Controllers, BulkAssetService | 🔴 High — core CRUD |
+| **BulkAssetService** | DbContext, AssetCleanupHelper, IPermissionService, INotificationService | BulkAssetsController | 🟡 Medium |
+| **CollectionService** | DbContext, IDistributedCache | Controllers | 🟡 Medium — cached |
+| **SearchService** | DbContext | SearchController | 🟢 Low — isolated |
+| **TagService** | DbContext | TagsController | 🟢 Low — isolated |
+| **PermissionService** | DbContext, IDistributedCache | AssetService, BulkAssetService, Controllers | 🟠 High — authz dependency |
+| **SmartCollectionService** | DbContext, ISmartCollectionFilter[] (5 strategies) | SmartCollectionsController | 🟢 Low — Strategy pattern isolates changes |
+| **StorageService** | File system (wwwroot/) | AssetService, ThumbnailService | 🟠 High — all file I/O |
+| **ThumbnailService** | IStorageService, ImageSharp | AssetService | 🟢 Low — post-processing only |
+| **NotificationService** | SignalR IHubContext | AssetService, BulkAssetService, CollectionService | 🟢 Low — fire-and-forget |
+| **AuthService** | UserManager, SignInManager, JWT config | AuthController | 🟢 Low — isolated |
+| **AssetCleanupHelper** | IStorageService | AssetService, BulkAssetService | 🟢 Low — utility |
+
+### Key Observations
+
+1. **AppDbContext is the single dependency bottleneck** — all 12 services depend on it. This is the main coupling risk.
+2. **PermissionService is a hidden critical path** — AssetService and BulkAssetService both depend on it for authz checks. A bug here = auth bypass.
+3. **No circular dependencies** — the graph is a clean DAG (Directed Acyclic Graph).
+4. **IStorageService is the swap point** — only AssetService and ThumbnailService touch it. Cloud migration blast radius is contained.
+
+---
+
 > **Document End**

@@ -344,28 +344,28 @@ Layer Dependency Direction (Clean Architecture):
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   PRESENTATION                       │
-│  Controllers, Hubs, Middleware                        │
-│  Allowed: IService, DTOs, Request/Response models     │
-│  Forbidden: DbContext, EF queries, Business logic     │
+│                   PRESENTATION                      │
+│  Controllers, Hubs, Middleware                      │
+│  Allowed: IService, DTOs, Request/Response models   │
+│  Forbidden: DbContext, EF queries, Business logic   │
 ├─────────────────────────────────────────────────────┤
-│                   APPLICATION                        │
-│  Services (IAssetService, ICollectionService, ...)   │
-│  CQRS Handlers, Application Services                 │
-│  Allowed: Interfaces, Domain models, DTOs            │
-│  Forbidden: HTTP concerns, Controller references     │
+│                   APPLICATION                       │
+│  Services (IAssetService, ICollectionService, ...)  │
+│  CQRS Handlers, Application Services                │
+│  Allowed: Interfaces, Domain models, DTOs           │
+│  Forbidden: HTTP concerns, Controller references    │
 ├─────────────────────────────────────────────────────┤
-│                     DOMAIN                           │
-│  Entities (Asset, Collection, Tag, ...)              │
-│  Value Objects, Enums, Factory                       │
-│  Allowed: Pure C# (no framework dependencies)        │
-│  Forbidden: EF attributes*, HTTP, DI                 │
+│                     DOMAIN                          │
+│  Entities (Asset, Collection, Tag, ...)             │
+│  Value Objects, Enums, Factory                      │
+│  Allowed: Pure C# (no framework dependencies)       │
+│  Forbidden: EF attributes*, HTTP, DI                │
 ├─────────────────────────────────────────────────────┤
-│                 INFRASTRUCTURE                       │
-│  AppDbContext, Migrations, LocalStorageService        │
-│  Redis configuration, External integrations          │
-│  Allowed: Framework dependencies, concrete impls     │
-│  Forbidden: Business logic, Controller references    │
+│                 INFRASTRUCTURE                      │
+│  AppDbContext, Migrations, LocalStorageService      │
+│  Redis configuration, External integrations         │
+│  Allowed: Framework dependencies, concrete impls    │
+│  Forbidden: Business logic, Controller references   │
 └─────────────────────────────────────────────────────┘
 
 * Ngoại lệ: EF Core conventions qua Fluent API trong DbContext
@@ -376,14 +376,14 @@ Layer Dependency Direction (Clean Architecture):
 
 ```
 ✅ Allowed Dependencies:
-  Presentation  →  Application  →  Domain
-  Infrastructure  →  Domain
+  Presentation      →  Application  →  Domain
+  Infrastructure    →  Domain
   
 ❌ Forbidden Dependencies:
-  Domain  →  Application (domain KHÔNG biết application)
-  Domain  →  Infrastructure (domain KHÔNG biết EF Core)
-  Application  →  Presentation (service KHÔNG biết controller)
-  Any layer  →  Presentation (chỉ entry point)
+  Domain        →  Application (domain KHÔNG biết application)
+  Domain        →  Infrastructure (domain KHÔNG biết EF Core)
+  Application   →  Presentation (service KHÔNG biết controller)
+  Any layer     →  Presentation (chỉ entry point)
 ```
 
 ### 4.3 Current VAH Mapping
@@ -410,8 +410,8 @@ public interface INotificationService { }    // ✅ Cross-cutting concern
 
 // ❌ Sai naming
 public interface AssetService { }            // Thiếu "I" prefix
-public interface IDoStuff { }               // Vague — "DoStuff" không mô tả domain
-public interface IAssetHelper { }           // "Helper" là code smell — refactor thành Service
+public interface IDoStuff { }                // Vague — "DoStuff" không mô tả domain
+public interface IAssetHelper { }            // "Helper" là code smell — refactor thành Service
 ```
 
 ### 5.2 Interface Contract Rules `[MUST]`
@@ -461,20 +461,20 @@ public interface IAssetService
 Core Domain Interfaces:
 ├── IAssetService                  → 15 methods │ Asset CRUD, upload, types
 ├── IBulkAssetService              → 4 methods  │ Batch operations
-├── ICollectionService             → ~10 methods │ Collection CRUD, tree
-├── ISmartCollectionService        → ~5 methods  │ Dynamic collections
+├── ICollectionService             → ~10 methods│ Collection CRUD, tree
+├── ISmartCollectionService        → ~5 methods │ Dynamic collections
 └── ISmartCollectionFilter         → 3 methods  │ Strategy for filter types (5 impls)
 
 Supporting Domain Interfaces:
-├── ITagService                    → ~8 methods  │ Tag CRUD, asset-tag relations
-├── ISearchService                 → ~3 methods  │ Full-text search
-└── IPermissionService             → ~6 methods  │ RBAC permission checks
+├── ITagService                    → ~8 methods │ Tag CRUD, asset-tag relations
+├── ISearchService                 → ~3 methods │ Full-text search
+└── IPermissionService             → ~6 methods │ RBAC permission checks
 
 Generic/Infrastructure Interfaces:
 ├── IStorageService                → 4 methods  │ File I/O abstraction
-├── IThumbnailService              → ~3 methods  │ Image processing
-├── INotificationService           → ~2 methods  │ SignalR push
-└── IAuthService (implicit)        → ~3 methods  │ JWT auth
+├── IThumbnailService              → ~3 methods │ Image processing
+├── INotificationService           → ~2 methods │ SignalR push
+└── IAuthService (implicit)        → ~3 methods │ JWT auth
 ```
 
 ---
@@ -900,13 +900,13 @@ public class GetAssetsQueryHandler : IRequestHandler<GetAssetsQuery, List<AssetR
 
 ```
 Exception (System)
-├── NotFoundException          → 404 Not Found
+├── NotFoundException               → 404 Not Found
 │   "Collection with ID {id} not found"
-├── ValidationException        → 400 Bad Request
+├── ValidationException             → 400 Bad Request
 │   "Asset name cannot be empty"
-├── UnauthorizedAccessException → 401/403
+├── UnauthorizedAccessException     → 401/403
 │   "User does not have permission to access this collection"
-└── InvalidOperationException  → 500 (unexpected)
+└── InvalidOperationException       → 500 (unexpected)
     "Database state inconsistency detected"
 ```
 
@@ -1009,7 +1009,7 @@ class TokenManager {
 
 ```
 Custom Hooks (functional, nhưng tuân thủ SRP):
-├── useAuth.js              → Authentication state & actions
+├── useAuth.js               → Authentication state & actions
 ├── useAssets.js             → Asset CRUD operations
 ├── useAssetSelection.js     → Multi-select state management
 ├── useBulkOperations.js     → Batch actions
@@ -1285,6 +1285,83 @@ Khi tạo file mới, PHẢI kiểm tra:
 | Initialized once + thread-safe? | Yes → `Singleton` |
 | Holds configuration only? | Yes → `Singleton` (via `IOptions<T>`) |
 | Unsure? | → `Scoped` (safe default) |
+
+---
+
+## §19 — Architecture Governance Model
+
+> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §3
+
+### 19.1 Decision Authority
+
+| Decision Type | Authority | Process | Record |
+|---------------|-----------|---------|--------|
+| Tactical (library update, config change) | Any developer | PR review | Commit message |
+| Standard (new service, new entity, API change) | Tech lead | PR + design discussion | ADR in `docs/adr/` |
+| Strategic (new domain, infra change, breaking API) | Principal + stakeholder | RFC → review → approve | ADR + architecture doc update |
+
+### 19.2 ADR Format
+
+**Location:** `docs/03_ARCHITECTURE/ADR/ADR-NNN_TITLE.md`
+
+```
+# ADR-NNN: [Title]
+Date: YYYY-MM-DD
+Status: Proposed | Accepted | Deprecated | Superseded by ADR-XXX
+Context: [Why this decision is needed]
+Decision: [What was decided]
+Consequences: [Trade-offs accepted]
+```
+
+**When to write an ADR:**
+- Adding or removing a major dependency
+- Changing data model relationships
+- Introducing a new architectural pattern
+- Modifying API contracts with breaking changes
+- Changing deployment topology
+
+### 19.3 Breaking Change Policy
+
+| Scope | Policy | Notice Period |
+|-------|--------|---------------|
+| API endpoint removal | Deprecate → alias → remove after 2 releases | 2 sprints minimum |
+| API response shape change | Additive only (no field removal) | None for additions |
+| SignalR event rename/remove | Coordinate with frontend before merge | Same release cycle |
+| Database migration (destructive) | Backup required, staging validation mandatory | 1 sprint |
+| Environment variable rename | Update all docker-compose profiles + docs | Same release |
+
+### 19.4 Review Cadence
+
+| Activity | Frequency | Owner | Output |
+|----------|-----------|-------|--------|
+| Architecture doc review | Quarterly | Tech lead | Version bump, stale content pruned |
+| Dependency audit | Quarterly | Any developer | Dependency Risk Matrix updated |
+| Security posture review | Semi-annually | Tech lead | Threat model refresh |
+| SLO review | Monthly (when monitoring exists) | Ops / Tech lead | SLO targets adjusted |
+| Tech debt triage | Per sprint | Team | Debt items prioritized in backlog |
+
+### 19.5 Codebase Health Governance Rules (GR1–GR10)
+
+Measurable thresholds enforced via CI (where tooling exists) and manual audit quarterly. **Hard rules**, not guidelines.
+
+| Rule | Metric | Threshold | Current Status |
+|------|--------|-----------|----------------|
+| GR1 | Max file LOC (any .cs/.jsx/.js) | ≤300 lines | ❌ Violated: AppContext 472, App.jsx 477, ColorBoard 555 |
+| GR2 | Max cyclomatic complexity per method | ≤15 | Unknown — no tooling |
+| GR3 | Service layer test coverage | ≥70% | ❌ 0% |
+| GR4 | No `DbContext` in controllers | 0 direct usages | ✅ Compliant |
+| GR5 | API response time P95 | <500ms | Unknown — no monitoring |
+| GR6 | Max controller action methods | ≤10 per controller | ✅ Compliant |
+| GR7 | Zero `TODO`/`HACK`/`FIXME` in main branch | 0 count | Unknown |
+| GR8 | Dependency freshness | No dep >1 major behind | 🟡 .NET 9 STS → plan .NET 10 |
+| GR9 | No destructive migration without rollback script | 100% compliance | ❌ No staging |
+| GR10 | Frontend bundle size | <500KB gzipped | ✅ ~200KB |
+
+**Violation Process:**
+1. **New violations** → block PR merge (when CI enforced)
+2. **Existing violations** → tracked in Technical Debt register with timeline
+3. **Waiver** → requires ADR documenting why threshold is inappropriate
+4. **Quarterly review** → thresholds adjusted if consistently too strict/lenient
 
 ---
 

@@ -72,13 +72,13 @@ VAH is a **Modular Monolith** targeting ≤50 concurrent users today, with a Nor
 
 **VAH Dependency Direction**:
 ```
-Controllers → IAssetApplicationService (interface)
-                    ↓ impl
-           AssetApplicationService → ISender (MediatR)
-                    ↓ handler
-           CommandHandler → IAssetService (interface)
-                    ↓ impl
-           AssetService → AppDbContext, IStorageService, IThumbnailService
+Controllers →   IAssetApplicationService (interface)
+                    ↓   impl
+                AssetApplicationService     → ISender (MediatR)
+                    ↓   handler
+                CommandHandler              → IAssetService (interface)
+                    ↓   impl
+                AssetService                → AppDbContext, IStorageService, IThumbnailService
 ```
 
 ---
@@ -89,23 +89,23 @@ Controllers → IAssetApplicationService (interface)
 
 ```
 ┌───────────────────────────────────────────┐
-│          PRESENTATION (Web API)            │
-│  Controllers, Hubs, Middleware             │
+│          PRESENTATION (Web API)           │
+│  Controllers, Hubs, Middleware            │
 │  Knows: Application interfaces, DTOs      │
-│  Never: Direct DB, Business logic          │
+│  Never: Direct DB, Business logic         │
 ├───────────────────────────────────────────┤
-│          APPLICATION (Use Cases)           │
+│          APPLICATION (Use Cases)          │
 │  Services, CQRS Handlers, AppServices     │
 │  Knows: Domain, Infrastructure interfaces │
 │  Never: HTTP, Controller, View concerns   │
 ├───────────────────────────────────────────┤
-│          DOMAIN (Business Rules)           │
-│  Entities, Value Objects, Enums, Factory   │
+│          DOMAIN (Business Rules)          │
+│  Entities, Value Objects, Enums, Factory  │
 │  Knows: Only itself (pure C#)             │
 │  Never: EF, HTTP, DI, frameworks          │
 ├───────────────────────────────────────────┤
 │          INFRASTRUCTURE (I/O)             │
-│  DbContext, Storage, Cache, External APIs  │
+│  DbContext, Storage, Cache, External APIs │
 │  Knows: Domain (to persist it)            │
 │  Never: Application logic, Controllers    │
 └───────────────────────────────────────────┘
@@ -135,25 +135,25 @@ Controllers → IAssetApplicationService (interface)
 ### 4.1 Bounded Contexts
 
 ```
-┌─────────────────────────────────────────────────────┐
-│              CORE DOMAIN                             │
+┌───────────────────────────────────────────────────────┐
+│              CORE DOMAIN                              │
 │                                                       │
-│  Asset Management (Asset, AssetFactory, AssetTypes)  │
+│  Asset Management (Asset, AssetFactory, AssetTypes)   │
 │  Collection Management (Collection)                   │
 │  Smart Collections (ISmartCollectionFilter)           │
-├─────────────────────────────────────────────────────┤
+├───────────────────────────────────────────────────────┤
 │              SUPPORTING DOMAIN                        │
 │                                                       │
 │  Organization (Tag, AssetTag)                         │
 │  Search (ISearchService)                              │
-├─────────────────────────────────────────────────────┤
+├───────────────────────────────────────────────────────┤
 │              GENERIC DOMAIN                           │
 │                                                       │
 │  Identity (ApplicationUser, AuthService)              │
-│  Permissions (CollectionPermission, PermissionService) │
+│  Permissions (CollectionPermission, PermissionService)│
 │  Real-Time (AssetHub, NotificationService)            │
 │  Storage (IStorageService, IThumbnailService)         │
-└─────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────┘
 ```
 
 ### 4.2 Aggregate Roots
@@ -167,9 +167,9 @@ Controllers → IAssetApplicationService (interface)
 ### 4.3 Domain Events (Future)
 
 ```
-AssetCreated    → Trigger: thumbnail generation, SignalR notification
-AssetDeleted    → Trigger: file cleanup, cache invalidation
-CollectionShared → Trigger: email notification, activity log
+AssetCreated        → Trigger: thumbnail generation, SignalR notification
+AssetDeleted        → Trigger: file cleanup, cache invalidation
+CollectionShared    → Trigger: email notification, activity log
 ```
 
 ---

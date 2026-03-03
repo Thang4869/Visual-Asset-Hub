@@ -25,13 +25,16 @@ docs/
 │   ├── CODING_STANDARDS_FRONTEND.md      # React 19 conventions & JSDoc
 │   ├── API_CONVENTIONS.md                # REST API design rules & versioning
 │   ├── DATABASE_CONVENTIONS.md           # EF Core, migrations, naming conventions
-│   └── DOCUMENTATION_STANDARDS.md        # XML Doc / JSDoc / ADR format guide
+│   ├── DOCUMENTATION_STANDARDS.md        # XML Doc / JSDoc / ADR format guide
+│   └── DTO_REFERENCE.md                  # Complete DTO catalog (Auth, Asset, Tag, Bulk, Permission)
 │
 ├── 03_ARCHITECTURE/                      # Kiến trúc hệ thống (System-level)
-│   ├── ARCHITECTURE_REVIEW.md            # [Existing] Full architecture review
-│   ├── SYSTEM_TOPOLOGY.md                # Infrastructure & deployment topology
-│   ├── DOMAIN_MODEL.md                   # Entity relationships, aggregates, invariants
-│   ├── DEPENDENCY_GRAPH.md               # Service dependency matrix & DI registration
+│   ├── SYSTEM_TOPOLOGY.md                # Infrastructure, deployment, data flows, environment strategy
+│   ├── DOMAIN_MODEL.md                   # Entity relationships, aggregates, property reference
+│   ├── DEPENDENCY_GRAPH.md               # Service dependency matrix, blast radius & DI registration
+│   ├── SECURITY.md                       # Security posture, STRIDE threat model, GDPR compliance
+│   ├── RISK_ASSESSMENT.md                # Constraints, anti-patterns, risks, dependencies, assumptions
+│   ├── STRATEGIC_ROADMAP.md              # Gap analysis, improvements, roadmap, cost, north star
 │   └── ADR/                              # Architecture Decision Records
 │       ├── ADR_TEMPLATE.md
 │       ├── ADR-001_MODULAR_MONOLITH.md
@@ -59,9 +62,9 @@ docs/
 │   └── API_LAYER.md                      # Class-based API services (OOP)
 │
 ├── 06_OPERATIONS/                        # Vận hành & Triển khai
-│   ├── IMPLEMENTATION_GUIDE.md           # [Existing] Setup & deployment guide
-│   ├── RUNBOOK.md                        # Operational procedures & playbooks
-│   └── TROUBLESHOOTING.md                # Common issues & resolutions
+│   ├── RUNBOOK.md                        # Operational procedures, rollback, backup & restore
+│   ├── TROUBLESHOOTING.md                # Common issues & resolutions
+│   └── INCIDENT_RESPONSE.md              # Failure modes, SLOs, observability, capacity planning
 │
 ├── 07_CHANGELOG/                         # Nhật ký thay đổi
 │   ├── CHANGELOG.md                      # Version history (Keep a Changelog format)
@@ -70,10 +73,10 @@ docs/
 │
 └── 08_REPORTS/                           # Báo cáo lịch sử (Historical Reports)
     ├── INDEX.md                          # Report registry & migration status
-    ├── OOP_ASSESSMENT.md                 # [Legacy] OOP assessment results
-    ├── PHASE1_REPORT.md                  # [Legacy] Phase 1 completion report
-    ├── FIX_REPORT_20260227.md            # [Legacy] Fix report
-    └── PROJECT_DOCUMENTATION.md          # [Legacy] Technical documentation
+    ├── OOP_ASSESSMENT.md                 # [Historical] OOP assessment results
+    ├── PHASE1_REPORT.md                  # [Historical] Phase 1 completion report
+    ├── FIX_REPORT_20260227.md            # [Historical] Development session log (14 sessions)
+    └── DOCUMENTATION_AUDIT_REPORT.md     # [Historical] Documentation quality audit
 ```
 
 ---
@@ -84,7 +87,7 @@ docs/
 |---|------|----------|-----------|
 | 1 | `01_DESIGN_PHILOSOPHY/ARCHITECTURE_CONVENTIONS.md` | Hiểu tư duy OOP & quy ước kiến trúc | Tất cả developers |
 | 2 | `01_DESIGN_PHILOSOPHY/DESIGN_PRINCIPLES.md` | Hiểu tại sao chọn SOLID, Clean Arch | Tất cả developers |
-| 3 | `03_ARCHITECTURE/ARCHITECTURE_REVIEW.md` | Toàn cảnh kiến trúc hệ thống | Tech Lead, Architect |
+| 3 | `03_ARCHITECTURE/SYSTEM_TOPOLOGY.md` | Toàn cảnh kiến trúc hệ thống | Tech Lead, Architect |
 | 4 | `02_STANDARDS/CODING_STANDARDS_BACKEND.md` | Quy tắc viết code .NET 9 | Backend developers |
 | 5 | `02_STANDARDS/CODING_STANDARDS_FRONTEND.md` | Quy tắc viết code React 19 | Frontend developers |
 | 6 | `04_MODULES/ASSET_MODULE.md` | Core module — bắt đầu từ đây | Tất cả developers |
@@ -142,11 +145,12 @@ export class AssetsApi extends BaseApiService { }
 
 ## File Migration Plan (Existing → New Structure)
 
-| File hiện tại | Vị trí mới |
-|--------------|------------|
-| `docs/ARCHITECTURE_REVIEW.md` | `docs/03_ARCHITECTURE/ARCHITECTURE_REVIEW.md` |
-| `docs/OOP_ASSESSMENT.md` | `docs/08_REPORTS/OOP_ASSESSMENT.md` |
-| `docs/IMPLEMENTATION_GUIDE.md` | `docs/06_OPERATIONS/IMPLEMENTATION_GUIDE.md` |
-| `docs/PROJECT_DOCUMENTATION.md` | `docs/08_REPORTS/PROJECT_DOCUMENTATION.md` |
-| `docs/PHASE1_REPORT.md` | `docs/08_REPORTS/PHASE1_REPORT.md` |
-| `docs/FIX_REPORT_20260227.md` | `docs/08_REPORTS/FIX_REPORT_20260227.md` |
+| File hiện tại | Migrated? | Nội dung đã chuyển tới |
+|--------------|-----------|----------------------|
+| ~~`ARCHITECTURE_REVIEW.md`~~ | ✅ Deleted | Migrated 100% → DESIGN_PRINCIPLES, RISK_ASSESSMENT, ARCHITECTURE_CONVENTIONS, SYSTEM_TOPOLOGY, DOMAIN_MODEL, TECHNICAL_DEBT, STRATEGIC_ROADMAP, SECURITY, INCIDENT_RESPONSE, API_CONVENTIONS |
+| ~~`PROJECT_DOCUMENTATION.md`~~ | ✅ Deleted | Migrated 100% → SYSTEM_TOPOLOGY, DEPENDENCY_GRAPH, DOMAIN_MODEL, DTO_REFERENCE, 04_MODULES/*, 05_FRONTEND/* |
+| ~~`IMPLEMENTATION_GUIDE.md`~~ | ✅ Deleted | Migrated 100% → RUNBOOK, TROUBLESHOOTING, SECURITY |
+| ~~`OOP_ASSESSMENT.md`~~ | ✅ Deleted | Archived → 08_REPORTS/OOP_ASSESSMENT.md |
+| ~~`PHASE1_REPORT.md`~~ | ✅ Deleted | Archived → 08_REPORTS/PHASE1_REPORT.md |
+| ~~`FIX_REPORT_20260227.md`~~ | ✅ Deleted | Archived → 08_REPORTS/FIX_REPORT_20260227.md |
+| ~~`DOCUMENTATION_AUDIT_REPORT.md`~~ | ✅ Deleted | Archived → 08_REPORTS/DOCUMENTATION_AUDIT_REPORT.md |

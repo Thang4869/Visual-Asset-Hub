@@ -24,7 +24,7 @@ VAH.Backend/
 │       ├── Infrastructure/ → File mapping, user context
 │       └── Queries/        → AssetsQueryController
 ├── Hubs/                   → SignalR hubs
-├── Middleware/              → Exception handling, request pipeline
+├── Middleware/             → Exception handling, request pipeline
 ├── Migrations/             → EF Core migrations (auto-generated)
 ├── Models/                 → Domain entities, DTOs, enums
 ├── Services/               → Application services (legacy modules)
@@ -95,10 +95,10 @@ public class Asset
     public int Id { get; set; }                    // Identity
     public string FileName { get; set; }           // Scalars
     public int CollectionId { get; set; }          // FKs
-    public Collection? Collection { get; set; }   // Navigation
-    public virtual bool HasPhysicalFile => true;  // Behavior
+    public Collection? Collection { get; set; }    // Navigation
+    public virtual bool HasPhysicalFile => true;   // Behavior
     public void UpdatePosition(double x, double y) { ... }  // Domain methods
-    public AssetResponseDto ToDto() => new() { ... };        // Mapping
+    public AssetResponseDto ToDto() => new() { ... };       // Mapping
 }
 ```
 
@@ -114,13 +114,13 @@ public class Asset
 ## §5 — Error Handling
 
 ```
-Throw domain exceptions → GlobalExceptionHandler maps to HTTP status:
-  NotFoundException        → 404 ProblemDetails
-  ValidationException      → 400 ProblemDetails with errors dict
-  ArgumentException        → 400 ProblemDetails
-  KeyNotFoundException     → 404 ProblemDetails
-  UnauthorizedAccessException → 401 ProblemDetails
-  *                        → 500 ProblemDetails (detail hidden in prod)
+Throw domain exceptions         → GlobalExceptionHandler maps to HTTP status:
+  NotFoundException             → 404 ProblemDetails
+  ValidationException           → 400 ProblemDetails with errors dict
+  ArgumentException             → 400 ProblemDetails
+  KeyNotFoundException          → 404 ProblemDetails
+  UnauthorizedAccessException   → 401 ProblemDetails
+  *                             → 500 ProblemDetails (detail hidden in prod)
 ```
 
 ## §6 — XML Documentation Requirements

@@ -102,24 +102,6 @@ npm run dev
 
 > Chi tiết đầy đủ: [docs/02_STANDARDS/API_CONVENTIONS.md](docs/02_STANDARDS/API_CONVENTIONS.md)
 
-| Controller | Route Prefix | Endpoints | Auth |
-|-----------|-------------|-----------|------|
-| **AssetsQueryController** | `/api/v1/assets` | 3 — GET list, GET `{id}`, GET `group/{groupId}` | RequireAssetRead |
-| **AssetsCommandController** | `/api/v1/assets` | 6 — POST, POST `upload`, PATCH `{id}`, PUT `{id}`, DELETE `{id}`, POST `{id}/duplicate` | RequireAssetWrite |
-| **AssetLayoutController** | `/api/v1/assets` | 2 — PUT `{id}/position`, POST `reorder` | RequireAssetWrite |
-| **FoldersController** | `/api/v1/assets/folders` | 1 — POST | RequireAssetWrite |
-| **ColorsController** | `/api/v1/assets/colors` | 1 — POST | RequireAssetWrite |
-| **ColorGroupsController** | `/api/v1/assets/color-groups` | 1 — POST | RequireAssetWrite |
-| **LinksController** | `/api/v1/assets/links` | 1 — POST | RequireAssetWrite |
-| **BulkAssetsController** | `/api/v1/assets` | 4 — POST `bulk-delete`, `bulk-move`, `bulk-move-group`, `bulk-tag` | RequireAssetWrite |
-| **CollectionsController** | `/api/v1/collections` | 6 — GET, GET `{id}/items`, POST, PATCH `{id}`, PUT `{id}`, DELETE `{id}` | Authorize |
-| **TagsController** | `/api/v1/tags` | 10 — CRUD + asset-tag operations + migrate | Authorize |
-| **SearchController** | `/api/v1/search` | 1 — GET `?q=&type=&collectionId=` | Authorize |
-| **SmartCollectionsController** | `/api/v1/smartcollections` | 2 — GET definitions, GET `{id}/items` | Authorize |
-| **PermissionsController** | `/api/v1/collections/{id}/permissions` | 6 — CRUD + my-role + shared-collections | Authorize |
-| **AuthController** | `/api/v1/auth` | 2 — POST `register`, POST `login` | Rate-limited |
-| **HealthController** | `/api/v1/health` | 1 — GET | Public |
-
 ---
 
 ## Cấu trúc dự án
@@ -135,12 +117,12 @@ VAH/
 │   ├── 00_DOCS_MAINTENANCE_GUIDE.md   # Khi nào cập nhật file nào
 │   ├── 01_DESIGN_PHILOSOPHY/          # OOP standards, SOLID, pattern catalog
 │   ├── 02_STANDARDS/                  # Coding & API conventions
-│   ├── 03_ARCHITECTURE/              # Topology, domain model, ADRs
-│   ├── 04_MODULES/                   # 9 module docs + template
-│   ├── 05_FRONTEND/                  # Components, state, API layer
-│   ├── 06_OPERATIONS/                # Runbook, troubleshooting
-│   ├── 07_CHANGELOG/                 # Changelog, tech debt, refactor log
-│   └── 08_REPORTS/                   # Historical reports
+│   ├── 03_ARCHITECTURE/               # Topology, domain model, ADRs
+│   ├── 04_MODULES/                    # 9 module docs + template
+│   ├── 05_FRONTEND/                   # Components, state, API layer
+│   ├── 06_OPERATIONS/                 # Runbook, troubleshooting
+│   ├── 07_CHANGELOG/                  # Changelog, tech debt, refactor log
+│   └── 08_REPORTS/                    # Historical reports
 │
 ├── VAH.Backend/                       # .NET 9 API
 │   ├── Controllers/                   # 14 controllers (incl. abstract base)
@@ -160,7 +142,7 @@ VAH/
 │   ├── Configuration/                 # AssetOptions
 │   ├── Extensions/                    # ServiceCollectionExtensions (6 DI groups)
 │   ├── Hubs/                          # AssetHub (SignalR)
-│   ├── Middleware/                     # GlobalExceptionHandler (RFC 7807)
+│   ├── Middleware/                    # GlobalExceptionHandler (RFC 7807)
 │   ├── Exceptions/                    # NotFoundException, ValidationException
 │   └── Migrations/                    # 5 migrations (PostgreSQL + SQLite)
 │

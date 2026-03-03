@@ -84,51 +84,51 @@ Chỉ sửa khi thay đổi cấu trúc hệ thống (không phải feature thư
 ### Khi THÊM FEATURE MỚI (ví dụ: thêm Workspace module)
 
 ```
-□ 07_CHANGELOG/CHANGELOG.md           → Thêm entry [Unreleased]
-□ 04_MODULES/{MODULE}_MODULE.md        → Tạo mới hoặc cập nhật module doc
-□ 02_STANDARDS/API_CONVENTIONS.md      → Thêm endpoints mới vào bảng
-□ 03_ARCHITECTURE/DOMAIN_MODEL.md     → Thêm entity nếu có entity mới
-□ 03_ARCHITECTURE/DEPENDENCY_GRAPH.md → Thêm service nếu có service mới
-□ 05_FRONTEND/*                        → Cập nhật nếu có component/hook/API mới
+□ 07_CHANGELOG/CHANGELOG.md                 → Thêm entry [Unreleased]
+□ 04_MODULES/{MODULE}_MODULE.md             → Tạo mới hoặc cập nhật module doc
+□ 02_STANDARDS/API_CONVENTIONS.md           → Thêm endpoints mới vào bảng
+□ 03_ARCHITECTURE/DOMAIN_MODEL.md           → Thêm entity nếu có entity mới
+□ 03_ARCHITECTURE/DEPENDENCY_GRAPH.md       → Thêm service nếu có service mới
+□ 05_FRONTEND/*                             → Cập nhật nếu có component/hook/API mới
 □ 01_DESIGN_PHILOSOPHY/DESIGN_PRINCIPLES.md → Thêm aggregate root nếu có (§4.2)
 ```
 
 ### Khi FIX BUG
 
 ```
-□ 07_CHANGELOG/CHANGELOG.md           → Thêm entry Fixed trong [Unreleased]
-□ 06_OPERATIONS/TROUBLESHOOTING.md    → Thêm issue + solution nếu bug phổ biến
+□ 07_CHANGELOG/CHANGELOG.md         → Thêm entry Fixed trong [Unreleased]
+□ 06_OPERATIONS/TROUBLESHOOTING.md  → Thêm issue + solution nếu bug phổ biến
 ```
 
 ### Khi REFACTOR
 
 ```
-□ 07_CHANGELOG/REFACTOR_LOG.md        → Ghi before/after
-□ 07_CHANGELOG/TECHNICAL_DEBT.md      → Cập nhật status debt item đã resolve
-□ 04_MODULES/{MODULE}_MODULE.md        → Cập nhật nếu interface/flow thay đổi
-□ 03_ARCHITECTURE/DEPENDENCY_GRAPH.md → Cập nhật nếu DI thay đổi
+□ 07_CHANGELOG/REFACTOR_LOG.md          → Ghi before/after
+□ 07_CHANGELOG/TECHNICAL_DEBT.md        → Cập nhật status debt item đã resolve
+□ 04_MODULES/{MODULE}_MODULE.md         → Cập nhật nếu interface/flow thay đổi
+□ 03_ARCHITECTURE/DEPENDENCY_GRAPH.md   → Cập nhật nếu DI thay đổi
 ```
 
 ### Khi THÊM DESIGN PATTERN MỚI
 
 ```
-□ 01_DESIGN_PHILOSOPHY/PATTERN_CATALOG.md → Thêm row vào catalog
-□ 03_ARCHITECTURE/ADR/ADR-NNN_*.md        → Tạo ADR mới nếu là kiến trúc decision
+□ 01_DESIGN_PHILOSOPHY/PATTERN_CATALOG.md   → Thêm row vào catalog
+□ 03_ARCHITECTURE/ADR/ADR-NNN_*.md          → Tạo ADR mới nếu là kiến trúc decision
 ```
 
 ### Khi THÊM MIGRATION / ĐỔI SCHEMA
 
 ```
-□ 03_ARCHITECTURE/DOMAIN_MODEL.md     → Cập nhật ER diagram, table mapping
-□ 04_MODULES/{MODULE}_MODULE.md        → Cập nhật domain model section
-□ 02_STANDARDS/DATABASE_CONVENTIONS.md → Chỉ nếu thêm convention mới
+□ 03_ARCHITECTURE/DOMAIN_MODEL.md       → Cập nhật ER diagram, table mapping
+□ 04_MODULES/{MODULE}_MODULE.md         → Cập nhật domain model section
+□ 02_STANDARDS/DATABASE_CONVENTIONS.md  → Chỉ nếu thêm convention mới
 ```
 
 ### Khi DEPLOY
 
 ```
-□ 07_CHANGELOG/CHANGELOG.md           → Chuyển [Unreleased] → [x.y.z] với date
-□ 06_OPERATIONS/RUNBOOK.md            → Cập nhật nếu process thay đổi
+□ 07_CHANGELOG/CHANGELOG.md → Chuyển [Unreleased] → [x.y.z] với date
+□ 06_OPERATIONS/RUNBOOK.md  → Cập nhật nếu process thay đổi
 ```
 
 ---
@@ -161,12 +161,12 @@ ADR đã accepted **KHÔNG BAO GIỜ** sửa nội dung. Nếu quyết định c
 ## §4 — Thống kê tổng quan
 
 ```
-Tổng files docs mới:               30 files
-├── 🔴 Tier 1 (mỗi feature):       3 files    (10%)
-├── 🟠 Tier 2 (theo module):       12 files    (40%)
-├── 🟡 Tier 3 (kiến trúc):          6 files    (20%)
-├── 🟢 Tier 4 (gần cố định):        7 files    (23%)
-└── 🔵 Tier 5 (đóng băng):         10+ files
+Tổng files docs mới:                30  files
+├── 🔴 Tier 1 (mỗi feature):        3   files   (10%)
+├── 🟠 Tier 2 (theo module):        12  files   (40%)
+├── 🟡 Tier 3 (kiến trúc):          6   files   (20%)
+├── 🟢 Tier 4 (gần cố định):        7   files   (23%)
+└── 🔵 Tier 5 (đóng băng):          10+ files
 
 Trung bình mỗi feature mới:     sửa 3-5 files docs
 Trung bình mỗi bug fix:         sửa 1-2 files docs

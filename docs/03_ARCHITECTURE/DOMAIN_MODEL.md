@@ -211,4 +211,85 @@ Each factory method returns the correct TPH subtype (`ImageAsset`, `LinkAsset`, 
 
 ---
 
+## §6 — Entity Property Reference
+
+> **Source**: Migrated from `PROJECT_DOCUMENTATION.md` §2
+
+### 6.1 Asset (Full Property List)
+
+| Property | Type | Constraints | Default | Description |
+|----------|------|-------------|---------|-------------|
+| `Id` | int | PK, auto-increment | — | |
+| `FileName` | string | Required, MaxLength(500) | `""` | File name or folder name |
+| `FilePath` | string | Required, MaxLength(2048) | `""` | File path, URL, or hex color |
+| `Tags` | string | MaxLength(2000) | `""` | Legacy comma-separated tags |
+| `CreatedAt` | DateTime | | DB default | |
+| `PositionX` | double | | `0` | Canvas X position |
+| `PositionY` | double | | `0` | Canvas Y position |
+| `CollectionId` | int | FK→Collections | `1` | |
+| `ContentType` | `AssetContentType` | EF Core value conversion | `File` | TPH discriminator |
+| `GroupId` | int? | | null | Color group membership |
+| `ParentFolderId` | int? | | null | Self-ref folder parent |
+| `SortOrder` | int | | `0` | Display order |
+| `IsFolder` | bool | | `false` | Is a folder? |
+| `UserId` | string? | FK→AspNetUsers | null | Data ownership |
+| `ThumbnailSm` | string? | MaxLength(2048) | null | 150px WebP thumbnail |
+| `ThumbnailMd` | string? | MaxLength(2048) | null | 400px WebP thumbnail |
+| `ThumbnailLg` | string? | MaxLength(2048) | null | 800px WebP thumbnail |
+| `AssetTags` | ICollection\<AssetTag\> | Navigation | `[]` | M2M tags |
+
+### 6.2 Collection (Full Property List)
+
+| Property | Type | Constraints | Default | Description |
+|----------|------|-------------|---------|-------------|
+| `Id` | int | PK | — | |
+| `Name` | string | Required, MaxLength(255) | `""` | |
+| `Description` | string | MaxLength(2000) | `""` | |
+| `ParentId` | int? | FK→Collections (self) | null | Parent collection |
+| `CreatedAt` | DateTime | | DB default | |
+| `Color` | string | MaxLength(20) | `"#007bff"` | Display color |
+| `Type` | string | MaxLength(50) | `"default"` | image/link/color/default |
+| `Order` | int | | `0` | Sort order |
+| `LayoutType` | string | MaxLength(20) | `"grid"` | grid/list/masonry |
+| `UserId` | string? | FK→AspNetUsers | null | null = system collection |
+
+### 6.3 Tag
+
+| Property | Type | Constraints |
+|----------|------|-------------|
+| `Id` | int | PK |
+| `Name` | string | Required, MaxLength(100) |
+| `NormalizedName` | string | Required, MaxLength(100) — lowercase, trimmed |
+| `Color` | string? | MaxLength(20) |
+| `UserId` | string? | FK→AspNetUsers |
+| `CreatedAt` | DateTime | DB default |
+
+### 6.4 AssetTag (Junction)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `AssetId` | int | FK→Assets, composite PK |
+| `TagId` | int | FK→Tags, composite PK |
+
+### 6.5 CollectionPermission
+
+| Property | Type | Constraints |
+|----------|------|-------------|
+| `Id` | int | PK |
+| `UserId` | string | Required, FK→AspNetUsers |
+| `CollectionId` | int | FK→Collections |
+| `Role` | string | Required, MaxLength(20) — owner/editor/viewer |
+| `GrantedBy` | string? | User ID of grantor |
+| `GrantedAt` | DateTime | DB default |
+
+### 6.6 ApplicationUser (extends IdentityUser)
+
+| Property | Type | Default |
+|----------|------|---------|
+| `DisplayName` | string | `""` |
+| `CreatedAt` | DateTime | `DateTime.UtcNow` |
+| + all IdentityUser fields | | |
+
+---
+
 > **Document End**

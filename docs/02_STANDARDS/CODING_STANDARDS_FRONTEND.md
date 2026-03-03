@@ -9,19 +9,19 @@
 
 ```
 src/
-├── api/                    # Class-based OOP API layer
-│   ├── BaseApiService.js   #   Abstract base (shared CRUD helpers)
-│   ├── TokenManager.js     #   Singleton (JWT lifecycle)
-│   ├── client.js           #   Axios instance + interceptors
-│   ├── index.js            #   Barrel exports
-│   ├── assetsApi.js        #   extends BaseApiService
-│   ├── authApi.js          #   extends BaseApiService
-│   ├── collectionsApi.js   #   extends BaseApiService
-│   ├── permissionsApi.js   #   extends BaseApiService
-│   ├── searchApi.js        #   extends BaseApiService
+├── api/                        # Class-based OOP API layer
+│   ├── BaseApiService.js       #   Abstract base (shared CRUD helpers)
+│   ├── TokenManager.js         #   Singleton (JWT lifecycle)
+│   ├── client.js               #   Axios instance + interceptors
+│   ├── index.js                #   Barrel exports
+│   ├── assetsApi.js            #   extends BaseApiService
+│   ├── authApi.js              #   extends BaseApiService
+│   ├── collectionsApi.js       #   extends BaseApiService
+│   ├── permissionsApi.js       #   extends BaseApiService
+│   ├── searchApi.js            #   extends BaseApiService
 │   ├── smartCollectionsApi.js  #   extends BaseApiService
-│   └── tagsApi.js          #   extends BaseApiService
-├── hooks/                  # Custom hooks (1 concern per hook)
+│   └── tagsApi.js              #   extends BaseApiService
+├── hooks/                      # Custom hooks (1 concern per hook)
 │   ├── useAuth.js
 │   ├── useAssets.js
 │   ├── useAssetSelection.js
@@ -33,12 +33,12 @@ src/
 │   ├── useSmartCollections.js
 │   ├── useTags.js
 │   └── useUndoRedo.js
-├── context/                # React Context (global state)
+├── context/                    # React Context (global state)
 │   ├── AppContext.js
 │   └── ConfirmContext.js
-├── models/                 # Domain model classes
+├── models/                     # Domain model classes
 │   └── index.js
-├── components/             # UI components (JSX + CSS pairs)
+├── components/                 # UI components (JSX + CSS pairs)
 │   ├── AppHeader.jsx
 │   ├── AppSidebar.jsx
 │   ├── AssetGrid.jsx / .css

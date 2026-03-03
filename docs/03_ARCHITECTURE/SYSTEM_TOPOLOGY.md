@@ -98,4 +98,138 @@ wwwroot/
 
 ---
 
+## §7 — Target Deployment Architecture
+
+> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §14
+
+### Current: Single Instance
+
+```
+docker-compose.yml
+├── postgres:17-alpine     (port 5432, healthcheck: pg_isready)
+├── redis:7-alpine         (port 6379, healthcheck: redis-cli ping)
+├── backend (multi-stage)  (port 5027, healthcheck: /api/v1/Health)
+└── frontend (Nginx)       (port 80, SPA fallback)
+
+Volumes: postgres-data, redis-data, backend-uploads, backend-logs
+```
+
+### Target: Scalable Production
+
+```
+                    Load Balancer (TLS termination)
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+         Backend ×N   Backend ×N   Backend ×N
+              │            │            │
+              └────────────┴────────────┘
+                    │           │
+              PostgreSQL    Redis Cluster
+              (managed)     (backplane + cache)
+                                │
+                        Object Storage (S3)
+                                │
+                            CDN Edge
+```
+
+**Prerequisites for target architecture:**
+1. Cloud storage implementation (IStorageService already abstracted)
+2. SignalR Redis backplane configuration
+3. Externalized secrets (Key Vault / SSM)
+4. Managed PostgreSQL (RDS / Cloud SQL)
+5. Health check readiness endpoint (separate from liveness)
+
+---
+
+## §8 — Environment Strategy
+
+> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §15
+
+| Aspect | Development | Staging | Production |
+|--------|-------------|---------|------------|
+| **Database** | SQLite (zero-config) | PostgreSQL (Docker) | PostgreSQL (managed RDS/Cloud SQL) |
+| **Cache** | In-memory (no Redis) | Redis (Docker) | Redis (managed ElastiCache/Memorystore) |
+| **Storage** | Local `wwwroot/uploads` | Local or S3 | S3 / Azure Blob |
+| **Auth** | JWT (relaxed, long TTL for testing) | JWT (prod-like) | JWT (strict, HTTPS only) |
+| **Migrations** | Auto-migrate on startup | Auto-migrate (gated) | **Explicit CLI step before deploy** |
+| **Swagger** | Enabled | Enabled (read-only) | Disabled or behind auth |
+| **HTTPS** | HTTP (localhost) | HTTPS (self-signed OK) | HTTPS (valid cert, HSTS) |
+| **Secrets** | `appsettings.Development.json` | Environment variables | Docker secrets / Key Vault |
+| **Logging** | Console + File (verbose) | Console + File (info) | Structured (JSON) + centralized sink |
+| **Error Detail** | Full stack traces | Sanitized | ProblemDetails only (no internals) |
+| **SignalR** | Single instance | Single instance | Redis backplane (if multi-instance) |
+| **Monitoring** | None | Health endpoint | Health + Metrics + Alerting |
+
+### Environment Parity Principle
+
+Staging must mirror production infrastructure to catch environment-specific bugs (especially SQLite↔PostgreSQL drift). Dev may diverge for convenience but must run the full integration test suite against PostgreSQL before merge.
+
+### Current Gap
+
+**No staging environment exists.** Code goes from dev → production. This is the primary operational risk. Adding a staging environment (even as a second docker-compose profile) is a prerequisite for safe deployments.
+
+---
+
+## §9 — Data Flow Diagrams
+
+> **Source**: Migrated from `PROJECT_DOCUMENTATION.md` §1.1–1.3
+
+### 9.1 Upload Flow
+
+```
+User (Browser)
+  │  POST /api/v1/assets/upload (multipart/form-data)
+  ▼
+Nginx (port 80)
+  │  proxy_pass → backend:5027, max body 100MB
+  ▼
+ASP.NET Middleware Pipeline
+  │  GlobalExceptionHandler → CORS → RateLimit (20/min upload)
+  │  → Auth (JWT Bearer) → Controller
+  ▼
+AssetsCommandController.Upload()
+  │  Extract UserId from JWT claims
+  ▼
+AssetService.CreateAssetFromUploadAsync()
+  │
+  ├──① Validate: size ≤50MB, extension whitelist, MIME check
+  ├──② IStorageService.SaveFileAsync() → wwwroot/uploads/{guid}.{ext}
+  ├──③ AssetFactory.CreateImage() / CreateFile() → TPH subtype
+  ├──④ AppDbContext.Assets.Add() → SaveChangesAsync()
+  ├──⑤ IThumbnailService.GenerateThumbnailsAsync() → sm/md/lg WebP
+  ├──⑥ IDistributedCache.RemoveAsync("collections:*") → Redis / in-memory
+  └──⑦ INotificationService.NotifyAssetCreated() → SignalR → all user clients
+```
+
+### 9.2 Read Flow (GET Assets)
+
+```
+Browser → Nginx → Auth → AssetsQueryController.GetAssets()
+  │
+  ▼
+AssetService.GetAssetsAsync(paginationParams, userId)
+  │
+  ├── AppDbContext.Assets
+  │     .Where(UserId == userId, CollectionId == collectionId)
+  │     .Include(AssetTags → Tag)
+  │     .OrderBy(SortOrder).Skip/Take
+  │
+  └── Return PagedResult<Asset> → JSON → 200 OK
+        → Frontend: axios → useAssets hook → AssetGrid render
+```
+
+### 9.3 Cache Invalidation Flow
+
+```
+Write operation (Create/Update/Delete)
+  │
+  ├──① AppDbContext.SaveChangesAsync()
+  ├──② IDistributedCache.RemoveAsync("collections:{userId}")
+  └──③ SignalR Hub.SendAsync("AssetChanged", payload)
+        → All connected clients → useSignalR → refetch → cache MISS → DB → cache SET
+```
+
+---
+
 > **Document End**
