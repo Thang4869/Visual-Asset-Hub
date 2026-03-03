@@ -263,10 +263,10 @@ Conditions that indicate the current architecture needs fundamental restructurin
 ### Decision Framework
 
 ```
-┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│  Current Monolith   │ ───▶ │  Modular Monolith  │ ───▶ │  Microservices    │
-│  (VAH today)        │     │  (target Phase 2)   │     │  (if needed)        │
-└─────────────────────┘     └─────────────────────┘     └─────────────────────┘
+┌─────────────────────┐      ┌─────────────────────┐      ┌────────────────────┐
+│  Current Monolith   │ ───→ │  Modular Monolith   │ ───→ │  Microservices     │
+│  (VAH today)        │      │  (target Phase 2)   │      │  (if needed)       │
+└─────────────────────┘      └─────────────────────┘      └────────────────────┘
   Trigger: PT1, PT5           Trigger: PT2, PT3, PT4        Trigger: PT5 (>8),
                                                              PT6 (>3x/day)
 ```

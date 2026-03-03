@@ -48,7 +48,7 @@ const { confirm, prompt, alert } = useConfirm();
 
 const ok = await confirm('Delete this item?');         // → boolean
 const name = await prompt({ message: 'New name:' });   // → string | null
-await alert('Operation complete');                      // → void
+await alert('Operation complete');                     // → void
 ```
 
 Wraps `ConfirmDialog` component with resolve/reject pattern.

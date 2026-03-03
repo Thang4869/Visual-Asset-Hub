@@ -193,7 +193,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 │  ─ 5xx >1% for 5 min → Slack                              │
 │  ─ P95 >2s for 10 min → warning                           │
 │  ─ Health fail ×3 → critical                              │
-│  ─ Disk >80% → warning                                   │
+│  ─ Disk >80% → warning                                    │
 │  ─ Redis lost → warning (cache fallback active)           │
 └───────────────────────────────────────────────────────────┘
 ```

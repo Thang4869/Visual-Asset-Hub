@@ -8,38 +8,38 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    ApplicationUser (Identity)                     │
+│                    ApplicationUser (Identity)                    │
 │  IdentityUser + DisplayName + CreatedAt                          │
-│  PK: Id (string, GUID)                                          │
-└──────┬────────────┬──────────────┬───────────────────────────────┘
-       │ 1:N        │ 1:N          │ 1:N
-       │            │              │
-       ▼            ▼              ▼
-┌──────────┐  ┌───────────┐  ┌───────────────────┐
-│Collection│  │   Asset   │  │CollectionPermission│
-│          │  │  (TPH)    │  │                    │
-│ Id (PK)  │  │ Id (PK)   │  │ Id (PK)            │
-│ Name     │  │ FileName  │  │ UserId (FK)         │
-│ ParentId │──│ FilePath  │  │ CollectionId (FK)   │
-│ UserId   │  │ ContentType│  │ Role (string)       │
-│ Type     │  │ CollectionId│  │ GrantedBy           │
-│ LayoutType│  │ UserId    │  │ GrantedAt            │
-│ Color    │  │ GroupId   │  └───────────────────┘
-│ Order    │  │ ParentFolderId│
-└────┬─────┘  │ SortOrder │
-     │ 1:N    │ Thumbnails│
-     │        └─────┬─────┘
-     │              │ M:N
-     │              ▼
-     │        ┌──────────┐     ┌──────────┐
-     │        │ AssetTag  │────→│   Tag    │
-     │        │ (Junction)│     │          │
-     │        │ AssetId   │     │ Id (PK)  │
-     │        │ TagId     │     │ Name     │
-     │        └──────────┘     │ Normal.  │
-     │                          │ Color    │
-     │                          │ UserId   │
-     └── self-ref (ParentId)    └──────────┘
+│  PK: Id (string, GUID)                                           │
+└──────┬───────────────┬────────────────────┬──────────────────────┘
+       │ 1:N           │ 1:N                │ 1:N
+       │               │                    │
+       ▼               ▼                    ▼
+┌───────────┐  ┌───────────────┐  ┌────────────────────┐
+│Collection │  │   Asset       │  │CollectionPermission│
+│           │  │  (TPH)        │  │                    │
+│ Id (PK)   │  │ Id (PK)       │  │ Id (PK)            │
+│ Name      │  │ FileName      │  │ UserId (FK)        │
+│ ParentId  │──│ FilePath      │  │ CollectionId (FK)  │
+│ UserId    │  │ ContentType   │  │ Role (string)      │
+│ Type      │  │ CollectionId  │  │ GrantedBy          │
+│ LayoutType│  │ UserId        │  │ GrantedAt          │
+│ Color     │  │ GroupId       │  └────────────────────┘
+│ Order     │  │ ParentFolderId│
+└────┬──────┘  │ SortOrder     │
+     │ 1:N     │ Thumbnails    │
+     │         └───────┬───────┘
+     │                 │ M:N
+     │                 ▼
+     │           ┌───────────┐     ┌──────────┐
+     │           │ AssetTag  │────→│   Tag    │
+     │           │ (Junction)│     │          │
+     │           │ AssetId   │     │ Id (PK)  │
+     │           │ TagId     │     │ Name     │
+     │           └───────────┘     │ Normal.  │
+     │                             │ Color    │
+     │                             │ UserId   │
+     └── self-ref (ParentId)       └──────────┘
 ```
 
 ## §2 — Aggregate Boundaries
@@ -59,13 +59,13 @@
 **Domain Methods on Asset:**
 
 ```csharp
-void UpdatePosition(double x, double y)   // Canvas layout coordinates
-void ApplyUpdate(UpdateAssetDto dto)       // Partial update (null-safe)
-void SetThumbnails(string? sm, md, lg)     // Server-generated thumbnails
-void MoveToFolder(int? folderId)           // Re-parent within collection
-void MoveToCollection(int collectionId)    // Cross-collection move
-bool IsOwnedBy(string userId)             // Ownership check
-AssetResponseDto ToDto()                   // Entity → DTO mapping
+void UpdatePosition(double x, double y)     // Canvas layout coordinates
+void ApplyUpdate(UpdateAssetDto dto)        // Partial update (null-safe)
+void SetThumbnails(string? sm, md, lg)      // Server-generated thumbnails
+void MoveToFolder(int? folderId)            // Re-parent within collection
+void MoveToCollection(int collectionId)     // Cross-collection move
+bool IsOwnedBy(string userId)               // Ownership check
+AssetResponseDto ToDto()                    // Entity → DTO mapping
 ```
 
 **TPH Discriminator Column**: `ContentType` (string in DB via `EnumMappings`)
@@ -91,10 +91,10 @@ ContentType value  →  EF Core .NET Type
 **Domain Methods on Collection:**
 
 ```csharp
-bool IsOwnedBy(string userId)             // Direct ownership check
-bool IsSystemCollection                    // UserId == null
-bool IsAccessibleBy(string userId)         // System OR owned
-void ApplyUpdate(UpdateCollectionDto dto)  // Partial update (null-safe)
+bool IsOwnedBy(string userId)               // Direct ownership check
+bool IsSystemCollection                     // UserId == null
+bool IsAccessibleBy(string userId)          // System OR owned
+void ApplyUpdate(UpdateCollectionDto dto)   // Partial update (null-safe)
 ```
 
 **Role Authorization Matrix (`CollectionRoles`):**

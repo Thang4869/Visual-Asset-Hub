@@ -67,52 +67,52 @@ Program.cs
 
 ```
 Controller Layer
-├── AssetsCommandController ──→ ISender (MediatR)
-├── AssetsQueryController ──→ ISender (MediatR)
-├── BulkAssetsController ──→ IBulkAssetService
-├── CollectionsController ──→ ICollectionService
-├── TagsController ──→ ITagService
-├── SearchController ──→ ISearchService
-├── AuthController ──→ IAuthService
-├── PermissionsController ──→ IPermissionService
-├── SmartCollectionsController ──→ ISmartCollectionService
-├── HealthController ──→ AppDbContext, IWebHostEnvironment
-└── [Asset subtypes Controllers] ──→ IAssetService
+├── AssetsCommandController       ──→ ISender (MediatR)
+├── AssetsQueryController         ──→ ISender (MediatR)
+├── BulkAssetsController          ──→ IBulkAssetService
+├── CollectionsController         ──→ ICollectionService
+├── TagsController                ──→ ITagService
+├── SearchController              ──→ ISearchService
+├── AuthController                ──→ IAuthService
+├── PermissionsController         ──→ IPermissionService
+├── SmartCollectionsController    ──→ ISmartCollectionService
+├── HealthController              ──→ AppDbContext, IWebHostEnvironment
+└── [Asset subtypes Controllers]  ──→ IAssetService
 
 CQRS Layer (MediatR Handlers)
-├── UploadAssetsHandler ──→ IAssetService
-├── UpdateAssetHandler ──→ IAssetService
-├── DeleteAssetHandler ──→ IAssetService
-├── DuplicateAssetHandler ──→ IAssetDuplicateStrategyFactory, AppDbContext
-├── UpdateAssetPositionHandler ──→ IAssetService
-├── GetAssetsQuery ──→ IAssetService
-├── GetAssetByIdQuery ──→ IAssetService
-└── GetAssetsByFolderQuery ──→ IAssetService
+├── UploadAssetsHandler         ──→ IAssetService
+├── UpdateAssetHandler          ──→ IAssetService
+├── DeleteAssetHandler          ──→ IAssetService
+├── DuplicateAssetHandler       ──→ IAssetDuplicateStrategyFactory, AppDbContext
+├── UpdateAssetPositionHandler  ──→ IAssetService
+├── GetAssetsQuery              ──→ IAssetService
+├── GetAssetByIdQuery           ──→ IAssetService
+└── GetAssetsByFolderQuery      ──→ IAssetService
 
 Application Layer (Facade)
-└── AssetApplicationService ──→ ISender, IUserContextProvider, IOptions<AssetOptions>
+└── AssetApplicationService     ──→ ISender, IUserContextProvider, IOptions<AssetOptions>
 
 Service Layer
-├── AssetService ──→ AppDbContext, IStorageService, IThumbnailService,
+├── AssetService        ──→ AppDbContext, IStorageService, IThumbnailService,
 │                    INotificationService, IWebHostEnvironment, ILogger
-├── BulkAssetService ──→ AppDbContext, INotificationService, ILogger,
+├── BulkAssetService    ──→ AppDbContext, INotificationService, ILogger,
 │                        IStorageService, IWebHostEnvironment
-├── CollectionService ──→ AppDbContext, ILogger
-├── TagService ──→ AppDbContext, ILogger
-├── SearchService ──→ AppDbContext
-├── SmartCollectionService ──→ AppDbContext, IEnumerable<ISmartCollectionFilter>
-├── PermissionService ──→ AppDbContext, UserManager<ApplicationUser>, ILogger
-├── AuthService ──→ UserManager<ApplicationUser>, SignInManager<ApplicationUser>,
+├── CollectionService   ──→ AppDbContext, ILogger
+├── TagService          ──→ AppDbContext, ILogger
+├── SearchService       ──→ AppDbContext
+├── SmartCollectionService  ──→ AppDbContext, IEnumerable<ISmartCollectionFilter>
+├── PermissionService       ──→ AppDbContext, UserManager<ApplicationUser>, ILogger
+├── AuthService             ──→ UserManager<ApplicationUser>, SignInManager<ApplicationUser>,
 │                   IConfiguration, ICollectionService
-├── NotificationService ──→ IHubContext<AssetHub>
-├── ThumbnailService ──→ IWebHostEnvironment, ILogger
-├── LocalStorageService ──→ IWebHostEnvironment, ILogger
-├── AssetCleanupHelper ──→ IWebHostEnvironment
-└── FileMapperService ──→ (no dependencies)
+├── NotificationService   ──→ IHubContext<AssetHub>
+├── ThumbnailService      ──→ IWebHostEnvironment, ILogger
+├── LocalStorageService   ──→ IWebHostEnvironment, ILogger
+├── AssetCleanupHelper    ──→ IWebHostEnvironment
+└── FileMapperService     ──→ (no dependencies)
 
 Infrastructure Layer
-├── AppDbContext ──→ DatabaseProviderInfo
-└── GlobalExceptionHandler ──→ ILogger
+├── AppDbContext            ──→ DatabaseProviderInfo
+└── GlobalExceptionHandler  ──→ ILogger
 ```
 
 ## §4 — Cross-Cutting Concerns

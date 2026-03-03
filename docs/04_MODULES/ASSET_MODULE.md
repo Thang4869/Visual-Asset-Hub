@@ -47,68 +47,67 @@ Bài toán cốt lõi: Quản lý **đa dạng loại asset** (5+ content types)
 ### 2.1 Layer Mapping
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ PRESENTATION LAYER                                               │
+┌───────────────────────────────────────────────────────────────────┐
+│ PRESENTATION LAYER                                                │
 │                                                                   │
-│  AssetLayoutController           Features/Assets/Commands/       │
-│  (position, reorder)             AssetsCommandController         │
+│  AssetLayoutController           Features/Assets/Commands/        │
+│  (position, reorder)             AssetsCommandController          │
 │                                  (create, upload, update, delete) │
-│                                  Features/Assets/Queries/        │
+│                                  Features/Assets/Queries/         │
 │                                  AssetsQueryController            │
-│                                  (list, getById, getByGroup)     │
 │                                                                   │
-│  CQRS Records:                                                   │
-│  ├── Commands/ (5 commands)                                      │
-│  └── Queries/  (3 queries)                                       │
-├─────────────────────────────────────────────────────────────────┤
-│ APPLICATION LAYER                                                │
+│  CQRS Records:                                                    │
+│  ├── Commands/ (5 commands)                                       │
+│  └── Queries/  (3 queries)                                        │
+├───────────────────────────────────────────────────────────────────┤
+│ APPLICATION LAYER                                                 │
 │                                                                   │
-│  IAssetService (14 methods) ← AssetService (~280 LOC)           │
-│  IBulkAssetService (4 methods) ← BulkAssetService               │
-│  AssetCleanupHelper (file + thumbnail cleanup)                   │
+│  IAssetService (14 methods) ← AssetService (~280 LOC)             │
+│  IBulkAssetService (4 methods) ← BulkAssetService                 │
+│  AssetCleanupHelper (file + thumbnail cleanup)                    │
 │                                                                   │
-│  CQRS Handlers:                                                  │
+│  CQRS Handlers:                                                   │
 │  ├── AssetCommandHandlers (5 handlers → delegate to IAssetService)│
 │  └── AssetQueryHandlers   (3 handlers → delegate to IAssetService)│
-├─────────────────────────────────────────────────────────────────┤
-│ DOMAIN LAYER                                                     │
+├───────────────────────────────────────────────────────────────────┤
+│ DOMAIN LAYER                                                      │
 │                                                                   │
-│  Asset (base class) ← TPH discriminator: ContentType            │
-│  ├── ImageAsset    (HasPhysicalFile=true, CanHaveThumbnails=true)│
-│  ├── LinkAsset     (HasPhysicalFile=false)                       │
-│  ├── ColorAsset    (HasPhysicalFile=false)                       │
-│  ├── ColorGroupAsset (HasPhysicalFile=false)                     │
-│  └── FolderAsset   (HasPhysicalFile=false)                       │
+│  Asset (base class) ← TPH discriminator: ContentType              │
+│  ├── ImageAsset    (HasPhysicalFile=true, CanHaveThumbnails=true) │
+│  ├── LinkAsset     (HasPhysicalFile=false)                        │
+│  ├── ColorAsset    (HasPhysicalFile=false)                        │
+│  ├── ColorGroupAsset (HasPhysicalFile=false)                      │
+│  └── FolderAsset   (HasPhysicalFile=false)                        │
 │                                                                   │
-│  AssetFactory (static factory — 7 creation methods + Duplicate)  │
-│  AssetContentType (enum — 6 values + bidirectional DB mapping)   │
-│  AssetResponseDto, CreateAssetDto, UpdateAssetDto, ...           │
-├─────────────────────────────────────────────────────────────────┤
-│ INFRASTRUCTURE LAYER                                             │
+│  AssetFactory (static factory — 7 creation methods + Duplicate)   │
+│  AssetContentType (enum — 6 values + bidirectional DB mapping)    │
+│  AssetResponseDto, CreateAssetDto, UpdateAssetDto, ...            │
+├───────────────────────────────────────────────────────────────────┤
+│ INFRASTRUCTURE LAYER                                              │
 │                                                                   │
-│  AppDbContext.Assets (DbSet<Asset> — TPH configuration)          │
-│  IStorageService → LocalStorageService (file I/O)                │
-│  IThumbnailService → ThumbnailService (ImageSharp)               │
-└─────────────────────────────────────────────────────────────────┘
+│  AppDbContext.Assets (DbSet<Asset> — TPH configuration)           │
+│  IStorageService → LocalStorageService (file I/O)                 │
+│  IThumbnailService → ThumbnailService (ImageSharp)                │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.2 Component Dependency Diagram
 
 ```
-┌─────────────────────┐     ┌────────────────────────┐
-│ AssetLayoutController│     │ AssetsCommandController │
-│ (2 endpoints)        │     │ (5 endpoints)           │
-└────────┬────────────┘     └────────┬───────────────┘
-         │                           │
-         │     ┌─────────────┐       │     ┌──────────────────┐
+┌──────────────────────┐     ┌────────────────────────┐
+│ AssetLayoutController│     │ AssetsCommandController│
+│ (2 endpoints)        │     │ (5 endpoints)          │
+└────────┬─────────────┘     └────────┬───────────────┘
+         │                            │
+         │     ┌──────────────┐       │     ┌──────────────────┐
          └────→│ IAssetService│←──────┘     │ AssetsQueryCtrl  │
-               │ (14 methods) │←────────────│ (3 endpoints)     │
+               │ (14 methods) │←────────────│ (3 endpoints)    │
                └──────┬───────┘             └──────────────────┘
                       │
           ┌───────────┼───────────┬──────────────────┐
           ▼           ▼           ▼                  ▼
    ┌────────────┐ ┌──────────┐ ┌──────────────┐ ┌─────────────────┐
-   │AppDbContext │ │IStorage  │ │IThumbnail    │ │INotification    │
+   │AppDbContext│ │IStorage  │ │IThumbnail    │ │INotification    │
    │(Assets)    │ │Service   │ │Service       │ │Service          │
    └────────────┘ └──────────┘ └──────────────┘ └─────────────────┘
                       │              │
@@ -228,11 +227,11 @@ public class Asset
     public int Id { get; set; }
     
     // ── Core Properties ──
-    public string FileName { get; set; }           // Display name
-    public string FilePath { get; set; }            // Storage path / URL / hex code
-    public string Tags { get; set; }                // Legacy string-based tags
+    public string FileName { get; set; }    // Display name
+    public string FilePath { get; set; }    // Storage path / URL / hex code
+    public string Tags { get; set; }        // Legacy string-based tags
     public DateTime CreatedAt { get; set; }
-    public AssetContentType ContentType { get; set; }  // TPH discriminator
+    public AssetContentType ContentType { get; set; }   // TPH discriminator
     
     // ── Position & Layout ──
     public double PositionX { get; set; }
@@ -240,18 +239,18 @@ public class Asset
     public int SortOrder { get; set; }
     
     // ── Hierarchy ──
-    public int CollectionId { get; set; }           // Parent collection (FK)
-    public int? GroupId { get; set; }               // Color group (FK, nullable)
-    public int? ParentFolderId { get; set; }        // Folder hierarchy (self-ref FK)
+    public int CollectionId { get; set; }       // Parent collection (FK)
+    public int? GroupId { get; set; }           // Color group (FK, nullable)
+    public int? ParentFolderId { get; set; }    // Folder hierarchy (self-ref FK)
     public bool IsFolder { get; set; }
     
     // ── Ownership ──
-    public string? UserId { get; set; }             // FK → ApplicationUser
+    public string? UserId { get; set; }         // FK → ApplicationUser
     
     // ── Thumbnails ──
-    public string? ThumbnailSm { get; set; }        // 150px WebP
-    public string? ThumbnailMd { get; set; }        // 400px WebP
-    public string? ThumbnailLg { get; set; }        // 800px WebP
+    public string? ThumbnailSm { get; set; }    // 150px WebP
+    public string? ThumbnailMd { get; set; }    // 400px WebP
+    public string? ThumbnailLg { get; set; }    // 800px WebP
     
     // ── Navigation ──
     public ICollection<AssetTag> AssetTags { get; set; }
@@ -381,25 +380,25 @@ User (Browser)     React App          Controller           MediatR            As
     │                │── POST /upload ───→│                    │                    │                    │                  │                  │
     │                │   (FormData)       │                    │                    │                    │                  │                  │
     │                │                    │── UploadFiles ────→│                    │                    │                  │                  │
-    │                │                    │   Command          │── Handle() ──────→│                    │                  │                  │
+    │                │                    │   Command          │── Handle() ───────→│                    │                  │                  │
     │                │                    │                    │                    │                    │                  │                  │
-    │                │                    │                    │                    │── foreach file ──→│                  │                  │
-    │                │                    │                    │                    │   UploadAsync()   │                  │                  │
-    │                │                    │                    │                    │←── filePath ──────│                  │                  │
+    │                │                    │                    │                    │── foreach file ───→│                  │                  │
+    │                │                    │                    │                    │   UploadAsync()    │                  │                  │
+    │                │                    │                    │                    │←─── filePath ──────│                  │                  │
     │                │                    │                    │                    │                    │                  │                  │
-    │                │                    │                    │                    │── if IsImage ────→│──────────────────→│                  │
-    │                │                    │                    │                    │   GenerateThumb() │                  │                  │
-    │                │                    │                    │                    │←── sm/md/lg paths─│──────────────────│                  │
+    │                │                    │                    │                    │── if IsImage ─────→│─────────────────→│                  │
+    │                │                    │                    │                    │   GenerateThumb()  │                  │                  │
+    │                │                    │                    │                    │←── sm/md/lg paths──│──────────────────│                  │
     │                │                    │                    │                    │                    │                  │                  │
-    │                │                    │                    │                    │── AssetFactory ──→│                  │                  │
-    │                │                    │                    │                    │   .CreateImage()  │                  │                  │
-    │                │                    │                    │                    │── asset.SetThumb()│                  │                  │
+    │                │                    │                    │                    │── AssetFactory ───→│                  │                  │
+    │                │                    │                    │                    │   .CreateImage()   │                  │                  │
+    │                │                    │                    │                    │── asset.SetThumb() │                  │                  │
     │                │                    │                    │                    │                    │                  │                  │
-    │                │                    │                    │                    │── AddRange() ────→│──────────────────│──────────────────→│
-    │                │                    │                    │                    │   SaveChanges()   │                  │                  │
-    │                │                    │                    │                    │←── saved ─────────│──────────────────│──────────────────│
+    │                │                    │                    │                    │─── AddRange() ────→│──────────────────│──────────────────→│
+    │                │                    │                    │                    │   SaveChanges()    │                  │                  │
+    │                │                    │                    │                    │←─── saved ─────────│──────────────────│──────────────────│
     │                │                    │                    │                    │                    │                  │                  │
-    │                │                    │                    │                    │── SignalR notify ─│──────────────────│──────────────────│
+    │                │                    │                    │                    │── SignalR notify ──│──────────────────│──────────────────│
     │                │                    │                    │                    │                    │                  │                  │
     │                │                    │                    │←── List<DTO> ──────│                   │                  │                  │
     │                │                    │←── List<DTO> ──────│                    │                    │                  │                  │
@@ -431,24 +430,24 @@ User (Browser)     React App          Controller           MediatR            As
 Controller          MediatR            AssetService         AssetCleanup       StorageService      ThumbnailSvc        DbContext
     │                  │                    │                    │                   │                  │                  │
     │── DeleteAsset ──→│                    │                    │                   │                  │                  │
-    │   Command        │── Handle() ──────→│                    │                   │                  │                  │
-    │                  │                    │── FindAsync(id) ──→│───────────────────│──────────────────│──────────────────→│
+    │   Command        │─── Handle() ──────→│                    │                   │                  │                  │
+    │                  │                    │── FindAsync(id) ──→│───────────────────│──────────────────│─────────────────→│
     │                  │                    │←── asset ──────────│───────────────────│──────────────────│──────────────────│
     │                  │                    │                    │                   │                  │                  │
-    │                  │                    │── IsOwnedBy() ───→│ (domain check)    │                  │                  │
+    │                  │                    │─── IsOwnedBy() ───→│ (domain check)    │                  │                  │
     │                  │                    │                    │                   │                  │                  │
     │                  │                    │── if RequiresFile─→│                   │                  │                  │
     │                  │                    │   Cleanup          │── DeleteAsync() ─→│                  │                  │
     │                  │                    │                    │                   │                  │                  │
-    │                  │                    │── if CanHaveThumb→│                   │                  │                  │
-    │                  │                    │                    │── DeleteThumbs() ─│──────────────────→│                  │
+    │                  │                    │── if CanHaveThumb─→│                   │                  │                  │
+    │                  │                    │                    │── DeleteThumbs() ─│─────────────────→│                  │
     │                  │                    │                    │                   │                  │                  │
     │                  │                    │── Remove(asset) ──→│───────────────────│──────────────────│──────────────────→│
     │                  │                    │   SaveChanges()    │                   │                  │                  │
     │                  │                    │                    │                   │                  │                  │
     │                  │                    │── SignalR notify ──│                   │                  │                  │
     │                  │                    │                    │                   │                  │                  │
-    │←── HTTP 200 ─────│←── true ──────────│                    │                   │                  │                  │
+    │←── HTTP 200 ─────│←─── true ──────────│                    │                   │                  │                  │
 ```
 
 **Key OOP Decisions:**
@@ -471,7 +470,7 @@ Controller          AssetService         AssetFactory        DbContext
     │                    │   (static factory) │                  │
     │                    │←── ColorAsset ─────│                  │
     │                    │                    │                  │
-    │                    │── Add(asset) ─────→│──────────────────→│
+    │                    │── Add(asset) ─────→│─────────────────→│
     │                    │   SaveChanges()    │                  │
     │                    │                    │                  │
     │                    │── SignalR notify ──│                  │
@@ -496,7 +495,7 @@ Controller              AssetService         Asset (Entity)     DbContext
     │                        │                    │                 │
     │── UpdatePosition ─────→│                    │                 │
     │   (id, x, y, userId)   │                    │                 │
-    │                        │── FindAsync(id) ──→│─────────────────→│
+    │                        │── FindAsync(id) ──→│────────────────→│
     │                        │←── asset ──────────│                 │
     │                        │                    │                 │
     │                        │── IsOwnedBy() ────→│                 │
@@ -504,9 +503,9 @@ Controller              AssetService         Asset (Entity)     DbContext
     │                        │── UpdatePosition()→│ (domain method) │
     │                        │   (x, y)           │                 │
     │                        │                    │                 │
-    │                        │── SaveChanges() ──→│─────────────────→│
+    │                        │── SaveChanges() ──→│────────────────→│
     │                        │                    │                 │
-    │←── AssetResponseDto ──│                    │                 │
+    │←── AssetResponseDto ───│                    │                 │
 ```
 
 **Encapsulation point**: Position thay đổi qua `asset.UpdatePosition(x, y)` — KHÔNG qua `asset.PositionX = x`. Domain method có thể thêm validation (bounds check) mà không sửa Service.

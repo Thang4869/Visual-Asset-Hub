@@ -617,24 +617,24 @@ public static class ServiceCollectionExtensions
 
 ```
 Cần tạo object phức tạp?
-├── Nhiều variants cùng base type → Factory Method (AssetFactory)
-├── Cấu hình phức tạp, nhiều optional params → Builder Pattern
-└── Chỉ 1 type → Constructor trực tiếp
+├── Nhiều variants cùng base type               → Factory Method (AssetFactory)
+├── Cấu hình phức tạp, nhiều optional params    → Builder Pattern
+└── Chỉ 1 type                                  → Constructor trực tiếp
 
 Cần thay đổi behavior runtime?
-├── Behavior thay đổi theo type/config → Strategy (ISmartCollectionFilter)
-├── Behavior thay đổi theo state → State Pattern
-└── Wrap thêm behavior → Decorator Pattern
+├── Behavior thay đổi theo type/config  → Strategy (ISmartCollectionFilter)
+├── Behavior thay đổi theo state        → State Pattern
+└── Wrap thêm behavior                  → Decorator Pattern
 
 Cần decouple components?
-├── Request-response, nhiều handlers → Mediator (MediatR)
-├── Event broadcast, nhiều subscribers → Observer (SignalR)
-└── Simplify complex subsystem → Facade
+├── Request-response, nhiều handlers    → Mediator (MediatR)
+├── Event broadcast, nhiều subscribers  → Observer (SignalR)
+└── Simplify complex subsystem          → Facade
 
 Cần organize data access?
-├── Complex queries, separate read/write → CQRS
-├── Abstract persistence → Repository
-└── Simple CRUD → Service + DbContext (hiện tại)
+├── Complex queries, separate read/write    → CQRS
+├── Abstract persistence                    → Repository
+└── Simple CRUD                             → Service + DbContext (hiện tại)
 ```
 
 ### 8.3 Pattern Anti-patterns `[MUST]`

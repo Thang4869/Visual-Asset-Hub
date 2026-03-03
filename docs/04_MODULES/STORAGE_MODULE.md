@@ -57,21 +57,21 @@ wwwroot/
 
 ```
 Client              Controller    IAssetService    IStorageService    IThumbnailService
-  │                     │              │                │                   │
-  │── POST /upload ────→│              │                │                   │
-  │   (multipart form)  │              │                │                   │
-  │                     │── Upload ───→│                │                   │
-  │                     │              │── UploadAsync──→│                   │
-  │                     │              │   (stream)      │── SaveToDisk     │
-  │                     │              │←── /uploads/x  │                   │
-  │                     │              │── [if image] ──────────────────────→│
-  │                     │              │                │   GenerateAsync    │
-  │                     │              │                │   (sm, md, lg)     │
-  │                     │              │←── ThumbnailResult ────────────────│
-  │                     │              │── SetThumbnails()                  │
-  │                     │              │── SaveChanges                     │
-  │                     │←── AssetDto──│                │                   │
-  │←── 201 Created ─────│              │                │                   │
+  │                     │              │                    │                   │
+  │── POST /upload ────→│              │                    │                   │
+  │   (multipart form)  │              │                    │                   │
+  │                     │── Upload ───→│                    │                   │
+  │                     │              │────── UploadAsync─→│                   │
+  │                     │              │   (stream)         │── SaveToDisk      │
+  │                     │              │←── /uploads/x ─────│                   │
+  │                     │              │── [if image] ─────────────────────────→│
+  │                     │              │                    │   GenerateAsync   │
+  │                     │              │                    │   (sm, md, lg)    │
+  │                     │              │←── ThumbnailResult ────────────────────│
+  │                     │              │── SetThumbnails()  │                   │
+  │                     │              │── SaveChanges      │                   │
+  │                     │←── AssetDto──│                    │                   │
+  │←── 201 Created ─────│              │                    │                   │
 ```
 
 ## §5 — Thumbnail Generation

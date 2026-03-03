@@ -42,14 +42,14 @@ const apiClient = axios.create({
 
 ```javascript
 class TokenManager {
-    #storageKey = 'vah_token';   // Private field (encapsulation)
+    #storageKey = 'vah_token';      // Private field (encapsulation)
 
     getToken()    → string | null
     setToken(t)   → void
     clearToken()  → void
     isLoggedIn()  → boolean
 }
-export default new TokenManager();   // Singleton instance
+export default new TokenManager();  // Singleton instance
 ```
 
 **OOP Patterns:**

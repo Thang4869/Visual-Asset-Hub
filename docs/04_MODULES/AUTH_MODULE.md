@@ -66,9 +66,9 @@ Client                AuthController    IAuthService    UserManager    JwtGenera
   │                       │                │── CheckPwd ──→│              │
   │                       │                │←── valid ─────│              │
   │                       │                │── Generate ─────────────────→│
-  │                       │                │←── JWT token ───────────────│
-  │                       │←── AuthResponseDto ──────────│              │
-  │←── 200 { token, ... }│                │               │              │
+  │                       │                │←── JWT token ────────────────│
+  │                       │←── AuthResponseDto ────────────│              │
+  │←── 200 { token, ... }─│                │               │              │
 ```
 
 ## §6 — Registration Side Effects

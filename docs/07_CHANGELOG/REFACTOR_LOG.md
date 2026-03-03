@@ -13,23 +13,23 @@ Tracks completed refactoring efforts with before/after comparisons.
 
 ### Before
 ```
-AssetsController (14 endpoints, single controller)
+AssetsController  (14 endpoints, single controller)
 └── IAssetService (14 methods, direct calls)
 ```
 
 ### After
 ```
 AssetsCommandController (6 write endpoints)
-├── UploadAssetsCommand → Handler → IAssetService
-├── UpdateAssetCommand → Handler → IAssetService
-├── DeleteAssetCommand → Handler → IAssetService
-├── DuplicateAssetCommand → Handler → IAssetDuplicateStrategyFactory
-└── UpdateAssetPositionCommand → Handler → IAssetService
+├── UploadAssetsCommand         → Handler → IAssetService
+├── UpdateAssetCommand          → Handler → IAssetService
+├── DeleteAssetCommand          → Handler → IAssetService
+├── DuplicateAssetCommand       → Handler → IAssetDuplicateStrategyFactory
+└── UpdateAssetPositionCommand  → Handler → IAssetService
 
 AssetsQueryController (3 read endpoints)
-├── GetAssetsQuery → Handler → IAssetService
-├── GetAssetByIdQuery → Handler → IAssetService
-└── GetAssetsByFolderQuery → Handler → IAssetService
+├── GetAssetsQuery          → Handler → IAssetService
+├── GetAssetByIdQuery       → Handler → IAssetService
+└── GetAssetsByFolderQuery  → Handler → IAssetService
 
 AssetApplicationService (Facade)
 └── ISender + IUserContextProvider + IOptions<AssetOptions>

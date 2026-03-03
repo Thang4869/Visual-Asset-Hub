@@ -32,7 +32,7 @@ public class Tag
     ICollection<AssetTag> AssetTags
 }
 
-public class AssetTag    // Junction table
+public class AssetTag        // Junction table
 {
     int AssetId              // Composite PK
     int TagId                // Composite PK

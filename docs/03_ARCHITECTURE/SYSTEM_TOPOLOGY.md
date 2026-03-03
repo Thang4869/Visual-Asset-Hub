@@ -8,27 +8,27 @@
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    Docker Compose Host                     │
-│                                                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│                    Docker Compose Host                   │
+│                                                          │
+│  ┌───────────────┐  ┌──────────────┐  ┌───────────────┐  │
 │  │   Frontend    │  │   Backend    │  │  PostgreSQL   │  │
 │  │  React 19     │  │  .NET 9      │  │  17           │  │
 │  │  Nginx:3000   │──│  Kestrel:5027│──│  :5432        │  │
 │  │               │  │              │  │               │  │
 │  │  Static SPA   │  │  REST API    │  │  6 tables     │  │
 │  │  Reverse proxy│  │  SignalR Hub │  │  Identity     │  │
-│  └──────────────┘  └──────┬───────┘  └───────────────┘  │
-│                           │                               │
-│                    ┌──────┴───────┐                       │
-│                    │    Redis     │                       │
-│                    │    :6379     │                       │
-│                    │  Cache layer │                       │
-│                    └──────────────┘                       │
-│                                                            │
-│  Volume Mounts:                                           │
-│  ├── ./uploads → /app/wwwroot/uploads (asset files)       │
-│  ├── ./vah-data → /var/lib/postgresql/data (DB)           │
-│  └── ./logs → /app/logs (Serilog)                         │
+│  └───────────────┘  └──────┬───────┘  └───────────────┘  │
+│                            │                             │
+│                     ┌──────┴───────┐                     │
+│                     │    Redis     │                     │
+│                     │    :6379     │                     │
+│                     │  Cache layer │                     │
+│                     └──────────────┘                     │
+│                                                          │
+│  Volume Mounts:                                          │
+│  ├── ./uploads → /app/wwwroot/uploads (asset files)      │
+│  ├── ./vah-data → /var/lib/postgresql/data (DB)          │
+│  └── ./logs → /app/logs (Serilog)                        │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -194,12 +194,12 @@ AssetsCommandController.Upload()
 AssetService.CreateAssetFromUploadAsync()
   │
   ├──① Validate: size ≤50MB, extension whitelist, MIME check
-  ├──② IStorageService.SaveFileAsync() → wwwroot/uploads/{guid}.{ext}
-  ├──③ AssetFactory.CreateImage() / CreateFile() → TPH subtype
-  ├──④ AppDbContext.Assets.Add() → SaveChangesAsync()
-  ├──⑤ IThumbnailService.GenerateThumbnailsAsync() → sm/md/lg WebP
-  ├──⑥ IDistributedCache.RemoveAsync("collections:*") → Redis / in-memory
-  └──⑦ INotificationService.NotifyAssetCreated() → SignalR → all user clients
+  ├──② IStorageService.SaveFileAsync()                  → wwwroot/uploads/{guid}.{ext}
+  ├──③ AssetFactory.CreateImage() / CreateFile()        → TPH subtype
+  ├──④ AppDbContext.Assets.Add()                        → SaveChangesAsync()
+  ├──⑤ IThumbnailService.GenerateThumbnailsAsync()      → sm/md/lg WebP
+  ├──⑥ IDistributedCache.RemoveAsync("collections:*")   → Redis / in-memory
+  └──⑦ INotificationService.NotifyAssetCreated()        → SignalR → all user clients
 ```
 
 ### 9.2 Read Flow (GET Assets)
