@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
 
 namespace VAH.Backend.Models;
 
@@ -140,6 +141,17 @@ public class AssetTagsDto
     public List<int> TagIds { get; set; } = new();
 }
 
+// ──── Bulk Operation Result DTOs (typed responses — replaces anonymous objects) ────
+
+/// <summary>Typed response for bulk delete operations.</summary>
+public sealed record BulkDeleteResult(int Deleted);
+
+/// <summary>Typed response for bulk move operations.</summary>
+public sealed record BulkMoveResult(int Moved);
+
+/// <summary>Typed response for bulk tag operations.</summary>
+public sealed record BulkTagResult(int Affected);
+
 // ──── Bulk Operation DTOs ────
 
 public class BulkDeleteDto
@@ -265,4 +277,38 @@ public class SmartCollectionDefinition
     public string Icon { get; set; } = "📁";
     public string Color { get; set; } = "#2196F3";
     public int Count { get; set; }
+}
+
+// ──── Thin response DTOs (replaces anonymous objects for type-safe Swagger) ────
+
+/// <summary>Typed response for role queries — replaces <c>new { role }</c>.</summary>
+public sealed record RoleResult(string? Role);
+
+/// <summary>Typed response for one-off operational messages.</summary>
+public sealed record MessageResult(string Message);
+
+// ──── Search request DTO (cohesion: groups all search params) ────
+
+/// <summary>
+/// Query-string parameters for the search endpoint.
+/// Grouping avoids primitive-obsession and enables validation in one place.
+/// </summary>
+public sealed class SearchRequestParams
+{
+    [FromQuery(Name = "q")]
+    public string? Query { get; init; }
+
+    [FromQuery(Name = "type")]
+    public string? Type { get; init; }
+
+    [FromQuery(Name = "collectionId")]
+    public int? CollectionId { get; init; }
+
+    [FromQuery(Name = "page")]
+    [Range(1, int.MaxValue)]
+    public int Page { get; init; } = 1;
+
+    [FromQuery(Name = "pageSize")]
+    [Range(1, 200)]
+    public int PageSize { get; init; } = 50;
 }

@@ -6,17 +6,15 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-/// <summary>
-/// Color swatch asset lifecycle — create and manage individual color assets.
-/// Domain: Color (single swatch within a palette/group).
-/// </summary>
+/// <summary>Color swatch asset lifecycle — create and manage individual color assets.</summary>
+/// <remarks>Domain: Color (single swatch within a palette/group).</remarks>
 [Route("api/v1/assets/colors")]
 [Produces("application/json")]
-public class ColorsController(IAssetService assetService) : BaseApiController
+public sealed class ColorsController(IAssetService assetService) : BaseApiController
 {
     /// <summary>Create a color swatch asset.</summary>
     [HttpPost]
-    [Authorize(Policy = "RequireAssetWrite")]
+    [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AssetResponseDto>> CreateColor(

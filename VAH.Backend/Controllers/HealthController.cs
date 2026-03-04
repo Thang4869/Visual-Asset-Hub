@@ -1,48 +1,24 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using VAH.Backend.Data;
+using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-/// <summary>
-/// Health check endpoint for monitoring and load balancer readiness.
-/// </summary>
+/// <summary>Health check endpoint for monitoring and load balancer readiness.</summary>
+/// <remarks>DIP: Delegates all probing logic to <see cref="IHealthCheckService"/>.
+/// Returns 503 with the same typed body when degraded, so callers always parse one schema.</remarks>
 [Route("api/v1/[controller]")]
+[AllowAnonymous]
 [Produces("application/json")]
-public class HealthController(AppDbContext context, IWebHostEnvironment env) : BaseApiController
+public sealed class HealthController(IHealthCheckService healthCheckService) : BaseApiController
 {
     /// <summary>Basic health check — verifies API is running and DB is reachable.</summary>
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetHealth(CancellationToken ct)
+    [ProducesResponseType(typeof(HealthCheckResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HealthCheckResult), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetHealth(CancellationToken ct = default)
     {
-        var dbHealthy = false;
-        try
-        {
-            dbHealthy = await context.Database.CanConnectAsync(ct);
-        }
-        catch { /* swallow */ }
-
-        var uploadsPath = Path.Combine(env.WebRootPath ?? "", "uploads");
-        var storageHealthy = Directory.Exists(uploadsPath);
-
-        var result = new
-        {
-            status = dbHealthy && storageHealthy ? "healthy" : "degraded",
-            timestamp = DateTime.UtcNow,
-            checks = new
-            {
-                database = dbHealthy ? "ok" : "unavailable",
-                storage = storageHealthy ? "ok" : "unavailable",
-            },
-            info = new
-            {
-                environment = env.EnvironmentName,
-                version = typeof(HealthController).Assembly.GetName().Version?.ToString() ?? "1.0.0",
-            }
-        };
-
-        return dbHealthy ? Ok(result) : StatusCode(503, result);
+        var result = await healthCheckService.CheckAsync(ct);
+        return result.IsHealthy ? Ok(result) : StatusCode(503, result);
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using VAH.Backend.Configuration;
+using VAH.Backend.Controllers;
 using VAH.Backend.Data;
 using VAH.Backend.Features.Assets.Application;
 using VAH.Backend.Features.Assets.Application.Duplicate;
@@ -164,9 +165,9 @@ public static class ServiceCollectionExtensions
 
         // --- Authorization Policies ---
         services.AddAuthorizationBuilder()
-            .AddPolicy("RequireAssetRead", policy =>
+            .AddPolicy(PolicyNames.RequireAssetRead, policy =>
                 policy.RequireAuthenticatedUser())
-            .AddPolicy("RequireAssetWrite", policy =>
+            .AddPolicy(PolicyNames.RequireAssetWrite, policy =>
                 policy.RequireAuthenticatedUser());
 
         return services;
@@ -231,6 +232,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISmartCollectionService, SmartCollectionService>();
         services.AddScoped<ISearchService, SearchService>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IHealthCheckService, HealthCheckService>();
 
         return services;
     }

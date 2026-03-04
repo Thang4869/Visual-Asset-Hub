@@ -5,24 +5,23 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-/// <summary>
-/// Server-side search endpoint.
-/// Replaces client-side .includes() filtering for better performance and scalability.
-/// </summary>
+/// <summary>Server-side search endpoint.</summary>
+/// <remarks>
+/// Replaces client-side <c>.includes()</c> filtering for better performance and scalability.
+/// Query parameters are grouped in <see cref="SearchRequestParams"/> for cohesion.
+/// </remarks>
 [Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
-public class SearchController(ISearchService searchService) : BaseApiController
+public sealed class SearchController(ISearchService searchService) : BaseApiController
 {
     /// <summary>Search assets and collections by name/tags with filtering and pagination.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
     public async Task<ActionResult<SearchResult>> Search(
-        [FromQuery] string? q,
-        [FromQuery] string? type,
-        [FromQuery] int? collectionId,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50,
+        [FromQuery] SearchRequestParams request,
         CancellationToken ct = default)
-        => Ok(await searchService.SearchAsync(GetUserId(), q, type, collectionId, page, pageSize, ct));
+        => Ok(await searchService.SearchAsync(
+            GetUserId(), request.Query, request.Type,
+            request.CollectionId, request.Page, request.PageSize, ct));
 }
