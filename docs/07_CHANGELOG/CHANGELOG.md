@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-05
 
 All notable changes to the Visual Asset Hub project.
 
@@ -12,6 +12,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - Documentation system: 8 directories, 30+ files (01–08 hierarchy)
+
+---
+
+## [0.4.1] — 2026-03-05
+
+### Added
+- **PolicyNames**: Centralized authorization policy name constants — eliminates magic strings (`RequireAssetRead`, `RequireAssetWrite`)
+- **RateLimitPolicies**: Centralized rate-limit policy name constants (`Fixed`, `Upload`)
+- **IHealthCheckService / HealthCheckService**: Extracted health-check logic from `HealthController` into a dedicated service (SRP + DIP)
+- **Typed response DTOs**: `BulkDeleteResult`, `BulkMoveResult`, `BulkTagResult`, `RoleResult`, `MessageResult` — replaces anonymous objects for type-safe Swagger documentation
+- **SearchRequestParams**: Grouped search query parameters into a cohesive DTO (eliminates primitive obsession)
+- **HealthCheckResult / HealthChecks / HealthInfo**: Strongly-typed records for health endpoint responses
+
+### Changed
+- All controllers marked `sealed` (prevent unintended inheritance)
+- All `[Authorize(Policy = "...")]` magic strings replaced with `PolicyNames.*` constants
+- All rate-limit policy magic strings replaced with `RateLimitPolicies.*` constants
+- `HealthController`: Delegates to `IHealthCheckService` instead of directly accessing `AppDbContext` and `IWebHostEnvironment`; added `[AllowAnonymous]`
+- `PermissionsController`: Added `ILogger` injection, structured logging for Grant/Revoke operations, route constraints (`{collectionId:int}`, `{permissionId:int}`), explicit `[FromRoute]` bindings
+- `TagsController`: Added `ILogger` injection, structured logging for Create/Delete/Migrate, route constraints (`{id:int}`, `{assetId:int}`), changed Set/Add/Remove tag responses from `200 Ok()` → `204 NoContent()`
+- `SearchController`: Replaced 5 individual `[FromQuery]` parameters with `SearchRequestParams` binding model
+- `AssetsCommandController` / `AssetsQueryController`: Converted to primary constructors (removed field-backed DI), added route constraints (`{id:int}`, `{groupId:int}`)
+- `SmartCollectionsController`: Added `[FromRoute]` binding, default `CancellationToken`
+- XML doc comments: Consolidated multi-line `<summary>` blocks to single-line + `<remarks>` where appropriate
+- All `CancellationToken` parameters now have `= default` for consistent optional cancellation
+- Added explicit `[FromRoute]` and `[FromBody]` binding attributes throughout all controllers
+- Added missing `[ProducesResponseType(StatusCodes.Status400BadRequest)]` on mutation endpoints
 
 ---
 
