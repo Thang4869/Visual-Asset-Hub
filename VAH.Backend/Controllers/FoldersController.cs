@@ -6,17 +6,15 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-/// <summary>
-/// Folder asset lifecycle — create, manage folder-type assets.
-/// Domain: Folder (organizational container within a collection).
-/// </summary>
+/// <summary>Folder asset lifecycle — create, manage folder-type assets.</summary>
+/// <remarks>Domain: Folder (organizational container within a collection).</remarks>
 [Route("api/v1/assets/folders")]
 [Produces("application/json")]
-public class FoldersController(IAssetService assetService) : BaseApiController
+public sealed class FoldersController(IAssetService assetService) : BaseApiController
 {
     /// <summary>Create a folder asset.</summary>
     [HttpPost]
-    [Authorize(Policy = "RequireAssetWrite")]
+    [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AssetResponseDto>> CreateFolder(

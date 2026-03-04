@@ -5,14 +5,20 @@ namespace VAH.Backend.Controllers;
 
 /// <summary>
 /// Base controller providing common functionality for all API controllers.
-/// Centralizes user identity extraction and shared helpers.
+/// <list type="bullet">
+///   <item><description>Centralizes user identity extraction.</description></item>
+///   <item><description>Declares universal error response types for Swagger.</description></item>
+///   <item><description>Provides typed-response helpers to eliminate anonymous objects.</description></item>
+/// </list>
 /// </summary>
 [ApiController]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status500InternalServerError)]
 public abstract class BaseApiController : ControllerBase
 {
     /// <summary>
     /// Get the authenticated user's ID from JWT claims.
-    /// Throws UnauthorizedAccessException if identity is not found.
+    /// Throws <see cref="UnauthorizedAccessException"/> if identity is not found.
     /// </summary>
     protected string GetUserId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)

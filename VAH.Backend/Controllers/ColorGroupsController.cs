@@ -6,17 +6,15 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-/// <summary>
-/// Color group (palette) asset lifecycle — create and manage color group containers.
-/// Domain: ColorGroup (palette container that holds color swatches).
-/// </summary>
+/// <summary>Color group (palette) asset lifecycle — create and manage color group containers.</summary>
+/// <remarks>Domain: ColorGroup (palette container that holds color swatches).</remarks>
 [Route("api/v1/assets/color-groups")]
 [Produces("application/json")]
-public class ColorGroupsController(IAssetService assetService) : BaseApiController
+public sealed class ColorGroupsController(IAssetService assetService) : BaseApiController
 {
     /// <summary>Create a color group (palette container) asset.</summary>
     [HttpPost]
-    [Authorize(Policy = "RequireAssetWrite")]
+    [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AssetResponseDto>> CreateColorGroup(
