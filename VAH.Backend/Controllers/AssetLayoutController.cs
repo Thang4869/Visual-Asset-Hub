@@ -19,7 +19,7 @@ public sealed class AssetLayoutController(IAssetService assetService) : BaseApiC
     [HttpPut("{id:int}/position")]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<AssetResponseDto>> UpdatePosition(
         [FromRoute, Range(1, int.MaxValue)] int id,
         [FromBody] AssetPositionDto dto,

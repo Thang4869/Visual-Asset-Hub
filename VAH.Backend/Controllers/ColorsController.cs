@@ -16,7 +16,6 @@ public sealed class ColorsController(IAssetService assetService) : BaseApiContro
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AssetResponseDto>> CreateColor(
         [FromBody] CreateColorDto dto, CancellationToken ct = default)
     {

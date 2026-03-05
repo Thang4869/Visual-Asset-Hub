@@ -8,8 +8,7 @@ namespace VAH.Backend.Controllers;
 /// <summary>Collection permission management (grant, update, revoke).</summary>
 /// <remarks>
 /// All endpoints scoped to <c>collectionId</c>. Authorization enforced in service layer.
-/// The <c>/api/v1/shared-collections</c> endpoint uses an absolute route override
-/// because it is user-scoped, not collection-scoped.
+/// User-scoped queries (shared-collections) live in <see cref="SharedCollectionsController"/>.
 /// </remarks>
 [Route("api/v1/collections/{collectionId:int}/permissions")]
 [Authorize]
@@ -29,7 +28,6 @@ public sealed class PermissionsController(
     /// <summary>Grant a permission to a user by email.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(CollectionPermission), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CollectionPermission>> Grant(
         [FromRoute] int collectionId, [FromBody] GrantPermissionDto dto, CancellationToken ct = default)
@@ -44,17 +42,23 @@ public sealed class PermissionsController(
     /// <summary>Update an existing permission’s role.</summary>
     [HttpPut("{permissionId:int}")]
     [ProducesResponseType(typeof(CollectionPermission), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CollectionPermission>> Update(
         [FromRoute] int collectionId, [FromRoute] int permissionId,
         [FromBody] UpdatePermissionDto dto, CancellationToken ct = default)
-        => Ok(await permissionService.UpdateAsync(permissionId, dto, GetUserId(), ct));
+    {
+        var userId = GetUserId();
+        logger.LogInformation(
+            "Updating permission {PermissionId} on collection {CollectionId} by user {UserId}",
+            permissionId, collectionId, userId);
+        return Ok(await permissionService.UpdateAsync(permissionId, dto, userId, ct));
+    }
 
     /// <summary>Revoke a permission.</summary>
     [HttpDelete("{permissionId:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Revoke(
         [FromRoute] int collectionId, [FromRoute] int permissionId, CancellationToken ct = default)
@@ -77,12 +81,4 @@ public sealed class PermissionsController(
         return Ok(new RoleResult(role));
     }
 
-    /// <summary>
-    /// Get all collections shared with the current user.
-    /// Note: Uses absolute route — user-scoped query, not collection-scoped.
-    /// </summary>
-    [HttpGet("/api/v1/shared-collections")]
-    [ProducesResponseType(typeof(List<Collection>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<Collection>>> GetSharedCollections(CancellationToken ct = default)
-        => Ok(await permissionService.GetSharedCollectionsAsync(GetUserId(), ct));
 }

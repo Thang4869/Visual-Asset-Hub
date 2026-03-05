@@ -16,7 +16,6 @@ public sealed class ColorGroupsController(IAssetService assetService) : BaseApiC
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AssetResponseDto>> CreateColorGroup(
         [FromBody] CreateColorGroupDto dto, CancellationToken ct = default)
     {

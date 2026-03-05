@@ -24,7 +24,7 @@ public sealed class CollectionsController(
     /// <summary>Get a collection with its items and subcollections.</summary>
     [HttpGet("{id:int}/items")]
     [ProducesResponseType(typeof(CollectionWithItemsResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CollectionWithItemsResult>> GetCollectionWithItems(
         [FromRoute] int id, [FromQuery] int? folderId = null, CancellationToken ct = default)
         => Ok(await collectionService.GetWithItemsAsync(id, folderId, GetUserId(), ct));
@@ -32,7 +32,6 @@ public sealed class CollectionsController(
     /// <summary>Create a new collection.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(Collection), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<Collection>> PostCollection(
         [FromBody] CreateCollectionDto dto, CancellationToken ct = default)
     {
@@ -45,7 +44,7 @@ public sealed class CollectionsController(
     /// <summary>Partially update a collection (standard).</summary>
     [HttpPatch("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCollection(
         [FromRoute] int id, [FromBody] UpdateCollectionDto dto, CancellationToken ct = default)
     {
@@ -63,7 +62,7 @@ public sealed class CollectionsController(
     /// <summary>Delete a collection.</summary>
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteCollection([FromRoute] int id, CancellationToken ct = default)
     {
         var userId = GetUserId();
