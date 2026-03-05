@@ -16,7 +16,6 @@ public sealed class FoldersController(IAssetService assetService) : BaseApiContr
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AssetResponseDto>> CreateFolder(
         [FromBody] CreateFolderDto dto, CancellationToken ct = default)
     {

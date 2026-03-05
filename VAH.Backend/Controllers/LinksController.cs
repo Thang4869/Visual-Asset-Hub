@@ -16,7 +16,6 @@ public sealed class LinksController(IAssetService assetService) : BaseApiControl
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AssetResponseDto>> CreateLink(
         [FromBody] CreateLinkDto dto, CancellationToken ct = default)
     {

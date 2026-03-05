@@ -26,6 +26,9 @@ public sealed class BulkAssetsController(
     public async Task<ActionResult<BulkDeleteResult>> BulkDelete(
         [FromBody] BulkDeleteDto dto, CancellationToken ct = default)
     {
+        if (dto.AssetIds is not { Count: > 0 })
+            return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
         var userId = GetUserId();
         logger.LogInformation("Bulk delete requested for {Count} assets by {UserId}",
             dto.AssetIds.Count, userId);
@@ -39,6 +42,9 @@ public sealed class BulkAssetsController(
     public async Task<ActionResult<BulkMoveResult>> BulkMove(
         [FromBody] BulkMoveDto dto, CancellationToken ct = default)
     {
+        if (dto.AssetIds is not { Count: > 0 })
+            return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
         var userId = GetUserId();
         logger.LogInformation("Bulk move requested for {Count} assets by {UserId}",
             dto.AssetIds.Count, userId);
@@ -52,7 +58,13 @@ public sealed class BulkAssetsController(
     public async Task<ActionResult<BulkMoveResult>> BulkMoveGroup(
         [FromBody] BulkMoveGroupDto dto, CancellationToken ct = default)
     {
-        var count = await bulkService.BulkMoveGroupAsync(dto, GetUserId(), ct);
+        if (dto.AssetIds is not { Count: > 0 })
+            return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
+        var userId = GetUserId();
+        logger.LogInformation("Bulk move-group requested for {Count} assets by {UserId}",
+            dto.AssetIds.Count, userId);
+        var count = await bulkService.BulkMoveGroupAsync(dto, userId, ct);
         return Ok(new BulkMoveResult(count));
     }
 
@@ -62,7 +74,13 @@ public sealed class BulkAssetsController(
     public async Task<ActionResult<BulkTagResult>> BulkTag(
         [FromBody] BulkTagDto dto, CancellationToken ct = default)
     {
-        var count = await bulkService.BulkTagAsync(dto, GetUserId(), ct);
+        if (dto.AssetIds is not { Count: > 0 })
+            return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
+        var userId = GetUserId();
+        logger.LogInformation("Bulk tag requested for {Count} assets by {UserId}",
+            dto.AssetIds.Count, userId);
+        var count = await bulkService.BulkTagAsync(dto, userId, ct);
         return Ok(new BulkTagResult(count));
     }
 }
