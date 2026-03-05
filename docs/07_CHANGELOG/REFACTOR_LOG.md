@@ -1,8 +1,107 @@
 # REFACTOR LOG
 
-> **Last Updated**: 2026-03-05
+> **Last Updated**: 2026-03-06
 
 Tracks completed refactoring efforts with before/after comparisons.
+
+---
+
+## RF-006 — ProblemDetails Consistency, Input Validation & SRP Extraction
+
+**Date**: 2026-03-06
+**Scope**: BaseApiController, BulkAssetsController, PermissionsController, TagsController, SharedCollectionsController
+**Branch**: `refactor/controller-validation-srp`
+
+### Summary
+
+Standardized error response schemas to `ProblemDetails` across all controllers, added early-return input validation on bulk endpoints, and extracted a user-scoped endpoint into its own controller for single-responsibility. 12 files changed (74 insertions, 38 deletions).
+
+### Key Changes
+
+#### 1. BaseApiController → ProblemDetails on all error responses
+
+**Before**
+```csharp
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+public abstract class BaseApiController : ControllerBase
+```
+
+**After**
+```csharp
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+public abstract class BaseApiController : ControllerBase
+```
+
+**Impact**: Swagger now generates accurate `ProblemDetails` schemas for all error responses. Eliminates need for individual controllers to redeclare `400`.
+
+#### 2. Bulk endpoint input validation
+
+**Before**
+```csharp
+public async Task<ActionResult<BulkMoveResult>> BulkMoveGroup(
+    [FromBody] BulkMoveGroupDto dto, CancellationToken ct = default)
+{
+    var count = await bulkService.BulkMoveGroupAsync(dto, GetUserId(), ct);
+    return Ok(new BulkMoveResult(count));
+}
+```
+
+**After**
+```csharp
+public async Task<ActionResult<BulkMoveResult>> BulkMoveGroup(
+    [FromBody] BulkMoveGroupDto dto, CancellationToken ct = default)
+{
+    if (dto.AssetIds is not { Count: > 0 })
+        return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
+    var userId = GetUserId();
+    logger.LogInformation("Bulk move-group requested for {Count} assets by {UserId}",
+        dto.AssetIds.Count, userId);
+    var count = await bulkService.BulkMoveGroupAsync(dto, userId, ct);
+    return Ok(new BulkMoveResult(count));
+}
+```
+
+Applied to all 4 bulk endpoints: `BulkDelete`, `BulkMove`, `BulkMoveGroup`, `BulkTag`.
+
+**Impact**: Prevents unnecessary service calls with empty payloads; returns clear `ProblemDetails` error.
+
+#### 3. SharedCollectionsController extraction (SRP)
+
+**Before**
+```csharp
+// Inside PermissionsController (collection-scoped: /api/v1/collections/{id}/permissions)
+[HttpGet("/api/v1/shared-collections")]  // absolute route override — code smell
+public async Task<ActionResult<List<Collection>>> GetSharedCollections(...)
+```
+
+**After**
+```csharp
+// New dedicated controller
+[Route("api/v1/shared-collections")]
+public sealed class SharedCollectionsController(IPermissionService permissionService) : BaseApiController
+{
+    [HttpGet]
+    public async Task<ActionResult<List<Collection>>> GetSharedCollections(...)
+}
+```
+
+**Impact**: Eliminates absolute route override; each controller has a single responsibility (collection-scoped CRUD vs user-scoped queries).
+
+#### 4. Admin-only tag migration
+
+```csharp
+[HttpPost("migrate")]
+[Authorize(Roles = "Admin")]
+[ProducesResponseType(typeof(MessageResult), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
+public async Task<ActionResult<MessageResult>> MigrateCommaSeparatedTags(...)
+```
+
+**Impact**: Prevents non-admin users from triggering expensive migration operations.
 
 ---
 
