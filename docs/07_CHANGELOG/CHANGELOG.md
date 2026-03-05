@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-05
+> **Last Updated**: 2026-03-06
 
 All notable changes to the Visual Asset Hub project.
 
@@ -12,6 +12,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - Documentation system: 8 directories, 30+ files (01–08 hierarchy)
+
+---
+
+## [0.4.2] — 2026-03-06
+
+### Added
+- **SharedCollectionsController**: Extracted user-scoped shared-collections query from `PermissionsController` into a dedicated controller (SRP — collection-scoped CRUD vs user-scoped queries)
+- **Input validation on bulk endpoints**: `BulkDelete`, `BulkMove`, `BulkMoveGroup`, `BulkTag` now return `400 ProblemDetails` when `AssetIds` is empty
+- **Structured logging**: Added logging to `BulkMoveGroup` and `BulkTag` operations (previously only `BulkDelete` and `BulkMove` had logging)
+- **Admin-only tag migration**: `POST /tags/migrate` now requires `[Authorize(Roles = "Admin")]` with `403` response type
+
+### Changed
+- **BaseApiController**: All base error responses (`400`, `401`, `500`) now declare `typeof(ProblemDetails)` for accurate Swagger schemas
+- **ProblemDetails consistency**: All `404 NotFound` responses across controllers now use `typeof(ProblemDetails)` instead of bare status codes
+- **Removed redundant `[ProducesResponseType(400)]`**: Controllers that inherit from `BaseApiController` no longer re-declare `400` — it's handled once in the base class
+- **AuthController**: `409 Conflict` response now uses `typeof(ProblemDetails)`; removed duplicate `400` declaration
+- **PermissionsController**: Removed `GetSharedCollections` endpoint (moved to `SharedCollectionsController`); added structured logging to `Update` operation; updated remarks to reference new controller
+- **TagsController**: Added `<remarks>` doc on migrate endpoint noting admin-only behavior
 
 ---
 
