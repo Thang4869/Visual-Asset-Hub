@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-06
+> **Last Updated**: 2026-03-07
 
 All notable changes to the Visual Asset Hub project.
 
@@ -12,6 +12,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - Documentation system: 8 directories, 30+ files (01–08 hierarchy)
+
+---
+
+## [0.4.3] — 2026-03-07
+
+### Added
+- **BulkOperationLimits**: Centralized `MaxBatchSize = 500` constant — enforced across all bulk endpoints and `ReorderAssets`
+- **Search rate-limiting**: New `Search` sliding-window policy (60 req/min, 6 segments) applied to `SearchController` via `[EnableRateLimiting]`
+- **Liveness probe**: `GET /api/v1/health/live` — lightweight K8s-style liveness endpoint (no DB/storage probing); returns `LivenessResult` record
+- **TagService.CreateOrGetAsync**: Returns `(Tag, bool Created)` tuple — enables `TagsController` to return `201 Created` for new tags and `200 OK` for duplicates (idempotent)
+- **Structured logging**: Added `ILogger` injection + log statements to `AssetLayoutController`, `ColorGroupsController`, `ColorsController`, `FoldersController`, `LinksController`
+
+### Changed
+- **BaseApiController**: Added `404 NotFound` with `ProblemDetails` to base-level response types; updated `GetUserId()` docs to reference `GlobalExceptionHandler`
+- **BulkAssetsController**: All 4 endpoints now validate `MaxBatchSize` in addition to empty-check
+- **AssetLayoutController**: `ReorderAssets` validates empty + max-batch-size; added structured logging
+- **HealthController**: Now inherits from `ControllerBase` (not `BaseApiController`) — health endpoints don't require auth-related base responses; added readiness vs liveness distinction in XML docs
+- **TagsController.CreateTag**: Now returns `201` for new / `200` for existing (was always `201`); added `[ProducesResponseType(200)]` and remarks about idempotent behavior
+- **TagsController.MigrateCommaSeparatedTags**: Added `[EnableRateLimiting(Fixed)]` to prevent repeated expensive migrations
+- **RateLimitPolicies**: Added `Search` constant
+- **CollectionsController**: Added remarks documenting intentionally un-paginated `GetCollections` design decision
+- **Asset-type controllers** (Colors, ColorGroups, Folders, Links): Expanded XML `<remarks>` explaining per-type controller separation rationale with cross-references
+- **PermissionsController**: Enhanced remarks with defense-in-depth documentation for service-layer verification
 
 ---
 
