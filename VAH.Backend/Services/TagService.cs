@@ -32,6 +32,12 @@ public class TagService : ITagService
 
     public async Task<Tag> CreateAsync(CreateTagDto dto, string userId, CancellationToken ct = default)
     {
+        var (tag, _) = await CreateOrGetAsync(dto, userId, ct);
+        return tag;
+    }
+
+    public async Task<(Tag Tag, bool Created)> CreateOrGetAsync(CreateTagDto dto, string userId, CancellationToken ct = default)
+    {
         if (string.IsNullOrWhiteSpace(dto.Name))
             throw new ArgumentException("Tag name is required.");
 
@@ -41,7 +47,7 @@ public class TagService : ITagService
         var existing = await _context.Tags
             .FirstOrDefaultAsync(t => t.NormalizedName == normalized && t.UserId == userId, ct);
         if (existing != null)
-            return existing; // Return existing instead of error
+            return (existing, false);
 
         var tag = new Tag
         {
@@ -55,7 +61,7 @@ public class TagService : ITagService
         await _context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Tag created: {Name} (Id={Id}) by user {UserId}", tag.Name, tag.Id, userId);
-        return tag;
+        return (tag, true);
     }
 
     public async Task<Tag> UpdateAsync(int id, UpdateTagDto dto, string userId, CancellationToken ct = default)

@@ -73,6 +73,15 @@ public static class ServiceCollectionExtensions
                 opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 opt.QueueLimit = 5;
             });
+
+            options.AddSlidingWindowLimiter("Search", opt =>
+            {
+                opt.PermitLimit = 60;
+                opt.Window = TimeSpan.FromMinutes(1);
+                opt.SegmentsPerWindow = 6;
+                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opt.QueueLimit = 5;
+            });
         });
 
         return services;

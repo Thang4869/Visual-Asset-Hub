@@ -13,7 +13,9 @@ namespace VAH.Backend.Controllers;
 /// </remarks>
 [Route("api/v1/assets")]
 [Produces("application/json")]
-public sealed class AssetLayoutController(IAssetService assetService) : BaseApiController
+public sealed class AssetLayoutController(
+    IAssetService assetService,
+    ILogger<AssetLayoutController> logger) : BaseApiController
 {
     /// <summary>Update canvas position (x/y coordinates).</summary>
     [HttpPut("{id:int}/position")]
@@ -34,7 +36,20 @@ public sealed class AssetLayoutController(IAssetService assetService) : BaseApiC
         [FromBody] ReorderAssetsDto dto,
         CancellationToken ct = default)
     {
-        await assetService.ReorderAssetsAsync(dto.AssetIds, GetUserId(), ct);
+        if (dto.AssetIds is not { Count: > 0 })
+            return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
+        if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
+            return BadRequest(new ProblemDetails
+            {
+                Title = $"Batch size exceeds the maximum of {BulkOperationLimits.MaxBatchSize}.",
+                Status = 400
+            });
+
+        var userId = GetUserId();
+        logger.LogInformation("Reorder requested for {Count} assets by {UserId}",
+            dto.AssetIds.Count, userId);
+        await assetService.ReorderAssetsAsync(dto.AssetIds, userId, ct);
         return NoContent();
     }
 }

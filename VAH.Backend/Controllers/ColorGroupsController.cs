@@ -7,10 +7,15 @@ using VAH.Backend.Services;
 namespace VAH.Backend.Controllers;
 
 /// <summary>Color group (palette) asset lifecycle — create and manage color group containers.</summary>
-/// <remarks>Domain: ColorGroup (palette container that holds color swatches).</remarks>
+/// <remarks>
+/// Domain: ColorGroup (palette container that holds color swatches).
+/// <para>Separated per asset type for independent evolution. See <see cref="ColorsController"/> remarks.</para>
+/// </remarks>
 [Route("api/v1/assets/color-groups")]
 [Produces("application/json")]
-public sealed class ColorGroupsController(IAssetService assetService) : BaseApiController
+public sealed class ColorGroupsController(
+    IAssetService assetService,
+    ILogger<ColorGroupsController> logger) : BaseApiController
 {
     /// <summary>Create a color group (palette container) asset.</summary>
     [HttpPost]
@@ -19,7 +24,10 @@ public sealed class ColorGroupsController(IAssetService assetService) : BaseApiC
     public async Task<ActionResult<AssetResponseDto>> CreateColorGroup(
         [FromBody] CreateColorGroupDto dto, CancellationToken ct = default)
     {
-        var group = await assetService.CreateColorGroupAsync(dto, GetUserId(), ct);
+        var userId = GetUserId();
+        logger.LogInformation("Creating color group '{GroupName}' in collection {CollectionId} by user {UserId}",
+            dto.GroupName, dto.CollectionId, userId);
+        var group = await assetService.CreateColorGroupAsync(dto, userId, ct);
         return CreatedAtRoute(
             routeName: AssetRouteNames.GetAssetById,
             routeValues: new { id = group.Id },

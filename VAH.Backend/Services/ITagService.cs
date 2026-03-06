@@ -7,6 +7,8 @@ public interface ITagService
     Task<List<Tag>> GetAllAsync(string userId, CancellationToken ct = default);
     Task<Tag> GetByIdAsync(int id, string userId, CancellationToken ct = default);
     Task<Tag> CreateAsync(CreateTagDto dto, string userId, CancellationToken ct = default);
+    /// <summary>Create a tag or return existing. Tuple: (tag, wasCreated).</summary>
+    Task<(Tag Tag, bool Created)> CreateOrGetAsync(CreateTagDto dto, string userId, CancellationToken ct = default);
     Task<Tag> UpdateAsync(int id, UpdateTagDto dto, string userId, CancellationToken ct = default);
     Task<bool> DeleteAsync(int id, string userId, CancellationToken ct = default);
     Task<List<Tag>> GetOrCreateTagsAsync(IEnumerable<string> tagNames, string userId, CancellationToken ct = default);
