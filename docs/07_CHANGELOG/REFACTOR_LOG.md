@@ -1,8 +1,139 @@
 # REFACTOR LOG
 
-> **Last Updated**: 2026-03-06
+> **Last Updated**: 2026-03-07
 
 Tracks completed refactoring efforts with before/after comparisons.
+
+---
+
+## RF-007 — Batch Guards, Search Rate Limiting & Liveness Probe
+
+**Date**: 2026-03-07
+**Scope**: Bulk/layout controllers, SearchController, HealthController, TagService, ServiceCollectionExtensions
+**Branch**: `refactor/rate-limit-batch-limits`
+
+### Summary
+
+Added batch-size ceilings to all bulk/reorder endpoints, introduced a dedicated search rate-limit policy, split health probes into readiness + liveness, and made tag creation idempotent with correct HTTP semantics. 17 files changed (167 insertions, 27 deletions).
+
+### Key Changes
+
+#### 1. Batch Size Guard via BulkOperationLimits
+
+**Before**
+```csharp
+// Only empty-check existed
+if (dto.AssetIds is not { Count: > 0 })
+    return BadRequest(...);
+// No upper bound — client could send 10,000 IDs
+```
+
+**After**
+```csharp
+internal static class BulkOperationLimits
+{
+    public const int MaxBatchSize = 500;
+}
+
+// Every bulk + reorder endpoint:
+if (dto.AssetIds is not { Count: > 0 })
+    return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
+if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
+    return BadRequest(new ProblemDetails
+    {
+        Title = $"Batch size exceeds the maximum of {BulkOperationLimits.MaxBatchSize}.",
+        Status = 400
+    });
+```
+
+Applied to: `BulkDelete`, `BulkMove`, `BulkMoveGroup`, `BulkTag`, `ReorderAssets` (5 endpoints).
+
+**Impact**: Prevents unbounded queries; single constant to adjust site-wide.
+
+#### 2. Search Sliding-Window Rate Limiter
+
+**Before**
+```csharp
+// SearchController had no rate limiting
+[Route("api/v1/[controller]")]
+[Authorize]
+public sealed class SearchController ...
+```
+
+**After**
+```csharp
+options.AddSlidingWindowLimiter("Search", opt =>
+{
+    opt.PermitLimit = 60;
+    opt.Window = TimeSpan.FromMinutes(1);
+    opt.SegmentsPerWindow = 6;   // 10-second segments
+    opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    opt.QueueLimit = 5;
+});
+
+[EnableRateLimiting(RateLimitPolicies.Search)]
+public sealed class SearchController ...
+```
+
+**Impact**: Protects against search abuse; sliding window is smoother than fixed window.
+
+#### 3. Liveness Probe (HealthController)
+
+**Before**
+```csharp
+public sealed class HealthController(...) : BaseApiController
+{
+    // Single combined health check
+    [HttpGet] public async Task<IActionResult> GetHealth(...)
+}
+```
+
+**After**
+```csharp
+public sealed class HealthController(...) : ControllerBase  // not BaseApiController
+{
+    [HttpGet]       // Readiness — probes DB + storage
+    public async Task<IActionResult> GetHealth(...)
+
+    [HttpGet("live")]  // Liveness — process-only, no deps
+    public IActionResult GetLiveness()
+        => Ok(new LivenessResult("alive", DateTime.UtcNow));
+}
+```
+
+**Impact**: K8s livenessProbe can use `/health/live` without triggering DB connections. HealthController no longer inherits auth-related base responses.
+
+#### 4. Idempotent Tag Creation
+
+**Before**
+```csharp
+public async Task<Tag> CreateAsync(CreateTagDto dto, string userId, ...)
+{
+    // ... finds existing
+    if (existing != null) return existing;  // Always 201
+    // ... creates new
+    return tag;  // Always 201
+}
+```
+
+**After**
+```csharp
+public async Task<(Tag Tag, bool Created)> CreateOrGetAsync(CreateTagDto dto, ...)
+{
+    if (existing != null) return (existing, false);   // → 200 OK
+    // ...
+    return (tag, true);  // → 201 Created
+}
+
+// Controller:
+var (tag, created) = await tagService.CreateOrGetAsync(dto, userId, ct);
+return created
+    ? CreatedAtAction(nameof(GetTag), new { id = tag.Id }, tag)
+    : Ok(tag);
+```
+
+**Impact**: Correct HTTP semantics — `201` only for actual creation; `200` for existing. Frontend can distinguish new vs existing by status code.
 
 ---
 
