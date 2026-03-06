@@ -4,15 +4,20 @@ using VAH.Backend.Services;
 
 namespace VAH.Backend.Controllers;
 
-/// <summary>Health check endpoint for monitoring and load balancer readiness.</summary>
-/// <remarks>DIP: Delegates all probing logic to <see cref="IHealthCheckService"/>.
-/// Returns 503 with the same typed body when degraded, so callers always parse one schema.</remarks>
+/// <summary>Health check endpoints for monitoring and load balancer probes.</summary>
+/// <remarks>
+/// DIP: Delegates all probing logic to <see cref="IHealthCheckService"/>.
+/// Returns 503 with the same typed body when degraded, so callers always parse one schema.
+/// <para>Provides both a combined readiness check (<c>/health</c>) and a lightweight
+/// liveness probe (<c>/health/live</c>) for Kubernetes-style orchestrators.</para>
+/// </remarks>
 [Route("api/v1/[controller]")]
 [AllowAnonymous]
 [Produces("application/json")]
-public sealed class HealthController(IHealthCheckService healthCheckService) : BaseApiController
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+public sealed class HealthController(IHealthCheckService healthCheckService) : ControllerBase
 {
-    /// <summary>Basic health check — verifies API is running and DB is reachable.</summary>
+    /// <summary>Readiness check — verifies API is running, DB reachable, and storage available.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(HealthCheckResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HealthCheckResult), StatusCodes.Status503ServiceUnavailable)]
@@ -21,4 +26,14 @@ public sealed class HealthController(IHealthCheckService healthCheckService) : B
         var result = await healthCheckService.CheckAsync(ct);
         return result.IsHealthy ? Ok(result) : StatusCode(503, result);
     }
+
+    /// <summary>Liveness probe — lightweight check that the process is running.</summary>
+    /// <remarks>Does not probe external dependencies (DB, storage). Use for K8s livenessProbe.</remarks>
+    [HttpGet("live")]
+    [ProducesResponseType(typeof(LivenessResult), StatusCodes.Status200OK)]
+    public IActionResult GetLiveness()
+        => Ok(new LivenessResult("alive", DateTime.UtcNow));
 }
+
+/// <summary>Minimal liveness response — no external dependency probing.</summary>
+public sealed record LivenessResult(string Status, DateTime Timestamp);

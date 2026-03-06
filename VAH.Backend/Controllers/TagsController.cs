@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
 
@@ -29,14 +30,18 @@ public sealed class TagsController(
         => Ok(await tagService.GetByIdAsync(id, GetUserId(), ct));
 
     /// <summary>Create a new tag (returns existing if duplicate name).</summary>
+    /// <remarks>Returns 201 for newly created tags, 200 for pre-existing duplicates (idempotent).</remarks>
     [HttpPost]
     [ProducesResponseType(typeof(Tag), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(Tag), StatusCodes.Status200OK)]
     public async Task<ActionResult<Tag>> CreateTag([FromBody] CreateTagDto dto, CancellationToken ct = default)
     {
         var userId = GetUserId();
         logger.LogInformation("Creating tag '{Name}' for user {UserId}", dto.Name, userId);
-        var tag = await tagService.CreateAsync(dto, userId, ct);
-        return CreatedAtAction(nameof(GetTag), new { id = tag.Id }, tag);
+        var (tag, created) = await tagService.CreateOrGetAsync(dto, userId, ct);
+        return created
+            ? CreatedAtAction(nameof(GetTag), new { id = tag.Id }, tag)
+            : Ok(tag);
     }
 
     /// <summary>Update a tag's name or color.</summary>
@@ -101,9 +106,11 @@ public sealed class TagsController(
     }
 
     /// <summary>Migrate legacy comma-separated tags to many-to-many system.</summary>
-    /// <remarks>Admin-only — triggers a potentially expensive migration for the user's tags.</remarks>
+    /// <remarks>Admin-only — triggers a potentially expensive migration for the user's tags.
+    /// Rate-limited independently to prevent repeated expensive operations.</remarks>
     [HttpPost("migrate")]
     [Authorize(Roles = "Admin")]
+    [EnableRateLimiting(RateLimitPolicies.Fixed)]
     [ProducesResponseType(typeof(MessageResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MessageResult>> MigrateCommaSeparatedTags(CancellationToken ct = default)

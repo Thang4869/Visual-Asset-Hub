@@ -7,10 +7,15 @@ using VAH.Backend.Services;
 namespace VAH.Backend.Controllers;
 
 /// <summary>Folder asset lifecycle — create, manage folder-type assets.</summary>
-/// <remarks>Domain: Folder (organizational container within a collection).</remarks>
+/// <remarks>
+/// Domain: Folder (organizational container within a collection).
+/// <para>Separated per asset type for independent evolution. See <see cref="ColorsController"/> remarks.</para>
+/// </remarks>
 [Route("api/v1/assets/folders")]
 [Produces("application/json")]
-public sealed class FoldersController(IAssetService assetService) : BaseApiController
+public sealed class FoldersController(
+    IAssetService assetService,
+    ILogger<FoldersController> logger) : BaseApiController
 {
     /// <summary>Create a folder asset.</summary>
     [HttpPost]
@@ -19,7 +24,10 @@ public sealed class FoldersController(IAssetService assetService) : BaseApiContr
     public async Task<ActionResult<AssetResponseDto>> CreateFolder(
         [FromBody] CreateFolderDto dto, CancellationToken ct = default)
     {
-        var folder = await assetService.CreateFolderAsync(dto, GetUserId(), ct);
+        var userId = GetUserId();
+        logger.LogInformation("Creating folder '{FolderName}' in collection {CollectionId} by user {UserId}",
+            dto.FolderName, dto.CollectionId, userId);
+        var folder = await assetService.CreateFolderAsync(dto, userId, ct);
         return CreatedAtRoute(
             routeName: AssetRouteNames.GetAssetById,
             routeValues: new { id = folder.Id },

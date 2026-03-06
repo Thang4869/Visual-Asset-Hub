@@ -7,7 +7,11 @@ namespace VAH.Backend.Controllers;
 
 /// <summary>CRUD operations for user collections.</summary>
 /// <remarks>All endpoints require authentication. Collection-level authorization
-/// is enforced in the service layer via ownership/permission checks.</remarks>
+/// is enforced in the service layer via ownership/permission checks.
+/// <para><c>GetCollections</c> is intentionally un-paginated: results are user-scoped,
+/// cached, and typically &lt;100 items (sidebar use-case). If per-user collection counts
+/// grow beyond expected bounds, introduce <see cref="PaginationParams"/> here.</para>
+/// </remarks>
 [Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]

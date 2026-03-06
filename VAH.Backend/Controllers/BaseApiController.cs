@@ -14,12 +14,14 @@ namespace VAH.Backend.Controllers;
 [ApiController]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
 public abstract class BaseApiController : ControllerBase
 {
     /// <summary>
     /// Get the authenticated user's ID from JWT claims.
-    /// Throws <see cref="UnauthorizedAccessException"/> if identity is not found.
+    /// Throws <see cref="UnauthorizedAccessException"/> if identity is not found,
+    /// which <see cref="Middleware.GlobalExceptionHandler"/> maps to 401 ProblemDetails.
     /// </summary>
     protected string GetUserId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)

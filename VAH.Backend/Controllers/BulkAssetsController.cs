@@ -29,6 +29,13 @@ public sealed class BulkAssetsController(
         if (dto.AssetIds is not { Count: > 0 })
             return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
 
+        if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
+            return BadRequest(new ProblemDetails
+            {
+                Title = $"Batch size exceeds the maximum of {BulkOperationLimits.MaxBatchSize}.",
+                Status = 400
+            });
+
         var userId = GetUserId();
         logger.LogInformation("Bulk delete requested for {Count} assets by {UserId}",
             dto.AssetIds.Count, userId);
@@ -44,6 +51,13 @@ public sealed class BulkAssetsController(
     {
         if (dto.AssetIds is not { Count: > 0 })
             return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
+        if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
+            return BadRequest(new ProblemDetails
+            {
+                Title = $"Batch size exceeds the maximum of {BulkOperationLimits.MaxBatchSize}.",
+                Status = 400
+            });
 
         var userId = GetUserId();
         logger.LogInformation("Bulk move requested for {Count} assets by {UserId}",
@@ -61,6 +75,13 @@ public sealed class BulkAssetsController(
         if (dto.AssetIds is not { Count: > 0 })
             return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
 
+        if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
+            return BadRequest(new ProblemDetails
+            {
+                Title = $"Batch size exceeds the maximum of {BulkOperationLimits.MaxBatchSize}.",
+                Status = 400
+            });
+
         var userId = GetUserId();
         logger.LogInformation("Bulk move-group requested for {Count} assets by {UserId}",
             dto.AssetIds.Count, userId);
@@ -76,6 +97,13 @@ public sealed class BulkAssetsController(
     {
         if (dto.AssetIds is not { Count: > 0 })
             return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+
+        if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
+            return BadRequest(new ProblemDetails
+            {
+                Title = $"Batch size exceeds the maximum of {BulkOperationLimits.MaxBatchSize}.",
+                Status = 400
+            });
 
         var userId = GetUserId();
         logger.LogInformation("Bulk tag requested for {Count} assets by {UserId}",

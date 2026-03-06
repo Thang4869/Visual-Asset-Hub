@@ -7,7 +7,9 @@ namespace VAH.Backend.Controllers;
 
 /// <summary>Collection permission management (grant, update, revoke).</summary>
 /// <remarks>
-/// All endpoints scoped to <c>collectionId</c>. Authorization enforced in service layer.
+/// All endpoints scoped to <c>collectionId</c>. Authorization enforced in service layer
+/// (owner-only for mutations). Service-layer verifies permission.CollectionId
+/// for Update/Revoke as defense-in-depth, independent of the route parameter.
 /// User-scoped queries (shared-collections) live in <see cref="SharedCollectionsController"/>.
 /// </remarks>
 [Route("api/v1/collections/{collectionId:int}/permissions")]
