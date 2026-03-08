@@ -1,6 +1,6 @@
 # API CONVENTIONS — REST API Design Rules
 
-> **Last Updated**: 2026-03-02  
+> **Last Updated**: 2026-03-08  
 > **Base URL**: `/api/v1`
 
 ---
@@ -14,7 +14,7 @@
 /api/v1/{resource}/{id}/{sub}   → Sub-resource or action
 ```
 
-### Current Endpoints (58 total)
+### Current Endpoints (60 total)
 
 | Controller | Route Prefix | Endpoints | Auth |
 |-----------|-------------|-----------|------|
@@ -26,14 +26,14 @@
 | `ColorGroupsController` | `/api/v1/assets/color-groups` | POST | `RequireAssetWrite` |
 | `LinksController` | `/api/v1/assets/links` | POST | `RequireAssetWrite` |
 | `BulkAssetsController` | `/api/v1/assets` | POST `bulk-delete`, `bulk-move`, `bulk-move-group`, `bulk-tag` | `RequireAssetWrite` |
-| `CollectionsController` | `/api/v1/collections` | GET, GET `{id}/items`, POST, PATCH `{id}`, PUT `{id}`, DELETE `{id}` | `[Authorize]` |
+| `CollectionsController` | `/api/v1/collections` | GET, GET `{id}`, GET `{id}/items`, POST, PATCH `{id}`, PUT `{id}`, DELETE `{id}` | `[Authorize]` |
 | `TagsController` | `/api/v1/tags` | GET, GET `{id}`, POST, PUT `{id}`, DELETE `{id}`, GET `asset/{id}`, PUT `asset/{id}`, POST `asset/{id}/add`, POST `asset/{id}/remove`, POST `migrate` | `[Authorize]` |
 | `SearchController` | `/api/v1/search` | GET `?q=&type=&collectionId=&page=&pageSize=` | `[Authorize]` |
 | `SmartCollectionsController` | `/api/v1/smartcollections` | GET, GET `{id}/items` | `[Authorize]` |
 | `PermissionsController` | `/api/v1/collections/{id}/permissions` | GET, POST, PUT `{permId}`, DELETE `{permId}`, GET `my-role` | `[Authorize]` |
-| `PermissionsController` | `/api/v1/shared-collections` | GET | `[Authorize]` |
-| `AuthController` | `/api/v1/auth` | POST `register`, POST `login` | Rate-limited |
-| `HealthController` | `/api/v1/health` | GET | Public |
+| `SharedCollectionsController` | `/api/v1/shared-collections` | GET | `[Authorize]` |
+| `AuthController` | `/api/v1/auth` | POST `register` (201), POST `login` | Rate-limited |
+| `HealthController` | `/api/v1/health` | GET, GET `live` | Public |
 
 ## §2 — HTTP Methods & Status Codes
 
@@ -97,12 +97,11 @@ Response:
 
 ## §6 — Rate Limiting
 
-| Policy | Limit | Window |
-|--------|-------|--------|
-| `Fixed` | 100 requests | 1 minute |
-| `Upload` | 20 requests | 1 minute |
-
-Applied via `[EnableRateLimiting("Fixed")]` on `AuthController`.
+| Policy | Limit | Window | Applied To |
+|--------|-------|--------|------------|
+| `Fixed` | 100 requests | 1 minute | `AuthController`, `TagsController` (migrate) |
+| `Upload` | 20 requests | 1 minute | File upload endpoints |
+| `Search` | 60 requests (sliding) | 1 minute (6 segments) | `SearchController` |
 
 ## §7 — Versioning
 

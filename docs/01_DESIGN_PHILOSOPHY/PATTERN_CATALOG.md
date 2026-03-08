@@ -1,7 +1,7 @@
 # PATTERN CATALOG — Design Patterns in VAH
 
-> **Last Updated**: 2026-03-02  
-> **Total Patterns Identified**: 18
+> **Last Updated**: 2026-03-08  
+> **Total Patterns Identified**: 20
 
 ---
 
@@ -17,6 +17,12 @@
 - **File**: [Features/Assets/Application/Duplicate/](../../VAH.Backend/Features/Assets/Application/Duplicate/)
 - **Problem**: Duplicate behavior varies by target (in-place vs target folder)
 - **Solution**: Factory creates correct strategy based on `targetFolderId`
+
+### Factory Method — `ApiErrors`
+- **File**: [Controllers/ApiErrors.cs](../../VAH.Backend/Controllers/ApiErrors.cs)
+- **Problem**: ProblemDetails construction scattered across controllers with inconsistent format
+- **Solution**: Static factory methods (`EmptyBatch()`, `BatchSizeExceeded()`, `InvalidSmartCollectionId()`) producing ProblemDetails with machine-readable `code` extension field
+- **OCP**: Adding new error type = add new factory method
 
 ---
 
@@ -56,6 +62,12 @@
 - **File**: [Models/Asset.cs](../../VAH.Backend/Models/Asset.cs)
 - **Problem**: Different asset types need different behavior for cleanup, thumbnails, file presence
 - **Solution**: `virtual bool HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup` — subtypes override
+
+### Action Filter — `ValidateBatchFilterAttribute`
+- **File**: [Controllers/Filters/ValidateBatchFilterAttribute.cs](../../VAH.Backend/Controllers/Filters/ValidateBatchFilterAttribute.cs)
+- **Problem**: 5 endpoints had identical 8-line batch validation guard blocks (empty check + max-size check)
+- **Solution**: `ActionFilterAttribute` reads `AssetIds` from request body via `IAssetIdsRequest` interface, delegates to `ApiErrors` factory for standardized ProblemDetails
+- **DRY**: Eliminated ~40 lines of duplicated code across `BulkAssetsController` + `AssetLayoutController`
 
 ### Mediator — MediatR CQRS Pipeline
 - **File**: [CQRS/Assets/](../../VAH.Backend/CQRS/Assets/)

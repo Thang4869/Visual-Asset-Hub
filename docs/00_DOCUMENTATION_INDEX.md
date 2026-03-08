@@ -2,7 +2,7 @@
 
 > **Visual Asset Hub** — Digital Asset Management Platform  
 > Stack: .NET 9 · React 19 · PostgreSQL 17 · Redis  
-> Last Updated: 2026-03-02  
+> Last Updated: 2026-03-08  
 > **Status**: ✅ Tất cả hơn 30+ tập tin tài liệu đã được tạo và kiểm chứng so với mã nguồn.
 
 ---

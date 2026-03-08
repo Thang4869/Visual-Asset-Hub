@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VAH.Backend.Controllers.Filters;
 using VAH.Backend.Models;
 using VAH.Backend.Services;
 
@@ -31,23 +32,14 @@ public sealed class AssetLayoutController(
     /// <summary>Reorder assets by providing the desired ID sequence.</summary>
     [HttpPost("reorder")]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
+    [ValidateBatchFilter]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ReorderAssets(
         [FromBody] ReorderAssetsDto dto,
         CancellationToken ct = default)
     {
-        if (dto.AssetIds is not { Count: > 0 })
-            return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
-
-        if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
-            return BadRequest(new ProblemDetails
-            {
-                Title = $"Batch size exceeds the maximum of {BulkOperationLimits.MaxBatchSize}.",
-                Status = 400
-            });
-
         var userId = GetUserId();
-        logger.LogInformation("Reorder requested for {Count} assets by {UserId}",
+        logger.LogInformation(LogEvents.Reorder, "Reorder requested for {Count} assets by {UserId}",
             dto.AssetIds.Count, userId);
         await assetService.ReorderAssetsAsync(dto.AssetIds, userId, ct);
         return NoContent();

@@ -49,6 +49,14 @@ public sealed class GlobalExceptionHandler(
                 Detail = keyNotFound.Message
             },
 
+            Exceptions.AuthContextMissingException => new ProblemDetails
+            {
+                Type = "https://tools.ietf.org/html/rfc9110#section-15.5.2",
+                Title = "Authentication Context Missing",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = "User identity could not be resolved from the authentication context."
+            },
+
             UnauthorizedAccessException => new ProblemDetails
             {
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.5.2",

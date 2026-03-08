@@ -1,6 +1,6 @@
 # 03_ARCHITECTURE — Security Posture & Threat Model
 
-> **Last Updated**: 2026-03-03  
+> **Last Updated**: 2026-03-08  
 > **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §16, §17 + `IMPLEMENTATION_GUIDE.md` §11  
 > **Status**: Living Document — review semi-annually or before major releases
 
@@ -11,11 +11,12 @@
 | Control | Implementation | Status |
 |---------|---------------|--------|
 | Authentication | JWT Bearer (HS256, 24h, ClockSkew=0) + ASP.NET Identity | ✅ |
+| Auth Exception Semantics | `AuthContextMissingException` → 401 (distinct from generic `UnauthorizedAccessException`) | ✅ |
 | Authorization | `[Authorize]` on all endpoints (except Auth, Health) | ✅ |
 | Data Isolation | UserId FK on all entities, enforced at service layer | ✅ |
 | RBAC | Owner/Editor/Viewer roles per collection | ✅ |
 | CORS | Config-driven origins, AllowCredentials for SignalR | ✅ |
-| Rate Limiting | 100 req/min general, 20 req/min upload | ✅ |
+| Rate Limiting | 100 req/min general, 20 req/min upload, 60 req/min search (sliding) | ✅ |
 | File Validation | Size (50MB), extension whitelist (27 types), MIME check | ✅ |
 | Exception Privacy | Details only in Development environment | ✅ |
 | Container Security | Non-root user, isolated volumes | ✅ |
@@ -46,7 +47,7 @@ STRIDE-based threat analysis for VAH's current attack surface.
 | REST API (`/api/v1/*`) | HTTP(S) | Yes (JWT Bearer) | All CRUD operations, file upload/download |
 | SignalR Hub (`/hubs/assets`) | WebSocket | Yes (JWT query param) | Real-time push events |
 | Static files (`/assets/*`) | HTTP(S) | No | Uploaded files served via Nginx |
-| Health endpoint (`/api/v1/Health`) | HTTP(S) | No | System status |
+| Health endpoint (`/api/v1/health`) | HTTP(S) | No | System status (readiness + liveness) |
 | Swagger UI (`/swagger`) | HTTP(S) | No (dev only) | API schema exposure |
 
 ### 3.2 STRIDE Analysis

@@ -21,11 +21,12 @@ public sealed class LinksController(
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AssetResponseDto>> CreateLink(
         [FromBody] CreateLinkDto dto, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        logger.LogInformation("Creating link asset '{Name}' in collection {CollectionId} by user {UserId}",
+        logger.LogInformation(LogEvents.AssetCreated, "Creating link asset '{Name}' in collection {CollectionId} by user {UserId}",
             dto.Name, dto.CollectionId, userId);
         var link = await assetService.CreateLinkAsync(dto, userId, ct);
         return CreatedAtRoute(

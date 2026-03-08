@@ -37,7 +37,7 @@ public sealed class TagsController(
     public async Task<ActionResult<Tag>> CreateTag([FromBody] CreateTagDto dto, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        logger.LogInformation("Creating tag '{Name}' for user {UserId}", dto.Name, userId);
+        logger.LogInformation(LogEvents.TagCreated, "Creating tag '{Name}' for user {UserId}", dto.Name, userId);
         var (tag, created) = await tagService.CreateOrGetAsync(dto, userId, ct);
         return created
             ? CreatedAtAction(nameof(GetTag), new { id = tag.Id }, tag)
@@ -59,7 +59,7 @@ public sealed class TagsController(
     public async Task<IActionResult> DeleteTag([FromRoute] int id, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        logger.LogInformation("Deleting tag {TagId} by user {UserId}", id, userId);
+        logger.LogInformation(LogEvents.TagDeleted, "Deleting tag {TagId} by user {UserId}", id, userId);
         await tagService.DeleteAsync(id, userId, ct);
         return NoContent();
     }
@@ -115,7 +115,7 @@ public sealed class TagsController(
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MessageResult>> MigrateCommaSeparatedTags(CancellationToken ct = default)
     {
-        logger.LogWarning("Tag migration triggered by user {UserId}", GetUserId());
+        logger.LogWarning(LogEvents.TagMigration, "Tag migration triggered by user {UserId}", GetUserId());
         await tagService.MigrateCommaSeparatedTagsAsync(GetUserId(), ct);
         return Ok(new MessageResult("Tag migration completed successfully."));
     }

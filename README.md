@@ -27,7 +27,7 @@
 - **CQRS** — MediatR command/query separation cho Asset module
 - **Docker** — 4-service compose (PostgreSQL, Redis, Backend, Frontend)
 - **Structured Logging** — Serilog (Console + File rolling daily)
-- **Error Handling** — RFC 7807 ProblemDetails via GlobalExceptionHandler
+- **Error Handling** — RFC 7807 ProblemDetails via GlobalExceptionHandler, machine-readable `code` extensions (ApiErrors factory)
 
 ---
 
@@ -98,7 +98,7 @@ npm run dev
 
 ---
 
-## API Endpoints (58 total)
+## API Endpoints (60 total)
 
 > Chi tiết đầy đủ: [docs/02_STANDARDS/API_CONVENTIONS.md](docs/02_STANDARDS/API_CONVENTIONS.md)
 
@@ -125,7 +125,8 @@ VAH/
 │   └── 08_REPORTS/                    # Historical reports
 │
 ├── VAH.Backend/                       # .NET 9 API
-│   ├── Controllers/                   # 14 controllers (incl. abstract base)
+│   ├── Controllers/                   # 15 controllers (incl. abstract base)
+│   │   ├── Filters/                   # ValidateBatchFilterAttribute (DRY batch guard)
 │   │   └── Requests/                  # Request DTOs
 │   ├── Features/                      # Vertical slices (CQRS)
 │   │   └── Assets/
@@ -143,7 +144,7 @@ VAH/
 │   ├── Extensions/                    # ServiceCollectionExtensions (6 DI groups)
 │   ├── Hubs/                          # AssetHub (SignalR)
 │   ├── Middleware/                    # GlobalExceptionHandler (RFC 7807)
-│   ├── Exceptions/                    # NotFoundException, ValidationException
+│   ├── Exceptions/                    # NotFoundException, ValidationException, AuthContextMissingException
 │   └── Migrations/                    # 5 migrations (PostgreSQL + SQLite)
 │
 └── VAH.Frontend/                      # React 19 SPA
@@ -168,7 +169,7 @@ VAH/
 | 1 | [ARCHITECTURE_CONVENTIONS.md](docs/01_DESIGN_PHILOSOPHY/ARCHITECTURE_CONVENTIONS.md) | OOP standards, SOLID rules, 18 sections |
 | 2 | [DESIGN_PRINCIPLES.md](docs/01_DESIGN_PHILOSOPHY/DESIGN_PRINCIPLES.md) | Tại sao chọn kiến trúc này |
 | 3 | [ASSET_MODULE.md](docs/04_MODULES/ASSET_MODULE.md) | Core module documentation |
-| 4 | [API_CONVENTIONS.md](docs/02_STANDARDS/API_CONVENTIONS.md) | 58 endpoints, HTTP methods, pagination |
+| 4 | [API_CONVENTIONS.md](docs/02_STANDARDS/API_CONVENTIONS.md) | 60 endpoints, HTTP methods, pagination |
 | 5 | [DOMAIN_MODEL.md](docs/03_ARCHITECTURE/DOMAIN_MODEL.md) | Entity relationships & aggregates |
 
 ### Architecture Decision Records (ADRs)

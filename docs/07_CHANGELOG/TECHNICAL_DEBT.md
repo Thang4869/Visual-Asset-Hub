@@ -1,6 +1,6 @@
 # TECHNICAL DEBT REGISTER
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-08
 > **Source**: Extracted from ARCHITECTURE_REVIEW.md §7 + code analysis
 
 ---
@@ -93,7 +93,8 @@
 
 **Area**: Command/query DTOs
 **Impact**: Validation scattered across services instead of centralized
-**Remediation**: MediatR `IPipelineBehavior<,>` with FluentValidation
+**Partial Mitigation (v0.4.4)**: `ValidateBatchFilterAttribute` centralizes batch validation for 5 endpoints; `ApiErrors` factory standardizes ProblemDetails with machine-readable `code` extension; `[Range]` and `[RegularExpression]` annotations added at controller level
+**Remediation**: MediatR `IPipelineBehavior<,>` with FluentValidation for full coverage
 
 ---
 
@@ -103,8 +104,9 @@
 |----|------------|-------------|-----------|
 | — | Fat AssetsController (14 methods) | v0.4.0 | Split into Command + Query controllers |
 | — | No CQRS pattern | v0.4.0 | MediatR + handlers for Asset module |
-| — | No tag system | v0.4.0 | Full M:N tagging with Tag + AssetTag |
-
+| — | No tag system | v0.4.0 | Full M:N tagging with Tag + AssetTag || — | Missing HealthController DI abstraction | v0.4.1 | Extracted `IHealthCheckService` (SRP + DIP) |
+| — | Duplicated bulk validation guards (5×) | v0.4.4 | `ValidateBatchFilterAttribute` action filter (DRY) |
+| — | No structured log event IDs | v0.4.4 | `LogEvents` constants by domain range |
 ---
 
 > **Document End**
