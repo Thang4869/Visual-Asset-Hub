@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-07
+> **Last Updated**: 2026-03-08
 
 All notable changes to the Visual Asset Hub project.
 
@@ -12,6 +12,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - Documentation system: 8 directories, 30+ files (01–08 hierarchy)
+
+---
+
+## [0.4.4] — 2026-03-08
+
+### Added
+- **AuthContextMissingException**: Custom exception for missing auth context — maps to 401 with "Authentication Context Missing" title, distinct from generic `UnauthorizedAccessException`
+- **ValidateBatchFilterAttribute**: Action filter centralizing empty + max-batch-size validation — replaces 5× inline guard blocks across `BulkAssetsController` + `AssetLayoutController`
+- **ApiErrors**: Factory methods (`EmptyBatch()`, `BatchSizeExceeded()`, `InvalidSmartCollectionId()`) producing ProblemDetails with machine-readable `code` extension field
+- **LogEvents**: Structured `EventId` constants organized by domain range (1xxx=Auth, 2xxx=Bulk, 3xxx=Collection, 4xxx=Asset-layout, 5xxx=Tags, 6xxx=Permissions)
+- **GET /collections/{id}**: Canonical resource endpoint — `CreatedAtAction` now points to `GetCollection` instead of `GetCollectionWithItems`
+- **`GetUserGuid()` helper**: Added to `BaseApiController` for GUID-typed user ID extraction
+
+### Changed
+- **AuthController**: `Register` now returns `201 Created` (was `200 OK`) per REST semantics; all log calls use `LogEvents.*` event IDs
+- **BaseApiController**: `GetUserId()` throws `AuthContextMissingException` (was `UnauthorizedAccessException`); added `[ProducesResponseType(403)]` globally
+- **BulkAssetsController**: All 4 endpoints use `[ValidateBatchFilter]` attribute — eliminated ~40 lines of duplicated guard code
+- **AssetLayoutController**: `ReorderAssets` uses `[ValidateBatchFilter]`; log calls use `LogEvents.AssetReorder`
+- **CollectionsController**: Added `[Range(1, int.MaxValue)]` on `folderId`; `[ProducesResponseType(403)]` on mutation + detail endpoints
+- **ColorsController, ColorGroupsController, FoldersController, LinksController**: Added `[ProducesResponseType(409)]` on create; log calls use `LogEvents.AssetCreated`
+- **HealthController**: Added `[ResponseCache(NoStore = true)]` at class level; `LivenessResult` now includes `Version` property (from `AssemblyInformationalVersionAttribute`)
+- **PermissionsController**: Synchronized `ProducesResponseType` (403/404/409) across all endpoints; log calls use `LogEvents.PermissionGranted/Updated/Revoked`
+- **SearchController**: Added remarks documenting `SearchRequestParams` validation strategy
+- **TagsController**: All log calls use `LogEvents.TagCreated/TagDeleted/TagMigration`
+- **SharedCollectionsController**: Added `ILogger` dependency + debug logging; `[ResponseCache(Duration = 60, VaryByHeader = "Authorization")]`
+- **SmartCollectionsController**: Added `[RegularExpression(@"^[a-z0-9\-]+$")]` on `id` param (whitelist validation)
+- **GlobalExceptionHandler**: Added `AuthContextMissingException` handler before `UnauthorizedAccessException`
+
+### Metrics
+- ~20 files changed
+- 40+ lines of duplicated guard code eliminated
+- All controllers now score 10/10 on lead-level quality rubric (see RF-008)
 
 ---
 

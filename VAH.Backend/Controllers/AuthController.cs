@@ -15,13 +15,15 @@ namespace VAH.Backend.Controllers;
 public sealed class AuthController(IAuthService authService, ILogger<AuthController> logger) : BaseApiController
 {
     /// <summary>Register a new user account.</summary>
+    /// <remarks>Returns 201 Created per REST semantics (a new resource was created).</remarks>
     [HttpPost("register")]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto, CancellationToken ct = default)
     {
-        logger.LogInformation("Registration attempt for {Email}", MaskEmail(dto.Email));
-        return Ok(await authService.RegisterAsync(dto, ct));
+        logger.LogInformation(LogEvents.RegisterAttempt, "Registration attempt for {Email}", MaskEmail(dto.Email));
+        var result = await authService.RegisterAsync(dto, ct);
+        return StatusCode(StatusCodes.Status201Created, result);
     }
 
     /// <summary>Login with email and password. Returns JWT token.</summary>
@@ -30,7 +32,7 @@ public sealed class AuthController(IAuthService authService, ILogger<AuthControl
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto, CancellationToken ct = default)
     {
-        logger.LogInformation("Login attempt for {Email}", MaskEmail(dto.Email));
+        logger.LogInformation(LogEvents.LoginAttempt, "Login attempt for {Email}", MaskEmail(dto.Email));
         return Ok(await authService.LoginAsync(dto, ct));
     }
 

@@ -11,6 +11,8 @@ namespace VAH.Backend.Controllers;
 /// Replaces client-side <c>.includes()</c> filtering for better performance and scalability.
 /// Query parameters are grouped in <see cref="SearchRequestParams"/> for cohesion.
 /// Rate-limited to prevent search abuse and reduce database load.
+/// <para>Pagination bounds are enforced via <see cref="SearchRequestParams"/>
+/// Data Annotations (<c>[Range]</c>) — invalid values return 400 ProblemDetails automatically.</para>
 /// </remarks>
 [Route("api/v1/[controller]")]
 [Authorize]

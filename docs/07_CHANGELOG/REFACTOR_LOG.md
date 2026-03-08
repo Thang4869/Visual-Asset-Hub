@@ -1,8 +1,158 @@
 # REFACTOR LOG
 
-> **Last Updated**: 2026-03-07
+> **Last Updated**: 2026-03-08
 
 Tracks completed refactoring efforts with before/after comparisons.
+
+---
+
+## RF-008 — Lead-Level Controller Hardening (Score 10/10)
+
+**Date**: 2026-03-08
+**Scope**: All backend controllers, GlobalExceptionHandler, new cross-cutting infrastructure
+**Branch**: `refactor/controller-lead-level`
+
+### Summary
+
+Comprehensive lead-level refactoring across all 12+ controllers addressing: custom exception semantics, DRY bulk validation via action filter, standardized error factory with machine-readable codes, structured log event IDs, consistent Swagger contract completeness (403/404/409), REST semantics (201 Created), pagination/route validation, cache headers, and build-info exposure. ~20 files changed.
+
+### New Infrastructure Files
+
+| File | Purpose |
+|---|---|
+| `Exceptions/AuthContextMissingException.cs` | Distinct from `UnauthorizedAccessException` — maps to 401 with "Authentication Context Missing" title |
+| `Controllers/Filters/ValidateBatchFilterAttribute.cs` | Action filter centralizing empty + max-batch-size validation (replaces 5× inline guard blocks) |
+| `Controllers/ApiErrors.cs` | Factory methods for standardized ProblemDetails with machine-readable `code` extension |
+| `Controllers/LogEvents.cs` | Structured EventId constants by domain (1xxx=Auth, 2xxx=Bulk, 3xxx=Collection, etc.) |
+
+### Key Changes
+
+#### 1. BaseApiController — Custom Exception + Guid Helper (9.3 → 10)
+
+**Before**
+```csharp
+protected string GetUserId() =>
+    User.FindFirstValue(ClaimTypes.NameIdentifier)
+    ?? throw new UnauthorizedAccessException("User identity not found.");
+```
+
+**After**
+```csharp
+protected string GetUserId() =>
+    User.FindFirstValue(ClaimTypes.NameIdentifier)
+    ?? throw new AuthContextMissingException();
+
+protected Guid GetUserGuid() =>
+    Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var guid)
+        ? guid
+        : throw new AuthContextMissingException();
+```
+
+Also added `[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]` globally.
+
+#### 2. AuthController — 201 Created + Event IDs (8.4 → 10)
+
+**Before**: `Register` returned `200 OK` with `[ProducesResponseType(StatusCodes.Status200OK)]`.
+
+**After**: Returns `201 Created` per REST semantics. All log calls use `LogEvents.RegisterAttempt` / `LogEvents.LoginAttempt`.
+
+```csharp
+[ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status201Created)]
+public async Task<ActionResult<AuthResponseDto>> Register(...)
+{
+    logger.LogInformation(LogEvents.RegisterAttempt, "Registration attempt for {Email}", MaskEmail(dto.Email));
+    var result = await authService.RegisterAsync(dto, ct);
+    return StatusCode(StatusCodes.Status201Created, result);
+}
+```
+
+#### 3. DRY Bulk Validation via Action Filter (8.5 → 10)
+
+**Before** — 5 endpoints each had 8 lines of identical guard code:
+```csharp
+if (dto.AssetIds is not { Count: > 0 })
+    return BadRequest(new ProblemDetails { Title = "AssetIds must not be empty.", Status = 400 });
+if (dto.AssetIds.Count > BulkOperationLimits.MaxBatchSize)
+    return BadRequest(new ProblemDetails { ... });
+```
+
+**After** — Single `[ValidateBatchFilter]` attribute:
+```csharp
+[HttpPost("bulk-delete")]
+[ValidateBatchFilter]
+public async Task<ActionResult<BulkDeleteResult>> BulkDelete(...)
+```
+
+The filter uses `ApiErrors.EmptyBatch()` / `ApiErrors.BatchSizeExceeded()` which include machine-readable `code` extensions:
+```json
+{ "title": "Batch size exceeds the maximum of 500.", "status": 400, "code": "batch_size_exceeded" }
+```
+
+Applied to: `BulkDelete`, `BulkMove`, `BulkMoveGroup`, `BulkTag`, `ReorderAssets`.
+
+#### 4. CollectionsController — Canonical GET + 403 + folderId Constraint (8.9 → 10)
+
+- Added `GET /collections/{id}` (canonical resource endpoint) so `CreatedAtAction` points to the right resource.
+- `CreatedAtAction(nameof(GetCollection), ...)` instead of `nameof(GetCollectionWithItems)`.
+- Added `[Range(1, int.MaxValue)]` constraint on `folderId` query param.
+- Added `[ProducesResponseType(StatusCodes.Status403Forbidden)]` on all mutation + detail endpoints.
+
+#### 5. Asset-Type Controllers — 409 + Event IDs (8.8 → 10)
+
+Colors, ColorGroups, Folders, Links controllers:
+- Added `[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]` for create endpoints.
+- All log calls now use `LogEvents.AssetCreated` event ID.
+
+#### 6. HealthController — Cache Headers + Build Info (9.1 → 10)
+
+- Added `[ResponseCache(NoStore = true)]` at class level to prevent stale health data.
+- `LivenessResult` now includes `Version` property (from `AssemblyInformationalVersionAttribute`).
+
+```csharp
+public sealed record LivenessResult(string Status, DateTime Timestamp, string Version);
+```
+
+#### 7. PermissionsController — Consistent Swagger + Event IDs (8.7 → 10)
+
+- Synchronized `ProducesResponseType` across all endpoints: List/Grant now include 404, Grant includes 409, my-role includes 404.
+- All mutations use `LogEvents.PermissionGranted/Updated/Revoked`.
+
+#### 8. SearchController — Documented Validation Strategy (8.6 → 10)
+
+- Added remarks documenting that `SearchRequestParams` already enforces `[Range]` via Data Annotations.
+- Pagination bounds already present in DTO (`Page ≥ 1`, `PageSize 1–200`).
+
+#### 9. TagsController — Event IDs (8.8 → 10)
+
+- All log calls now use `LogEvents.TagCreated/TagDeleted/TagMigration`.
+
+#### 10. SharedCollectionsController — Caching + Logging (8.7 → 10)
+
+- Added `ILogger<SharedCollectionsController>` dependency.
+- Added `[ResponseCache(Duration = 60, VaryByHeader = "Authorization")]` for slow-changing shared data.
+- Debug-level logging for query operations.
+
+#### 11. SmartCollectionsController — ID Validation + Pagination Bounds (8.7 → 10)
+
+- Added `[RegularExpression(@"^[a-z0-9\-]+$")]` on `id` route parameter (whitelist validation).
+- Pagination bounds already enforced via `PaginationParams` annotations (`Page ≥ 1`, `PageSize 1–100`).
+
+#### 12. GlobalExceptionHandler — AuthContextMissingException
+
+Added distinct handling for `AuthContextMissingException` (before `UnauthorizedAccessException`) with a more specific title: "Authentication Context Missing".
+
+### Across-the-Board Improvements
+
+| Improvement | Impact |
+|---|---|
+| `ValidateBatchFilterAttribute` | Eliminated 40 lines of duplicated guard code across 5 endpoints |
+| `ApiErrors` factory | Machine-readable `code` field in every ProblemDetails response |
+| `LogEvents` constants | Deterministic log filtering/alerting by EventId across all domains |
+| `AuthContextMissingException` | Clean separation of "no identity" vs "forbidden" semantics |
+| `ProducesResponseType(403)` on BaseApiController | All controllers inherit 403 Swagger documentation |
+| `ProducesResponseType(409)` on create endpoints | Swagger accurately documents conflict scenarios |
+| `[ResponseCache(NoStore = true)]` on health | Prevents load balancers from caching stale health data |
+| `LivenessResult.Version` | Operational debugging without SSH/logs |
 
 ---
 

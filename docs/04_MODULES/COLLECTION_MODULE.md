@@ -1,6 +1,6 @@
 # COLLECTION MODULE
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-08
 > **Status**: Active — Services/ layer (not yet migrated to Features/)
 
 ---
@@ -12,7 +12,7 @@
 | **Domain** | Hierarchical organization of assets |
 | **Aggregate Root** | `Collection` |
 | **Service** | `ICollectionService` → `CollectionService` |
-| **Controller** | `CollectionsController` (6 endpoints) |
+| **Controller** | `CollectionsController` (7 endpoints) |
 | **DB Table** | `Collections` |
 | **Patterns** | Self-referential tree, domain methods, multi-tenancy via UserId |
 
@@ -67,10 +67,11 @@ public interface ICollectionService
 | Method | Route | Description |
 |--------|-------|-------------|
 | GET | `/api/v1/collections` | List user's collections (owned + system) |
-| GET | `/api/v1/collections/{id}` | Get single collection |
+| GET | `/api/v1/collections/{id}` | Get single collection (canonical resource endpoint) |
 | GET | `/api/v1/collections/{id}/items` | Get collection with assets (optional `?folderId=`) |
-| POST | `/api/v1/collections` | Create collection |
-| PUT | `/api/v1/collections/{id}` | Full/partial update |
+| POST | `/api/v1/collections` | Create collection (201 Created → `GET {id}`) |
+| PATCH | `/api/v1/collections/{id}` | Partial update |
+| PUT | `/api/v1/collections/{id}` | Full update (alias for PATCH) |
 | DELETE | `/api/v1/collections/{id}` | Delete collection + cascade assets |
 
 ## §5 — Sequence Diagram — Create Collection

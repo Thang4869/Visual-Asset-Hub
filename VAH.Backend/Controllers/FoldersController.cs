@@ -21,11 +21,12 @@ public sealed class FoldersController(
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AssetResponseDto>> CreateFolder(
         [FromBody] CreateFolderDto dto, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        logger.LogInformation("Creating folder '{FolderName}' in collection {CollectionId} by user {UserId}",
+        logger.LogInformation(LogEvents.AssetCreated, "Creating folder '{FolderName}' in collection {CollectionId} by user {UserId}",
             dto.FolderName, dto.CollectionId, userId);
         var folder = await assetService.CreateFolderAsync(dto, userId, ct);
         return CreatedAtRoute(

@@ -115,7 +115,7 @@ Controllers →   IAssetApplicationService (interface)
 
 | Layer | Namespace/Folder | Key Files |
 |-------|-----------------|-----------|
-| Presentation | `Controllers/`, `Features/*/Commands/`, `Features/*/Queries/`, `Hubs/`, `Middleware/` | 14 controllers, `AssetHub`, `GlobalExceptionHandler` |
+| Presentation | `Controllers/`, `Features/*/Commands/`, `Features/*/Queries/`, `Hubs/`, `Middleware/` | 15 controllers, `AssetHub`, `GlobalExceptionHandler` |
 | Application | `Services/`, `CQRS/*/Handlers/`, `Features/*/Application/` | `AssetService`, `CollectionService`, `AssetApplicationService`, MediatR handlers |
 | Domain | `Models/` | `Asset`, `Collection`, `Tag`, `AssetFactory`, `Enums`, DTOs |
 | Infrastructure | `Data/`, `Services/LocalStorageService`, `Migrations/` | `AppDbContext`, `LocalStorageService`, `ThumbnailService` |

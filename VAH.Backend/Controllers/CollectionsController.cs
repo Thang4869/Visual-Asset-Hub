@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VAH.Backend.Models;
@@ -25,12 +26,24 @@ public sealed class CollectionsController(
     public async Task<ActionResult<List<Collection>>> GetCollections(CancellationToken ct = default)
         => Ok(await collectionService.GetAllAsync(GetUserId(), ct));
 
+    /// <summary>Get a single collection by ID (canonical resource endpoint).</summary>
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(Collection), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Collection>> GetCollection(
+        [FromRoute] int id, CancellationToken ct = default)
+        => Ok(await collectionService.GetByIdAsync(id, GetUserId(), ct));
+
     /// <summary>Get a collection with its items and subcollections.</summary>
     [HttpGet("{id:int}/items")]
     [ProducesResponseType(typeof(CollectionWithItemsResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CollectionWithItemsResult>> GetCollectionWithItems(
-        [FromRoute] int id, [FromQuery] int? folderId = null, CancellationToken ct = default)
+        [FromRoute] int id,
+        [FromQuery, Range(1, int.MaxValue)] int? folderId = null,
+        CancellationToken ct = default)
         => Ok(await collectionService.GetWithItemsAsync(id, folderId, GetUserId(), ct));
 
     /// <summary>Create a new collection.</summary>
@@ -40,15 +53,16 @@ public sealed class CollectionsController(
         [FromBody] CreateCollectionDto dto, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        logger.LogInformation("Creating collection '{Name}' for user {UserId}", dto.Name, userId);
+        logger.LogInformation(LogEvents.CollectionCreated, "Creating collection '{Name}' for user {UserId}", dto.Name, userId);
         var created = await collectionService.CreateAsync(dto, userId, ct);
-        return CreatedAtAction(nameof(GetCollectionWithItems), new { id = created.Id }, created);
+        return CreatedAtAction(nameof(GetCollection), new { id = created.Id }, created);
     }
 
     /// <summary>Partially update a collection (standard).</summary>
     [HttpPatch("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateCollection(
         [FromRoute] int id, [FromBody] UpdateCollectionDto dto, CancellationToken ct = default)
     {
@@ -67,10 +81,11 @@ public sealed class CollectionsController(
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DeleteCollection([FromRoute] int id, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        logger.LogInformation("Deleting collection {CollectionId} by user {UserId}", id, userId);
+        logger.LogInformation(LogEvents.CollectionDeleted, "Deleting collection {CollectionId} by user {UserId}", id, userId);
         await collectionService.DeleteAsync(id, userId, ct);
         return NoContent();
     }

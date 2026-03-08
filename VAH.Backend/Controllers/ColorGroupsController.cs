@@ -21,11 +21,12 @@ public sealed class ColorGroupsController(
     [HttpPost]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ProducesResponseType(typeof(AssetResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AssetResponseDto>> CreateColorGroup(
         [FromBody] CreateColorGroupDto dto, CancellationToken ct = default)
     {
         var userId = GetUserId();
-        logger.LogInformation("Creating color group '{GroupName}' in collection {CollectionId} by user {UserId}",
+        logger.LogInformation(LogEvents.AssetCreated, "Creating color group '{GroupName}' in collection {CollectionId} by user {UserId}",
             dto.GroupName, dto.CollectionId, userId);
         var group = await assetService.CreateColorGroupAsync(dto, userId, ct);
         return CreatedAtRoute(

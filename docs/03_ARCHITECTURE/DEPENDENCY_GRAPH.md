@@ -1,6 +1,6 @@
 # DEPENDENCY GRAPH — Service Registration & Wiring
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-08
 
 ---
 
@@ -49,6 +49,7 @@ Program.cs
 | `ISmartCollectionService` | `SmartCollectionService` | Services |
 | `ISearchService` | `SearchService` | Services |
 | `IPermissionService` | `PermissionService` | Services |
+| `IHealthCheckService` | `HealthCheckService` | Services |
 | `AssetCleanupHelper` | (concrete) | Services |
 
 ### 2.3 Framework Registrations
@@ -74,10 +75,11 @@ Controller Layer
 ├── TagsController                ──→ ITagService
 ├── SearchController              ──→ ISearchService
 ├── AuthController                ──→ IAuthService
-├── PermissionsController         ──→ IPermissionService
+├── PermissionsController         ──→ IPermissionService, ILogger
+├── SharedCollectionsController    ──→ IPermissionService, ILogger
 ├── SmartCollectionsController    ──→ ISmartCollectionService
-├── HealthController              ──→ AppDbContext, IWebHostEnvironment
-└── [Asset subtypes Controllers]  ──→ IAssetService
+├── HealthController              ──→ IHealthCheckService
+└── [Asset subtypes Controllers]  ──→ IAssetService, ILogger
 
 CQRS Layer (MediatR Handlers)
 ├── UploadAssetsHandler         ──→ IAssetService
@@ -138,8 +140,9 @@ Request →
 
 | Policy | Window | Permit | Queue | Applied To |
 |--------|--------|--------|-------|-----------|
-| `Fixed` | 1 min | 100 | 10 | General API endpoints |
+| `Fixed` | 1 min | 100 | 10 | General API endpoints, `AuthController`, `TagsController` (migrate) |
 | `Upload` | 1 min | 20 | 5 | File upload endpoints |
+| `Search` | 1 min (sliding, 6 segments) | 60 | 0 | `SearchController` |
 
 ### 4.3 CORS Configuration
 

@@ -1,6 +1,6 @@
 # AUTH MODULE
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-08
 > **Status**: Active — Services/ layer
 
 ---
@@ -12,7 +12,7 @@
 | **Domain** | User registration, login, JWT issuance |
 | **Entity** | `ApplicationUser` (extends `IdentityUser`) |
 | **Service** | `IAuthService` → `AuthService` |
-| **Controller** | `AuthController` (2 endpoints, rate-limited) |
+| **Controller** | `AuthController` (2 endpoints, rate-limited) — `Register` returns 201 Created |
 | **Identity Provider** | ASP.NET Identity with EF Core stores |
 | **Patterns** | Facade over Identity + JWT generation |
 
@@ -50,8 +50,8 @@ public class AuthResponseDto { string Token, string Email, string DisplayName, D
 
 | Method | Route | Rate Limit | Description |
 |--------|-------|-----------|-------------|
-| POST | `/api/v1/auth/register` | Fixed (100/min) | Create account + auto-create default collection |
-| POST | `/api/v1/auth/login` | Fixed (100/min) | Authenticate + return JWT |
+| POST | `/api/v1/auth/register` | Fixed (100/min) | Create account + auto-create default collection (201 Created) |
+| POST | `/api/v1/auth/login` | Fixed (100/min) | Authenticate + return JWT (200 OK) |
 
 ## §5 — Authentication Flow
 

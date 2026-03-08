@@ -15,11 +15,17 @@ namespace VAH.Backend.Controllers;
 [Authorize]
 [Produces("application/json")]
 public sealed class SharedCollectionsController(
-    IPermissionService permissionService) : BaseApiController
+    IPermissionService permissionService,
+    ILogger<SharedCollectionsController> logger) : BaseApiController
 {
     /// <summary>Get all collections shared with the current user.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(List<Collection>), StatusCodes.Status200OK)]
+    [ResponseCache(Duration = 60, VaryByHeader = "Authorization")]
     public async Task<ActionResult<List<Collection>>> GetSharedCollections(CancellationToken ct = default)
-        => Ok(await permissionService.GetSharedCollectionsAsync(GetUserId(), ct));
+    {
+        var userId = GetUserId();
+        logger.LogDebug("Fetching shared collections for user {UserId}", userId);
+        return Ok(await permissionService.GetSharedCollectionsAsync(userId, ct));
+    }
 }
