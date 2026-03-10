@@ -37,4 +37,10 @@ public abstract class BaseApiController : ControllerBase
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var guid)
             ? guid
             : throw new AuthContextMissingException();
+
+    /// <summary>
+    /// Get the current request's trace/correlation ID for structured logging
+    /// and <see cref="ProblemDetails"/> enrichment.
+    /// </summary>
+    protected string GetTraceId() => HttpContext.TraceIdentifier;
 }

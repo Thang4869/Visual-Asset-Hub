@@ -30,6 +30,8 @@ public sealed class AssetLayoutController(
         => Ok(await assetService.UpdatePositionAsync(id, dto.PositionX, dto.PositionY, GetUserId(), ct));
 
     /// <summary>Reorder assets by providing the desired ID sequence.</summary>
+    /// <remarks>Batch validation (empty check + <see cref="BulkOperationLimits.MaxBatchSize"/>)
+    /// is enforced by <see cref="Filters.ValidateBatchFilterAttribute"/> before action execution.</remarks>
     [HttpPost("reorder")]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ValidateBatchFilter]

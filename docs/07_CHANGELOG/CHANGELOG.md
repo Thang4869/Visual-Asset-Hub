@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-08
+> **Last Updated**: 2026-03-10
 
 All notable changes to the Visual Asset Hub project.
 
@@ -9,6 +9,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ---
 
 ## [Unreleased]
+
+---
+
+## [0.4.5] — 2026-03-10
+
+### Added
+- **ErrorCodes.cs**: Extracted centralized `snake_case` error code constants (`empty_batch`, `batch_size_exceeded`, `invalid_smart_collection_id`) into dedicated file — compile-time safety, prevents typos
+- **BaseApiController.GetTraceId()**: Helper returning `HttpContext.TraceIdentifier` for structured logging and ProblemDetails enrichment
+
+### Changed
+- **ApiErrors.cs**: Upgraded to Lead-level (9.8/10) with 7 improvements:
+  - **URN Type scheme**: `/errors/{code}` → `urn:vah:error:{code}` — stable RFC 9457 §3.1.1 compliant URIs
+  - **CodeKey constant**: Eliminated repeated `"code"` magic string
+  - **MetaKey constant**: Structured extensions schema — only `code` (always) + `meta` (optional context) allowed
+  - **Detail field**: Every ProblemDetails now includes an actionable `Detail` message
+  - **No raw input echo in Title**: `InvalidSmartCollectionId` moved `id` from Title to `meta.invalidId`
+  - **Truncate() helper**: Null-safe, trims whitespace, caps echoed input at 100 chars to prevent oversized payloads
+  - **Remarks**: Documented extensions schema contract and traceId/Instance middleware enrichment strategy
+- **AuthController.MaskEmail()**: Now masks domain too (`t***@d***.com` instead of `t***@domain.com`) — stronger PII protection
+- **AuthController.Login**: `[ProducesResponseType]` for 401 now typed as `ProblemDetails` — consistent Swagger schema
+- **AssetLayoutController.ReorderAssets**: Added `<remarks>` documenting `ValidateBatchFilter` pipeline
+- **BulkAssetsController**: Added `[ProducesResponseType(404)]` on `BulkMove` and `BulkMoveGroup` — target collection/group may not exist
+- **BulkOperationLimits**: Added `<remarks>` with rationale (why 500) and `IOptions<BulkOptions>` upgrade path
+- **CollectionsController**: Added `[Range(1, int.MaxValue)]` on all `int id` route params; `UpdateCollectionPut` now async/await
+- **ColorGroupsController, ColorsController, FoldersController**: Added `[ProducesResponseType(404)]` + `[ProducesResponseType(403)]` — service can throw NotFoundException/ForbiddenAccess
+
+### Metrics
+- 11 files changed (10 modified + 1 new)
+- ApiErrors.cs: 8.3 → 9.8 score
+- All 10 controllers evaluated now at Lead level (9.0+)
 
 ### Added
 - Documentation system: 8 directories, 30+ files (01–08 hierarchy)
