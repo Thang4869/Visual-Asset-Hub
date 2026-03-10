@@ -32,7 +32,7 @@ public sealed class CollectionsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<Collection>> GetCollection(
-        [FromRoute] int id, CancellationToken ct = default)
+        [FromRoute, Range(1, int.MaxValue)] int id, CancellationToken ct = default)
         => Ok(await collectionService.GetByIdAsync(id, GetUserId(), ct));
 
     /// <summary>Get a collection with its items and subcollections.</summary>
@@ -41,7 +41,7 @@ public sealed class CollectionsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CollectionWithItemsResult>> GetCollectionWithItems(
-        [FromRoute] int id,
+        [FromRoute, Range(1, int.MaxValue)] int id,
         [FromQuery, Range(1, int.MaxValue)] int? folderId = null,
         CancellationToken ct = default)
         => Ok(await collectionService.GetWithItemsAsync(id, folderId, GetUserId(), ct));
@@ -64,7 +64,7 @@ public sealed class CollectionsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateCollection(
-        [FromRoute] int id, [FromBody] UpdateCollectionDto dto, CancellationToken ct = default)
+        [FromRoute, Range(1, int.MaxValue)] int id, [FromBody] UpdateCollectionDto dto, CancellationToken ct = default)
     {
         await collectionService.UpdateAsync(id, dto, GetUserId(), ct);
         return NoContent();
@@ -73,16 +73,16 @@ public sealed class CollectionsController(
     /// <summary>PUT backward-compat alias for PATCH update.</summary>
     [HttpPut("{id:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
-    public Task<IActionResult> UpdateCollectionPut(
-        [FromRoute] int id, [FromBody] UpdateCollectionDto dto, CancellationToken ct = default)
-        => UpdateCollection(id, dto, ct);
+    public async Task<IActionResult> UpdateCollectionPut(
+        [FromRoute, Range(1, int.MaxValue)] int id, [FromBody] UpdateCollectionDto dto, CancellationToken ct = default)
+        => await UpdateCollection(id, dto, ct);
 
     /// <summary>Delete a collection.</summary>
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> DeleteCollection([FromRoute] int id, CancellationToken ct = default)
+    public async Task<IActionResult> DeleteCollection([FromRoute, Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
         var userId = GetUserId();
         logger.LogInformation(LogEvents.CollectionDeleted, "Deleting collection {CollectionId} by user {UserId}", id, userId);

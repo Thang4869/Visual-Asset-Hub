@@ -29,17 +29,21 @@ public sealed class AuthController(IAuthService authService, ILogger<AuthControl
     /// <summary>Login with email and password. Returns JWT token.</summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto, CancellationToken ct = default)
     {
         logger.LogInformation(LogEvents.LoginAttempt, "Login attempt for {Email}", MaskEmail(dto.Email));
         return Ok(await authService.LoginAsync(dto, ct));
     }
 
-    /// <summary>Mask email for safe logging — prevents PII leakage.</summary>
+    /// <summary>Mask email for safe logging — masks both local part and domain to prevent PII leakage.</summary>
     private static string MaskEmail(string email)
     {
         var at = email.IndexOf('@');
-        return at <= 1 ? "***" : $"{email[0]}***{email[at..]}";
+        if (at <= 1) return "***";
+        var domain = email[(at + 1)..];
+        var dot = domain.LastIndexOf('.');
+        var maskedDomain = dot > 1 ? $"{domain[0]}***{domain[dot..]}" : "***";
+        return $"{email[0]}***@{maskedDomain}";
     }
 }
