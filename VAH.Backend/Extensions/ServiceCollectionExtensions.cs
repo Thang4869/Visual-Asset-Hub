@@ -308,7 +308,10 @@ public static class ServiceCollectionExtensions
     private static IServiceCollection AddAssetModule(
         this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<AssetOptions>(configuration.GetSection(AssetOptions.SectionName));
+        services.AddOptions<AssetOptions>()
+            .Bind(configuration.GetSection(AssetOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         services.AddScoped<IStorageService, LocalStorageService>();
         services.AddScoped<IFileMapperService, FileMapperService>();

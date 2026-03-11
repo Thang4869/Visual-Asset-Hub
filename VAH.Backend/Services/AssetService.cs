@@ -127,7 +127,7 @@ public class AssetService : IAssetService
         return asset.ToDto();
     }
 
-    public async Task<List<AssetResponseDto>> UploadFilesAsync(IReadOnlyCollection<UploadedFileDto> files, int collectionId, int? folderId, string userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AssetResponseDto>> UploadFilesAsync(IReadOnlyCollection<UploadedFileDto> files, int collectionId, int? folderId, string userId, CancellationToken ct = default)
     {
         if (files == null || files.Count == 0)
             throw new ArgumentException("No files uploaded.");
@@ -363,7 +363,7 @@ public class AssetService : IAssetService
         await _context.SaveChangesAsync(ct);
     }
 
-    public async Task<List<AssetResponseDto>> GetAssetsByGroupAsync(int groupId, string userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AssetResponseDto>> GetAssetsByGroupAsync(int groupId, string userId, CancellationToken ct = default)
     {
         var candidates = await _context.Assets
             .Where(a => a.GroupId == groupId)

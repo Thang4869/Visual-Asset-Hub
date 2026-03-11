@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using MediatR;
 using VAH.Backend.Models;
 
@@ -14,7 +13,7 @@ public sealed record UploadFilesCommand(
     IReadOnlyCollection<UploadedFileDto> Files,
     int CollectionId,
     int? FolderId,
-    string UserId) : IRequest<List<AssetResponseDto>>;
+    string UserId) : IRequest<IReadOnlyList<AssetResponseDto>>;
 
 /// <summary>Command: Partial update of an asset (rename, move, regroup).</summary>
 public sealed record UpdateAssetCommand(

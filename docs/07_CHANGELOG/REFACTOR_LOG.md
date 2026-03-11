@@ -6,6 +6,69 @@ Tracks completed refactoring efforts with before/after comparisons.
 
 ---
 
+## RF-011 — CQRS Immutability & AssetOptions Hardening
+
+**Date**: 2026-03-12
+**Scope**: CQRS layer (Commands, Queries, Handlers), Service interfaces/implementations, AssetOptions, ServiceCollectionExtensions
+**Branch**: `refactor/cqrs-immutability-options-hardening`
+
+### Summary
+
+Enforced immutable collection contracts across the entire CQRS → Service chain. Hardened `AssetOptions` with data annotation validation and fail-fast startup registration.
+
+### Key Changes
+
+#### 1. IReadOnlyList<T> Return Types (Full Chain)
+
+**Before**
+```csharp
+// Command returns mutable List
+public sealed record UploadFilesCommand(...) : IRequest<List<AssetResponseDto>>;
+// Query returns mutable List
+public sealed record GetAssetsByGroupQuery(...) : IRequest<List<AssetResponseDto>>;
+```
+
+**After**
+```csharp
+// Immutable — callers cannot add/remove from results
+public sealed record UploadFilesCommand(...) : IRequest<IReadOnlyList<AssetResponseDto>>;
+public sealed record GetAssetsByGroupQuery(...) : IRequest<IReadOnlyList<AssetResponseDto>>;
+```
+
+Updated in all 6 layers: Command/Query record → Handler → IAssetService → AssetService → IAssetApplicationService → AssetApplicationService.
+
+#### 2. AssetOptions — Validation + Registration
+
+**Before**
+```csharp
+public int DefaultCollectionId { get; init; } = 1;
+// Registration: services.Configure<AssetOptions>(...)
+```
+
+**After**
+```csharp
+[Range(1, int.MaxValue)]
+public int DefaultCollectionId { get; init; } = 1;
+// Registration: AddOptions<T>().Bind().ValidateDataAnnotations().ValidateOnStart()
+```
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `CQRS/Assets/Commands/AssetCommands.cs` | `List<>` → `IReadOnlyList<>`, removed redundant using |
+| `CQRS/Assets/Queries/AssetQueries.cs` | `List<>` → `IReadOnlyList<>` |
+| `CQRS/Assets/Handlers/AssetCommandHandlers.cs` | Handler return type updated |
+| `CQRS/Assets/Handlers/AssetQueryHandlers.cs` | Handler return type updated |
+| `Services/IAssetService.cs` | Interface signatures updated |
+| `Services/AssetService.cs` | Implementation signatures updated |
+| `Features/Assets/Application/IAssetApplicationService.cs` | Interface signatures updated |
+| `Features/Assets/Application/AssetApplicationService.cs` | Implementation signatures updated |
+| `Configuration/AssetOptions.cs` | `[Range]` + enhanced XML docs |
+| `Extensions/ServiceCollectionExtensions.cs` | `ValidateDataAnnotations().ValidateOnStart()` |
+
+---
+
 ## RF-010 — Program.cs Three-Tier Bootstrap & Production Infrastructure
 
 **Date**: 2026-03-12

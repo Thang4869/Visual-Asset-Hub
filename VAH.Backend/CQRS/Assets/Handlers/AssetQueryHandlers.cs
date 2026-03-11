@@ -23,8 +23,8 @@ public sealed class GetAssetByIdHandler(IAssetService assetService)
 
 /// <summary>Handler: Assets belonging to a color group.</summary>
 public sealed class GetAssetsByGroupHandler(IAssetService assetService)
-    : IRequestHandler<GetAssetsByGroupQuery, List<AssetResponseDto>>
+    : IRequestHandler<GetAssetsByGroupQuery, IReadOnlyList<AssetResponseDto>>
 {
-    public Task<List<AssetResponseDto>> Handle(GetAssetsByGroupQuery request, CancellationToken ct)
+    public Task<IReadOnlyList<AssetResponseDto>> Handle(GetAssetsByGroupQuery request, CancellationToken ct)
         => assetService.GetAssetsByGroupAsync(request.GroupId, request.UserId, ct);
 }
