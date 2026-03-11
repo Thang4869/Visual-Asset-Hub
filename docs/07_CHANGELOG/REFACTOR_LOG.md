@@ -1,8 +1,108 @@
 # REFACTOR LOG
 
-> **Last Updated**: 2026-03-10
+> **Last Updated**: 2026-03-12
 
 Tracks completed refactoring efforts with before/after comparisons.
+
+---
+
+## RF-010 — Program.cs Three-Tier Bootstrap & Production Infrastructure
+
+**Date**: 2026-03-12
+**Scope**: Program.cs, 11 new infrastructure files, ServiceCollectionExtensions.cs, appsettings.json, VAH.Backend.csproj
+**Branch**: `refactor/program-bootstrap-infrastructure`
+
+### Summary
+
+Complete restructuring of Program.cs from a monolithic ~180-line file into a clean 46-line orchestrator via three-tier bootstrap pattern. Added production-grade infrastructure: OpenTelemetry observability, HTTP resilience (Polly 8), security headers middleware, health probes, API versioning, Serilog structured logging from config, and diagnostic endpoints.
+
+### Before → After: Program.cs
+
+**Before** (~180 lines — all inline)
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+// 150+ lines of inline service registration:
+// - CORS, rate limiting, DB, identity, auth, caching
+// - Swagger, controllers, SignalR
+// - Logging, middleware, endpoints
+// All in one flat file with no separation of concerns
+app.Run();
+```
+
+**After** (46 lines — three-tier orchestrator)
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+builder.AddCoreHosting();    // Serilog, infra, OTEL, initializers
+builder.AddApplication();    // feature modules
+builder.AddWeb();            // HTTP API + real-time API
+
+var app = builder.Build();
+app.UseCoreHostingPipeline();
+app.MapSystemEndpoints();    // Swagger, health, /version
+app.MapAssetEndpoints();     // controllers + SignalR
+app.MapAutoDiscoveredEndpoints();
+await app.RunStartupInitializersAsync();
+await app.RunAsync();
+```
+
+### Architecture: Three-Tier Bootstrap
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Program.cs (46 lines — orchestrator only)           │
+├─────────────────────────────────────────────────────┤
+│  AddCoreHosting()     → LoggingSetup                 │
+│                       → ServiceCollectionExtensions   │
+│                       → ObservabilitySetup            │
+│                       → StartupInitializerExtensions  │
+├─────────────────────────────────────────────────────┤
+│  AddApplication()     → FeatureModules               │
+│                         (Asset, Collection, Search,   │
+│                          Auth, Notification)          │
+├─────────────────────────────────────────────────────┤
+│  AddWeb()             → WebServerSetup               │
+│                         (Kestrel, MVC, SignalR,       │
+│                          Swagger, HealthChecks)       │
+├─────────────────────────────────────────────────────┤
+│  UseCoreHostingPipeline() → SecuritySetup            │
+│                           → LoggingSetup             │
+│                           → Middleware pipeline       │
+│                             (6-step numbered order)   │
+└─────────────────────────────────────────────────────┘
+```
+
+### New Files
+
+| File | Lines | Responsibility |
+|---|---|---|
+| `Extensions/BootstrapExtensions.cs` | ~80 | Three-tier facades + pipeline |
+| `Extensions/WebServerSetup.cs` | ~200 | HTTP/SignalR/health/versioning/Swagger |
+| `Extensions/ObservabilitySetup.cs` | ~80 | OTEL tracing + metrics + OTLP |
+| `Extensions/LoggingSetup.cs` | ~40 | Serilog configuration |
+| `Extensions/SecuritySetup.cs` | ~30 | Security pipeline |
+| `Extensions/IStartupInitializer.cs` | ~10 | Startup task interface |
+| `Extensions/DatabaseMigrationInitializer.cs` | ~25 | Dev-only migration |
+| `Extensions/StartupInitializerExtensions.cs` | ~30 | Initializer DI + execution |
+| `Middleware/SecurityHeadersMiddleware.cs` | ~25 | Security response headers |
+| `Controllers/RouteConstants.cs` | ~15 | Centralized route string constants |
+| `Data/DatabaseProviderInfo.cs` | ~10 | Dual DB provider record |
+| `Migrations/20260311...Discriminator.cs` | ~40 | Data-fix migration |
+
+### Key Design Decisions
+
+1. **Three-tier over flat registration** — Each tier has a clear remit (infra → business → HTTP), making it easy to test, swap, or extend any layer independently
+2. **Explicit endpoint mapping over full auto-discovery** — `MapSystemEndpoints()` / `MapAssetEndpoints()` are explicit for readability; `MapAutoDiscoveredEndpoints()` as escape hatch for future modules
+3. **`IEndpointModule` with `static abstract`** — C# 12 static interface method for zero-allocation module discovery
+4. **Security headers as middleware, not library** — Avoids `NWebSec` dependency for 5 simple headers
+5. **Separate startup initializers over `IHostedService`** — `IStartupInitializer` runs before traffic, not concurrently with the host
+6. **`Diagnostics.Source` ActivitySource** — Named `VAH.Backend` for domain-specific custom spans in OTEL
+7. **HTTP resilience on named client only** — `AddStandardResilienceHandler()` scoped to `"Resilient"` HttpClient to avoid wrapping all HTTP globally
+
+### Risk Assessment
+
+- **Low**: All changes are additive; no breaking API surface changes
+- **Medium**: New NuGet dependencies (8 packages) — all Microsoft-maintained or CNCF-backed
+- **Mitigation**: Build succeeds with 0 errors, 0 warnings; all existing controller routes unchanged
 
 ---
 
