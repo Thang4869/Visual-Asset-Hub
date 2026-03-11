@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-10
+> **Last Updated**: 2026-03-12
 
 All notable changes to the Visual Asset Hub project.
 
@@ -9,6 +9,81 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ---
 
 ## [Unreleased]
+
+---
+
+## [0.5.0] — 2026-03-12
+
+### Added — New Infrastructure Files
+
+| File | Purpose |
+|---|---|
+| `Extensions/BootstrapExtensions.cs` | Three-tier bootstrap facades (`AddCoreHosting`, `AddApplication`, `AddWeb`) + `UseCoreHostingPipeline` runtime pipeline |
+| `Extensions/WebServerSetup.cs` | Kestrel config, HTTP API (MVC + versioning + Swagger JWT), SignalR, health probes, `IEndpointModule` auto-discovery, `/version` diagnostic endpoint |
+| `Extensions/ObservabilitySetup.cs` | OpenTelemetry tracing + metrics + OTLP export + custom `ActivitySource` (`VAH.Backend`) |
+| `Extensions/LoggingSetup.cs` | Serilog `ReadFrom.Configuration` + adaptive request logging (error ≥500, warning >3s) |
+| `Extensions/SecuritySetup.cs` | ForwardedHeaders → SecurityHeaders → HSTS → HTTPS redirect pipeline |
+| `Extensions/IStartupInitializer.cs` | DI-based ordered startup task interface |
+| `Extensions/DatabaseMigrationInitializer.cs` | Dev-only EF Core auto-migration via `IStartupInitializer` |
+| `Extensions/StartupInitializerExtensions.cs` | `AddStartupInitializers()` / `RunStartupInitializersAsync()` registration + execution |
+| `Middleware/SecurityHeadersMiddleware.cs` | X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, CSP (`default-src 'none'`) |
+| `Controllers/RouteConstants.cs` | Route constants: `/hubs/assets`, `/health/live`, `/health/ready`, `/version` |
+| `Data/DatabaseProviderInfo.cs` | Record for dual-provider SQLite/PostgreSQL support |
+| `Migrations/20260311000000_FixContentTypeDiscriminator.cs` | One-time data-fix migration (extracted from raw SQL in startup) |
+
+### Changed — Program.cs Three-Tier Bootstrap Architecture
+
+- **Program.cs reduced from ~180 lines → 46 lines** — clean orchestrator with 3 builder calls + 3 endpoint mappings
+- **Three-tier bootstrap**: `AddCoreHosting()` → `AddApplication()` → `AddWeb()` — clear separation of infrastructure / business / HTTP concerns
+- **Numbered middleware pipeline**: `UseCoreHostingPipeline()` with documented 6-step order (security → exceptions → CORS → Serilog → rate limiting → static files)
+- **Explicit endpoint modules**: `MapSystemEndpoints()`, `MapAssetEndpoints()`, `MapAutoDiscoveredEndpoints()` with `IEndpointModule` convention-based discovery
+
+### Changed — Observability & Resilience
+
+- **OpenTelemetry**: Tracing (ASP.NET Core + HTTP client + custom spans via `Diagnostics.Source`) + Metrics, OTLP export to configurable endpoint
+- **HTTP Resilience**: Polly 8 via `Microsoft.Extensions.Http.Resilience` — `AddStandardResilienceHandler()` (retry + circuit breaker + timeout) on named `"Resilient"` HttpClient
+- **Serilog from config**: `appsettings.json` `Serilog` section with Console (structured) + File (day-rolling, 30-day retention) sinks
+- **Adaptive request logging**: Errors for 500+ / exceptions, Warnings for slow requests (>3s), Information otherwise
+
+### Changed — Security
+
+- **Security headers middleware**: CSP `default-src 'none'; frame-ancestors 'none'`, plus X-Content-Type-Options, X-Frame-Options, Referrer-Policy
+- **HSTS + HTTPS redirect**: Enforced in non-Development environments
+- **ForwardedHeaders**: Proper reverse-proxy support
+
+### Changed — Health & Diagnostics
+
+- **Health probes**: `/health/live` (liveness) + `/health/ready` (readiness with EF Core DB check)
+- **Version endpoint**: `/version` returns `{ version, buildDate, environment }` — safe for production
+
+### Changed — Configuration & Validation
+
+- **`FileUploadConfig`**: `ValidateDataAnnotations().ValidateOnStart()` — fail-fast on misconfigured upload limits
+- **`appsettings.json`**: Added `Serilog` section (Console + File sinks), `FileUpload` section (50MB max, 20 files max)
+- **Rate limiting**: 4 IP-partitioned policies (Fixed 100/min, Upload 20/min, Search 60/min sliding, Auth 10/min)
+
+### Changed — API Versioning
+
+- **Asp.Versioning.Mvc 8.1.1**: URL-segment versioning (`v1`), `SubstituteApiVersionInUrl`, `ReportApiVersions`
+
+### New Dependencies
+
+| Package | Version | Purpose |
+|---|---|---|
+| `Asp.Versioning.Mvc` | 8.1.1 | API versioning |
+| `Asp.Versioning.Mvc.ApiExplorer` | 8.1.1 | Swagger version integration |
+| `OpenTelemetry.Extensions.Hosting` | 1.15.0 | OTEL host integration |
+| `OpenTelemetry.Instrumentation.AspNetCore` | 1.15.1 | HTTP request tracing |
+| `OpenTelemetry.Instrumentation.Http` | 1.15.0 | HttpClient tracing |
+| `OpenTelemetry.Exporter.OpenTelemetryProtocol` | 1.15.0 | OTLP export |
+| `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore` | 9.* | EF Core health probe |
+| `Microsoft.Extensions.Http.Resilience` | 10.4.0 | Polly 8 retry/circuit breaker |
+
+### Metrics
+- 18 files changed (6 modified + 12 new)
+- Program.cs: ~180 → 46 lines (−74%)
+- ServiceCollectionExtensions.cs: restructured into per-domain module methods
+- 8 new NuGet packages for observability, versioning, health, resilience
 
 ---
 

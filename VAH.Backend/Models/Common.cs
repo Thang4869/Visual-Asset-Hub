@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace VAH.Backend.Models;
 
 /// <summary>
@@ -37,10 +39,17 @@ public class PaginationParams
 
 /// <summary>
 /// Configuration for file upload restrictions.
+/// Bound from <c>appsettings.json</c> section <c>FileUpload</c>.
+/// Validated on startup via <see cref="System.ComponentModel.DataAnnotations"/>.
 /// </summary>
 public class FileUploadConfig
 {
+    public const string SectionName = "FileUpload";
+
+    [Range(1, 500 * 1024 * 1024)] // 1 byte – 500 MB
     public long MaxFileSizeBytes { get; set; } = 50 * 1024 * 1024; // 50 MB
+
+    [Range(1, 100)]
     public int MaxFilesPerRequest { get; set; } = 20;
     public string[] AllowedExtensions { get; set; } =
     {

@@ -28,6 +28,22 @@ namespace VAH.Backend.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
+    /// Register all cross-cutting infrastructure services as a single platform layer:
+    /// CORS, rate limiting, database, identity/auth, caching, and HTTP resilience.
+    /// </summary>
+    public static IServiceCollection AddInfrastructurePlatform(
+        this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddCorsPolicy(configuration);
+        services.AddRateLimitingPolicies();
+        services.AddDatabase(configuration);
+        services.AddIdentityAndAuth(configuration);
+        services.AddCachingServices(configuration);
+        services.AddHttpResilience();
+        return services;
+    }
+
+    /// <summary>
     /// Register CORS with allowed origins from configuration.
     /// </summary>
     public static IServiceCollection AddCorsPolicy(this IServiceCollection services, IConfiguration configuration)
@@ -50,7 +66,13 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Register rate limiting policies (Fixed + Upload).
+    /// Register rate limiting policies with IP-based partitioning.
+    /// <list type="bullet">
+    ///   <item><description><c>Fixed</c> — general API: 100 req/min per IP.</description></item>
+    ///   <item><description><c>Upload</c> — file upload: 20 req/min per IP (strict).</description></item>
+    ///   <item><description><c>Search</c> — search: 60 req/min per IP (sliding window).</description></item>
+    ///   <item><description><c>Auth</c> — login/register: 10 req/min per IP (brute-force protection).</description></item>
+    /// </list>
     /// </summary>
     public static IServiceCollection AddRateLimitingPolicies(this IServiceCollection services)
     {
@@ -58,32 +80,71 @@ public static class ServiceCollectionExtensions
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            options.AddFixedWindowLimiter("Fixed", opt =>
-            {
-                opt.PermitLimit = 100;
-                opt.Window = TimeSpan.FromMinutes(1);
-                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opt.QueueLimit = 10;
-            });
+            // General API — relaxed
+            options.AddPolicy("Fixed", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetClientIp(context),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 100,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 10
+                    }));
 
-            options.AddFixedWindowLimiter("Upload", opt =>
-            {
-                opt.PermitLimit = 20;
-                opt.Window = TimeSpan.FromMinutes(1);
-                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opt.QueueLimit = 5;
-            });
+            // Upload — medium
+            options.AddPolicy("Upload", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetClientIp(context),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 20,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 5
+                    }));
 
-            options.AddSlidingWindowLimiter("Search", opt =>
-            {
-                opt.PermitLimit = 60;
-                opt.Window = TimeSpan.FromMinutes(1);
-                opt.SegmentsPerWindow = 6;
-                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opt.QueueLimit = 5;
-            });
+            // Search — sliding window
+            options.AddPolicy("Search", context =>
+                RateLimitPartition.GetSlidingWindowLimiter(
+                    partitionKey: GetClientIp(context),
+                    factory: _ => new SlidingWindowRateLimiterOptions
+                    {
+                        PermitLimit = 60,
+                        Window = TimeSpan.FromMinutes(1),
+                        SegmentsPerWindow = 6,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 5
+                    }));
+
+            // Auth (login/register) — strict brute-force protection
+            options.AddPolicy("Auth", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetClientIp(context),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 2
+                    }));
         });
 
+        return services;
+    }
+
+    private static string GetClientIp(HttpContext context) =>
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    /// <summary>
+    /// Register a resilient <see cref="HttpClient"/> with Polly retry + circuit-breaker
+    /// via <c>Microsoft.Extensions.Http.Resilience</c>.
+    /// Any service injecting <see cref="IHttpClientFactory"/> gets resilience for free.
+    /// </summary>
+    private static IServiceCollection AddHttpResilience(this IServiceCollection services)
+    {
+        services.AddHttpClient("Resilient")
+            .AddStandardResilienceHandler();
         return services;
     }
 
@@ -207,42 +268,96 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Register all application-specific services (storage, assets, collections, etc.).
+    /// Register all application feature modules via a single facade.
+    /// Each feature can be registered independently for testing or modular deployment.
     /// </summary>
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddFeatureModules(
+        this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddCrossCuttingConcerns(configuration);
+        services.AddAssetModule(configuration);
+        services.AddCollectionModule();
+        services.AddSearchModule();
+        services.AddAuthModule();
+        services.AddNotificationModule();
+        return services;
+    }
+
+    // ── Cross-cutting ────────────────────────────────────────────
+
+    private static IServiceCollection AddCrossCuttingConcerns(
+        this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssetService>());
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
+
+        services.AddOptions<FileUploadConfig>()
+            .BindConfiguration(FileUploadConfig.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton(sp =>
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FileUploadConfig>>().Value);
+
+        return services;
+    }
+
+    // ── Asset module ─────────────────────────────────────────────
+
+    private static IServiceCollection AddAssetModule(
+        this IServiceCollection services, IConfiguration configuration)
+    {
         services.Configure<AssetOptions>(configuration.GetSection(AssetOptions.SectionName));
 
-        // ── MediatR (CQRS pipeline) ──
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssetService>());
-
-        services.AddScoped<IUserContextProvider, UserContextProvider>();
+        services.AddScoped<IStorageService, LocalStorageService>();
         services.AddScoped<IFileMapperService, FileMapperService>();
+        services.AddScoped<AssetCleanupHelper>();
         services.AddScoped<IAssetDuplicateStrategy, InPlaceDuplicateStrategy>();
         services.AddScoped<IAssetDuplicateStrategy, TargetFolderDuplicateStrategy>();
         services.AddScoped<IAssetDuplicateStrategyFactory, AssetDuplicateStrategyFactory>();
         services.AddScoped<IAssetApplicationService, AssetApplicationService>();
-
-        // ── Global Exception Handler (RFC 7807) ──
-        services.AddExceptionHandler<GlobalExceptionHandler>();
-        services.AddProblemDetails();
-
-        services.AddSingleton(new FileUploadConfig());
-        services.AddScoped<IStorageService, LocalStorageService>();
-        services.AddScoped<AssetCleanupHelper>();
         services.AddScoped<IAssetService, AssetService>();
         services.AddScoped<IBulkAssetService, BulkAssetService>();
-        services.AddScoped<ICollectionService, CollectionService>();
-        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IThumbnailService, ThumbnailService>();
-        services.AddScoped<ITagService, TagService>();
-        services.AddScoped<INotificationService, NotificationService>();
-        services.AddScoped<ISmartCollectionService, SmartCollectionService>();
-        services.AddScoped<ISearchService, SearchService>();
-        services.AddScoped<IPermissionService, PermissionService>();
-        services.AddScoped<IHealthCheckService, HealthCheckService>();
 
+        return services;
+    }
+
+    // ── Collection module ────────────────────────────────────────
+
+    private static IServiceCollection AddCollectionModule(this IServiceCollection services)
+    {
+        services.AddScoped<ICollectionService, CollectionService>();
+        services.AddScoped<ISmartCollectionService, SmartCollectionService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        return services;
+    }
+
+    // ── Search module ────────────────────────────────────────────
+
+    private static IServiceCollection AddSearchModule(this IServiceCollection services)
+    {
+        services.AddScoped<ISearchService, SearchService>();
+        services.AddScoped<ITagService, TagService>();
+        return services;
+    }
+
+    // ── Auth module ──────────────────────────────────────────────
+
+    private static IServiceCollection AddAuthModule(this IServiceCollection services)
+    {
+        services.AddScoped<IUserContextProvider, UserContextProvider>();
+        services.AddScoped<IAuthService, AuthService>();
+        return services;
+    }
+
+    // ── Notification module ──────────────────────────────────────
+
+    private static IServiceCollection AddNotificationModule(this IServiceCollection services)
+    {
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IHealthCheckService, HealthCheckService>();
         return services;
     }
 }

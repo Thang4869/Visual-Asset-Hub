@@ -235,7 +235,10 @@ public class UpdateCollectionDto
 
 public class AssetPositionDto
 {
+    [Range(-1_000_000, 1_000_000)]
     public double PositionX { get; set; }
+
+    [Range(-1_000_000, 1_000_000)]
     public double PositionY { get; set; }
 }
 
