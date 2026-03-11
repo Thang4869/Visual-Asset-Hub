@@ -15,9 +15,9 @@ public sealed class CreateAssetHandler(IAssetService assetService)
 
 /// <summary>Handler: Upload one or more files to a collection.</summary>
 public sealed class UploadFilesHandler(IAssetService assetService)
-    : IRequestHandler<UploadFilesCommand, List<AssetResponseDto>>
+    : IRequestHandler<UploadFilesCommand, IReadOnlyList<AssetResponseDto>>
 {
-    public Task<List<AssetResponseDto>> Handle(UploadFilesCommand request, CancellationToken ct)
+    public Task<IReadOnlyList<AssetResponseDto>> Handle(UploadFilesCommand request, CancellationToken ct)
         => assetService.UploadFilesAsync(request.Files, request.CollectionId, request.FolderId, request.UserId, ct);
 }
 

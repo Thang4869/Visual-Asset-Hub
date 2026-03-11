@@ -41,13 +41,13 @@ internal sealed class AssetApplicationService : IAssetApplicationService
     public Task<AssetResponseDto> GetAssetByIdAsync(int id, CancellationToken ct = default)
         => _sender.Send(new GetAssetByIdQuery(id, CurrentUserId), ct);
 
-    public Task<List<AssetResponseDto>> GetAssetsByGroupAsync(int groupId, CancellationToken ct = default)
+    public Task<IReadOnlyList<AssetResponseDto>> GetAssetsByGroupAsync(int groupId, CancellationToken ct = default)
         => _sender.Send(new GetAssetsByGroupQuery(groupId, CurrentUserId), ct);
 
     public Task<AssetResponseDto> CreateAssetAsync(CreateAssetDto dto, CancellationToken ct = default)
         => _sender.Send(new CreateAssetCommand(dto, CurrentUserId), ct);
 
-    public Task<List<AssetResponseDto>> UploadFilesAsync(IReadOnlyCollection<UploadedFileDto> files, int? collectionId, int? folderId, CancellationToken ct = default)
+    public Task<IReadOnlyList<AssetResponseDto>> UploadFilesAsync(IReadOnlyCollection<UploadedFileDto> files, int? collectionId, int? folderId, CancellationToken ct = default)
     {
         var targetCollectionId = collectionId ?? DefaultCollectionId;
         var payload = files ?? Array.Empty<UploadedFileDto>();

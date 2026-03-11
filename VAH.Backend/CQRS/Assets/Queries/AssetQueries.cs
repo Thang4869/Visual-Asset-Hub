@@ -16,4 +16,4 @@ public sealed record GetAssetByIdQuery(
 /// <summary>Query: Assets belonging to a color group.</summary>
 public sealed record GetAssetsByGroupQuery(
     int GroupId,
-    string UserId) : IRequest<List<AssetResponseDto>>;
+    string UserId) : IRequest<IReadOnlyList<AssetResponseDto>>;

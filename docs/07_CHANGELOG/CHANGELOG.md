@@ -12,6 +12,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+## [0.5.1] — 2026-03-12
+
+### Changed — CQRS Immutability Hardening
+
+- **`UploadFilesCommand`**: Return type `List<AssetResponseDto>` → `IReadOnlyList<AssetResponseDto>` — immutable output consistent with immutable input (`IReadOnlyCollection`)
+- **`GetAssetsByGroupQuery`**: Return type `List<AssetResponseDto>` → `IReadOnlyList<AssetResponseDto>` — query results should never be mutated by callers
+- **Full chain updated** (10 files): Command/Query → Handler → IAssetService → AssetService → IAssetApplicationService → AssetApplicationService
+- **Removed redundant `using System.Collections.Generic`** from `AssetCommands.cs` (covered by implicit usings since .NET 6)
+
+### Changed — AssetOptions Validation
+
+- **`AssetOptions.DefaultCollectionId`**: Added `[Range(1, int.MaxValue)]` data annotation
+- **Registration upgraded**: `services.Configure<T>()` → `AddOptions<T>().Bind().ValidateDataAnnotations().ValidateOnStart()` — fail-fast on startup if config is invalid
+- **XML docs enhanced**: `<see cref="SectionName"/>` linking, property-level summary
+
+### Metrics
+- 10 files changed (+25 / −17 lines)
+- All CQRS collection return types now `IReadOnlyList<T>` — zero mutable collections exposed
+- `AssetOptions` registration now consistent with `FileUploadConfig` pattern
+
+---
+
 ## [0.5.0] — 2026-03-12
 
 ### Added — New Infrastructure Files
