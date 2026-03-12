@@ -1,6 +1,6 @@
 # CODING STANDARDS — .NET 9 Backend
 
-> **Last Updated**: 2026-03-02  
+> **Last Updated**: 2026-03-13  
 > **Applies to**: `VAH.Backend/`
 
 ---
@@ -90,17 +90,19 @@ public class AssetService : IAssetService
 
 ### Entity
 ```csharp
-public class Asset
+public abstract class Asset
 {
-    public int Id { get; set; }                    // Identity
-    public string FileName { get; set; }           // Scalars
-    public int CollectionId { get; set; }          // FKs
-    public Collection? Collection { get; set; }    // Navigation
-    public virtual bool HasPhysicalFile => true;   // Behavior
-    public void UpdatePosition(double x, double y) { ... }  // Domain methods
-    public AssetResponseDto ToDto() => new() { ... };       // Mapping
+    protected Asset() { }  // EF Core materialization
+    public int Id { get; private set; }                    // Identity
+    public string FileName { get; private set; }           // Private setters — always
+    public int CollectionId { get; private set; }          // FKs
+    public Collection? Collection { get; set; }            // Navigation (EF manages)
+    public virtual bool HasPhysicalFile => true;           // Behavior
+    public void Rename(string newName) { ... }             // Domain method = only mutation path
 }
 ```
+
+**Rules**: Abstract base or sealed subtypes. **Private setters** on all value properties — mutations only through domain methods (e.g., `Rename()`, `Reorder()`, `AssignToGroup()`). Guard clauses via `ArgumentException.ThrowIfNullOrWhiteSpace`. Construction via static Factory. No DTO references in domain — mapping belongs in service layer (`AssetMapper`).
 
 ## §4 — Async/Await Rules
 
@@ -144,7 +146,7 @@ Throw domain exceptions         → GlobalExceptionHandler maps to HTTP status:
 | Rule | Rationale |
 |------|-----------|
 | Enum stored as string via converter | Backward-compatible, human-readable |
-| Global query filter for soft-delete (future) | Prevent accidental data exposure |
+| Global query filter for soft-delete (`IsDeleted`) | Prevent accidental data exposure |
 | `Include()` explicitly — no lazy loading | N+1 prevention |
 | Migrations auto-applied on startup (`db.Database.Migrate()`) | Dev/staging convenience — disable in prod |
 | `CancellationToken` passed to all EF async calls | Proper request cancellation |

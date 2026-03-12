@@ -135,7 +135,7 @@ public class CollectionService : ICollectionService
         return new CollectionWithItemsResult
         {
             Collection = collection,
-            Items = items.Select(a => a.ToDto()).ToList(),
+            Items = AssetMapper.ToDtoList(items),
             SubCollections = subcollections
         };
     }

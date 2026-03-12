@@ -73,7 +73,7 @@ public class SearchService : ISearchService
         return new SearchResult
         {
             Query = query ?? string.Empty,
-            Assets = assets.Select(a => a.ToDto()).ToList(),
+            Assets = AssetMapper.ToDtoList(assets),
             TotalAssets = totalAssets,
             Collections = collections,
             TotalCollections = totalCollections,

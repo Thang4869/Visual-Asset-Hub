@@ -1,6 +1,6 @@
 # DOMAIN MODEL — Entity Relationships & Aggregates
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-13
 
 ---
 
@@ -46,39 +46,48 @@
 
 ### 2.1 Asset Aggregate (Root: `Asset`)
 
+> `Asset` is **abstract** — never instantiated directly. All state mutations go through domain methods; every property has a **private setter**. Subtypes are **sealed**.
+
 | Entity | Role | Invariants |
 |--------|------|-----------|
-| `Asset` (TPH base) | Aggregate root | UserId required for non-system assets; ContentType must match discriminator |
+| `Asset` (abstract TPH base) | Aggregate root | UserId required for non-system assets; ContentType must match discriminator; all properties private set |
+| `FileAsset` | TPH subtype | `HasPhysicalFile = true` — generic uploaded file |
 | `ImageAsset` | TPH subtype | `HasPhysicalFile = true`, `CanHaveThumbnails = true` |
-| `LinkAsset` | TPH subtype | `HasPhysicalFile = false` — no file on disk |
-| `ColorAsset` | TPH subtype | `HasPhysicalFile = false` — hex stored in Tags field |
+| `LinkAsset` | TPH subtype | `HasPhysicalFile = false`, semantic `Url` property |
+| `ColorAsset` | TPH subtype | `HasPhysicalFile = false`, semantic `HexCode` property |
 | `ColorGroupAsset` | TPH subtype | `HasPhysicalFile = false` — groups ColorAssets via GroupId |
 | `FolderAsset` | TPH subtype | `HasPhysicalFile = false`, `IsFolder = true` |
 | `AssetTag` | Junction entity | Composite key (AssetId, TagId) |
 
-**Domain Methods on Asset:**
+**Domain Methods on Asset (only mutation path):**
 
 ```csharp
+void Rename(string newName)                 // Guard: ThrowIfNullOrWhiteSpace
+void Reorder(int sortOrder)                 // Change display order
+void AssignToGroup(int groupId)             // Assign to color group
+void RemoveFromGroup()                      // Clear GroupId
 void UpdatePosition(double x, double y)     // Canvas layout coordinates
-void ApplyUpdate(UpdateAssetDto dto)        // Partial update (null-safe)
 void SetThumbnails(string? sm, md, lg)      // Server-generated thumbnails
 void MoveToFolder(int? folderId)            // Re-parent within collection
 void MoveToCollection(int collectionId)     // Cross-collection move
-bool IsOwnedBy(string userId)               // Ownership check
-AssetResponseDto ToDto()                    // Entity → DTO mapping
+void SoftDelete()                           // Set IsDeleted + UpdatedAt
+bool IsOwnedBy(string userId)               // Ownership check (query)
+bool IsSystemAsset                          // UserId == null (query)
 ```
+
+> **DTO mapping** is handled by `AssetMapper` (service layer), NOT by the entity.
 
 **TPH Discriminator Column**: `ContentType` (string in DB via `EnumMappings`)
 
 ```
 ContentType value  →  EF Core .NET Type
 ─────────────────────────────────────────
+"file"             →  FileAsset
 "image"            →  ImageAsset
 "link"             →  LinkAsset
 "color"            →  ColorAsset
 "color-group"      →  ColorGroupAsset
 "folder"           →  FolderAsset
-"file"             →  Asset (base, default)
 ```
 
 ### 2.2 Collection Aggregate (Root: `Collection`)
@@ -191,23 +200,43 @@ AssetTag.TagId        → Tag.Id             (Required, Cascade)
 CollectionPermission.CollectionId → Collection.Id (Required, Cascade)
 ```
 
-## §5 — Factory Pattern
+## §5 — Factory Pattern & Validation
 
-`AssetFactory` provides 8 static creation methods + 1 duplication method:
+`AssetFactory` provides 6 typed creation methods + 1 duplication method. Accepts only primitives — **never DTOs**. Input validation is handled by `AssetValidator` (pre-construction) and guard clauses.
 
 ```csharp
-static Asset CreateImage(file, path, userId, collectionId)
-static Asset CreateLink(name, url, userId, collectionId)
-static Asset CreateColor(name, hex, userId, collectionId)
-static Asset CreateColorGroup(name, userId, collectionId)
-static Asset CreateFolder(name, userId, collectionId, parentFolderId?)
-static Asset CreateFile(file, path, userId, collectionId)
-static Asset FromUploadedFile(UploadedFileDto, userId, collectionId)
-static Asset CreateForType(contentType, name, path, userId, collectionId)
-static Asset Duplicate(source, userId)
+static ImageAsset CreateImage(fileName, filePath, collectionId, userId, parentFolderId?)
+static FileAsset CreateFile(fileName, filePath, collectionId, userId, parentFolderId?)
+static FolderAsset CreateFolder(name, collectionId, userId, parentFolderId?)
+static ColorAsset CreateColor(colorCode, collectionId, userId, colorName?, groupId?, parentFolderId?, sortOrder)
+static ColorGroupAsset CreateColorGroup(groupName, collectionId, userId, parentFolderId?, sortOrder)
+static LinkAsset CreateLink(name, url, collectionId, userId, parentFolderId?)
+static Asset Duplicate(source, userId, copySuffix, targetFolderId?)
 ```
 
-Each factory method returns the correct TPH subtype (`ImageAsset`, `LinkAsset`, etc.) and sets all required fields including `CreatedAt = DateTime.UtcNow`.
+- `CreateColor` calls `AssetValidator.NormalizeHexColor()` (auto-prepend `#`, 3/4/6/8 digit hex)
+- `CreateLink` calls `AssetValidator.ValidateUrl()` (absolute http/https only)
+- All methods use `ArgumentException.ThrowIfNullOrWhiteSpace` guard clauses
+- `Duplicate` uses virtual `InitializeClone()` for subtype-specific property copying (Url, HexCode)
+- `copySuffix` is a **required** parameter (no default) for localization readiness
+
+`AssetValidator` (`Models/AssetValidator.cs`) centralizes domain validation:
+
+```csharp
+static string NormalizeHexColor(string colorCode)  // GeneratedRegex, returns "#RRGGBB"
+static string ValidateUrl(string url)               // Absolute http(s) URI only
+static string ValidateFileName(string name, int maxLength = 500)
+static bool IsValidHexColor(string colorCode)
+static bool IsValidUrl(string url)
+```
+
+DTO ↔ Entity mapping is handled by `AssetMapper` (`Services/AssetMapper.cs`):
+
+```csharp
+static AssetResponseDto ToDto(Asset asset)
+static List<AssetResponseDto> ToDtoList(IEnumerable<Asset> assets)
+static Asset CreateFileFromDto(CreateAssetDto dto, string userId)
+```
 
 ---
 
@@ -217,16 +246,20 @@ Each factory method returns the correct TPH subtype (`ImageAsset`, `LinkAsset`, 
 
 ### 6.1 Asset (Full Property List)
 
+> All properties have **private setters** — mutations only through domain methods or factory construction. `Asset` is **abstract**; concrete subtypes: `FileAsset`, `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`.
+
 | Property | Type | Constraints | Default | Description |
 |----------|------|-------------|---------|-------------|
 | `Id` | int | PK, auto-increment | — | |
 | `FileName` | string | Required, MaxLength(500) | `""` | File name or folder name |
 | `FilePath` | string | Required, MaxLength(2048) | `""` | File path, URL, or hex color |
-| `Tags` | string | MaxLength(2000) | `""` | Legacy comma-separated tags |
+| `Tags` | string | [Obsolete], MaxLength(2000) | `""` | Legacy comma-separated tags — use AssetTags |
 | `CreatedAt` | DateTime | | DB default | |
+| `UpdatedAt` | DateTime? | | null | Set by domain methods on mutation |
+| `IsDeleted` | bool | | `false` | Soft-delete flag (global query filter in DbContext) |
 | `PositionX` | double | | `0` | Canvas X position |
 | `PositionY` | double | | `0` | Canvas Y position |
-| `CollectionId` | int | FK→Collections | `1` | |
+| `CollectionId` | int | FK→Collections | — | Required, set via `AssetOptions.DefaultCollectionId` |
 | `ContentType` | `AssetContentType` | EF Core value conversion | `File` | TPH discriminator |
 | `GroupId` | int? | | null | Color group membership |
 | `ParentFolderId` | int? | | null | Self-ref folder parent |
@@ -237,6 +270,13 @@ Each factory method returns the correct TPH subtype (`ImageAsset`, `LinkAsset`, 
 | `ThumbnailMd` | string? | MaxLength(2048) | null | 400px WebP thumbnail |
 | `ThumbnailLg` | string? | MaxLength(2048) | null | 800px WebP thumbnail |
 | `AssetTags` | ICollection\<AssetTag\> | Navigation | `[]` | M2M tags |
+
+**Subtype-specific Properties (TPH columns):**
+
+| Subtype | Property | Type | Description |
+|---------|----------|------|-------------|
+| `LinkAsset` | `Url` | string? | Bookmarked URL (semantic, separate from FilePath) |
+| `ColorAsset` | `HexCode` | string? | Hex color code e.g. `#FF5733` (semantic, separate from FilePath) |
 
 ### 6.2 Collection (Full Property List)
 

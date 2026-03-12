@@ -4,6 +4,7 @@ namespace VAH.Backend.Services;
 /// Encapsulates asset file and thumbnail cleanup logic.
 /// Eliminates duplication between DeleteAssetAsync and BulkDeleteAsync.
 /// OOP: Single Responsibility — cleanup is a separate concern from CRUD orchestration.
+/// File cleanup eligibility is determined here (service layer), not in the domain model.
 /// </summary>
 public class AssetCleanupHelper
 {
@@ -17,12 +18,20 @@ public class AssetCleanupHelper
     }
 
     /// <summary>
+    /// Whether a physical file cleanup is needed for this asset.
+    /// Determined by storage service (supports local, S3, Azure, etc.).
+    /// </summary>
+    public bool RequiresFileCleanup(Models.Asset asset) =>
+        asset.HasPhysicalFile
+        && !string.IsNullOrEmpty(asset.FilePath)
+        && _storage.Exists(asset.FilePath);
+
+    /// <summary>
     /// Delete the physical file and any generated thumbnails for an asset.
-    /// Only acts on assets where <see cref="Models.Asset.RequiresFileCleanup"/> is true.
     /// </summary>
     public async Task CleanupFilesAsync(Models.Asset asset)
     {
-        if (!asset.RequiresFileCleanup) return;
+        if (!RequiresFileCleanup(asset)) return;
 
         try
         {

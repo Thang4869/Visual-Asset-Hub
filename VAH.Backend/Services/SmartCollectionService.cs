@@ -90,7 +90,7 @@ public class SmartCollectionService : ISmartCollectionService
 
         return new PagedResult<AssetResponseDto>
         {
-            Items = items.Select(a => a.ToDto()).ToList(),
+            Items = AssetMapper.ToDtoList(items),
             TotalCount = totalCount,
             Page = pagination.Page,
             PageSize = pagination.PageSize
