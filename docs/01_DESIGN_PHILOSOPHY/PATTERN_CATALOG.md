@@ -1,7 +1,7 @@
 # PATTERN CATALOG — Design Patterns in VAH
 
-> **Last Updated**: 2026-03-08  
-> **Total Patterns Identified**: 20
+> **Last Updated**: 2026-03-13  
+> **Total Patterns Identified**: 22
 
 ---
 
@@ -9,9 +9,11 @@
 
 ### Factory Method — `AssetFactory`
 - **File**: [Models/AssetFactory.cs](../../VAH.Backend/Models/AssetFactory.cs)
-- **Problem**: Creating correct TPH subtype (`ImageAsset`, `LinkAsset`, etc.) with consistent defaults
-- **Solution**: Static factory methods (`CreateImage`, `CreateFolder`, `CreateColor`, `CreateLink`, `CreateColorGroup`, `CreateFile`, `Duplicate`, `FromDto`)
-- **OCP**: Adding new asset type = add new factory method + TPH subclass
+- **Problem**: Creating correct TPH subtype (`FileAsset`, `ImageAsset`, `LinkAsset`, etc.) with consistent defaults and validated input
+- **Solution**: Static factory methods (`CreateImage`, `CreateFile`, `CreateFolder`, `CreateColor`, `CreateLink`, `CreateColorGroup`, `Duplicate`) accepting only primitives — never DTOs
+- **Validation**: `CreateColor` delegates to `AssetValidator.NormalizeHexColor()`, `CreateLink` to `AssetValidator.ValidateUrl()`, all methods use `ArgumentException.ThrowIfNullOrWhiteSpace` guard clauses
+- **Clone**: `Duplicate` uses virtual `InitializeClone()` for subtype-specific property copying (Url, HexCode)
+- **OCP**: Adding new asset type = add new factory method + sealed TPH subclass
 
 ### Abstract Factory — `IAssetDuplicateStrategyFactory`
 - **File**: [Features/Assets/Application/Duplicate/](../../VAH.Backend/Features/Assets/Application/Duplicate/)
@@ -58,10 +60,21 @@
 - **Problem**: Duplicate in-place vs duplicate to target folder have different logic
 - **Solution**: `InPlaceDuplicateStrategy`, `TargetFolderDuplicateStrategy` selected by factory
 
-### Template Method — `Asset` Virtual Properties
-- **File**: [Models/Asset.cs](../../VAH.Backend/Models/Asset.cs)
-- **Problem**: Different asset types need different behavior for cleanup, thumbnails, file presence
-- **Solution**: `virtual bool HasPhysicalFile`, `CanHaveThumbnails`, `RequiresFileCleanup` — subtypes override
+### Template Method — `Asset` Virtual Properties & `InitializeClone`
+- **File**: [Models/Asset.cs](../../VAH.Backend/Models/Asset.cs), [Models/AssetTypes.cs](../../VAH.Backend/Models/AssetTypes.cs)
+- **Problem**: Different asset types need different behavior for cleanup, thumbnails, file presence, and duplication
+- **Solution**: `virtual bool HasPhysicalFile`, `CanHaveThumbnails` — subtypes override. `internal virtual void InitializeClone()` — `LinkAsset` copies `Url`, `ColorAsset` copies `HexCode`
+
+### Validator — `AssetValidator`
+- **File**: [Models/AssetValidator.cs](../../VAH.Backend/Models/AssetValidator.cs)
+- **Problem**: Color hex / URL / filename validation logic scattered across Factory and Service
+- **Solution**: Static centralized validator with `[GeneratedRegex]` (source-generated) for zero-allocation regex. 3 validate methods (`NormalizeHexColor`, `ValidateUrl`, `ValidateFileName`) + 2 bool predicates
+- **Integration**: Called by `AssetFactory` pre-construction — invalid data never reaches domain entities
+
+### Mapper — `AssetMapper`
+- **File**: [Services/AssetMapper.cs](../../VAH.Backend/Services/AssetMapper.cs)
+- **Problem**: DTO mapping in domain entity violates SRP and couples domain to presentation
+- **Solution**: Static mapper in service layer (`ToDto`, `ToDtoList`, `CreateFileFromDto`). Replaces old `Asset.ToDto()` and `AssetFactory.FromDto()`
 
 ### Action Filter — `ValidateBatchFilterAttribute`
 - **File**: [Controllers/Filters/ValidateBatchFilterAttribute.cs](../../VAH.Backend/Controllers/Filters/ValidateBatchFilterAttribute.cs)

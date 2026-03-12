@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-12
+> **Last Updated**: 2026-03-13
 
 All notable changes to the Visual Asset Hub project.
 
@@ -9,6 +9,57 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ---
 
 ## [Unreleased]
+
+---
+
+## [0.5.2] — 2026-03-13
+
+### Changed — Asset Domain Model Hardening (Enterprise-Grade)
+
+- **`Asset` → abstract class**: No longer instantiable directly; all state mutations go through domain methods with private setters
+- **New `FileAsset` subtype**: Replaces base `Asset` as the concrete type for generic files (`AssetContentType.File`)
+- **All subtypes sealed**: `FileAsset`, `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset` — design intent + JIT devirtualization
+- **Private setters everywhere**: All value properties on `Asset` and subtypes use `private set` — only domain methods can mutate state
+- **Protected/internal constructors**: `Asset` has `protected` constructors; subtypes have `internal` constructors (only `AssetFactory` can create instances)
+- **`ApplyUpdate(UpdateAssetDto)` → granular domain methods**: `Rename()`, `Reorder()`, `AssignToGroup()`, `RemoveFromGroup()`, `MoveToFolder()` — each with guard clauses
+- **`Rename()` guard clause**: `ArgumentException.ThrowIfNullOrWhiteSpace` — fail-fast instead of silent return
+- **Audit properties**: Added `UpdatedAt` (DateTime?) and `IsDeleted` (bool) with soft-delete global query filter in DbContext
+- **`SoftDelete()` domain method**: Sets `IsDeleted = true` + `UpdatedAt`
+- **`RequiresFileCleanup` → `AssetCleanupHelper`**: Moved from domain entity to service-layer helper using `IStorageService.Exists()`
+
+### Added — New Domain Files
+
+| File | Purpose |
+|---|---|
+| `Models/AssetValidator.cs` | Centralized validation: `NormalizeHexColor()`, `ValidateUrl()`, `ValidateFileName()` with `[GeneratedRegex]` |
+| `Services/AssetMapper.cs` | DTO↔Entity mapping: `ToDto()`, `ToDtoList()`, `CreateFileFromDto()` — replaces `Asset.ToDto()` + `AssetFactory.FromDto()` |
+
+### Changed — AssetFactory
+
+- **Removed** `FromDto()` — replaced by `AssetMapper.CreateFileFromDto()`
+- **Accepts only primitives** — never DTOs
+- **`CreateColor()`** calls `AssetValidator.NormalizeHexColor()` (auto-prepend `#`, validates 3/4/6/8 hex digits)
+- **`CreateLink()`** calls `AssetValidator.ValidateUrl()` (absolute http/https only)
+- **`Duplicate()` copySuffix** is now a required parameter (no default) for localization readiness
+- **`Duplicate()`** uses virtual `InitializeClone()` instead of manual property copy per-type
+
+### Changed — Semantic Properties
+
+- **`LinkAsset.Url`** (string?): Dedicated URL property, separate from `FilePath`, with `IsValidUrl()` method
+- **`ColorAsset.HexCode`** (string?): Dedicated hex code property, separate from `FilePath`
+- **`InitializeClone()` overrides**: `LinkAsset` and `ColorAsset` override to copy semantic properties during duplication
+
+### Changed — Service Layer Updates
+
+- **`AssetService`**: All `.ToDto()` → `AssetMapper.ToDto/ToDtoList`, `ApplyUpdate(dto)` → individual domain method calls, inline validation removed
+- **`BulkAssetService`**: `asset.GroupId =` → `asset.AssignToGroup()`/`RemoveFromGroup()`, `SortOrder =` → `asset.Reorder()`
+- **`CollectionService`, `SearchService`, `SmartCollectionService`**: `.ToDto()` → `AssetMapper.ToDtoList()`
+- **`AppDbContext`**: `FileAsset` TPH mapping, `IsDeleted` global query filter + filtered index, `Url`/`HexCode` TPH columns
+
+### Metrics
+- 12 files changed (10 modified + 2 new)
+- 3 tech debt items resolved: #1 (public setters), #6 (ToDto in entity), #8 (switch-based Duplicate)
+- 0 build errors, 6 warnings (intentional CS0618 from [Obsolete] Tags usage)
 
 ---
 

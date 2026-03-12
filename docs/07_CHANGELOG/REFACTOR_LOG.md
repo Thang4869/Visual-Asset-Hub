@@ -1,8 +1,158 @@
 # REFACTOR LOG
 
-> **Last Updated**: 2026-03-12
+> **Last Updated**: 2026-03-13
 
 Tracks completed refactoring efforts with before/after comparisons.
+
+---
+
+## RF-012 — Asset Domain Model Hardening (Abstract Base, Private Setters, Validation)
+
+**Date**: 2026-03-13
+**Scope**: Asset aggregate root, TPH subtypes, AssetFactory, domain validation, DTO mapping, service layer consumers
+**Branch**: `refactor/cqrs-immutability-options-hardening`
+
+### Summary
+
+Elevated the Asset domain model from a DTO-coupled entity with public setters to an enterprise-grade DDD aggregate root. Asset is now abstract with private setters, domain methods as the only mutation path, centralized validation via `AssetValidator`, and separated DTO mapping via `AssetMapper`.
+
+### Key Changes
+
+#### 1. Abstract Asset + FileAsset Subtype
+
+**Before**
+```csharp
+public class Asset
+{
+    public string FileName { get; set; }
+    public void ApplyUpdate(UpdateAssetDto dto) { ... }
+    public AssetResponseDto ToDto() => new() { ... };
+}
+```
+
+**After**
+```csharp
+public abstract class Asset
+{
+    protected Asset() { }  // EF Core
+    protected Asset(fileName, filePath, contentType, ...) { ... }  // Domain
+
+    public string FileName { get; private set; }
+    public void Rename(string newName) { ... }  // Guard: ThrowIfNullOrWhiteSpace
+}
+
+public sealed class FileAsset : Asset  // New concrete subtype for ContentType.File
+{
+    internal FileAsset() { }
+    internal FileAsset(fileName, filePath, collectionId, userId, parentFolderId?) : base(...) { }
+}
+```
+
+#### 2. Private Setters + Domain Methods
+
+**Before**
+```csharp
+asset.FileName = dto.FileName;
+asset.SortOrder = dto.SortOrder;
+asset.GroupId = dto.GroupId;
+asset.ParentFolderId = null;
+```
+
+**After**
+```csharp
+asset.Rename(dto.FileName);
+asset.Reorder(dto.SortOrder);
+asset.AssignToGroup(dto.GroupId);
+asset.MoveToFolder(null);
+```
+
+All domain methods set `UpdatedAt = DateTime.UtcNow`. `Rename()` uses `ArgumentException.ThrowIfNullOrWhiteSpace`.
+
+#### 3. AssetValidator (Centralized Validation)
+
+```csharp
+public static partial class AssetValidator
+{
+    [GeneratedRegex(@"^#?([0-9A-Fa-f]{3}|...)$")]
+    private static partial Regex HexColorPattern();
+
+    static string NormalizeHexColor(string colorCode);  // Auto-prepend #
+    static string ValidateUrl(string url);               // Absolute http(s) only
+    static string ValidateFileName(string name, int maxLength = 500);
+}
+```
+
+Integrated into `AssetFactory.CreateColor()` and `CreateLink()`.
+
+#### 4. AssetMapper (DTO Mapping Separated)
+
+**Before** (domain entity coupled to DTO):
+```csharp
+// In Asset.cs:
+public AssetResponseDto ToDto() => new() { Id = Id, FileName = FileName, ... };
+// In AssetFactory.cs:
+public static Asset FromDto(CreateAssetDto dto, string userId) { ... }
+```
+
+**After** (service-layer mapper):
+```csharp
+// In Services/AssetMapper.cs:
+public static AssetResponseDto ToDto(Asset asset) => new() { ... };
+public static List<AssetResponseDto> ToDtoList(IEnumerable<Asset> assets) => ...;
+public static Asset CreateFileFromDto(CreateAssetDto dto, string userId) => ...;
+```
+
+#### 5. Semantic Subtype Properties + Virtual Duplicate
+
+```csharp
+public sealed class LinkAsset : Asset
+{
+    public string? Url { get; private set; }             // Semantic property
+    internal override void InitializeClone(Asset source, ...) { Url = ...; }
+}
+
+public sealed class ColorAsset : Asset
+{
+    public string? HexCode { get; private set; }         // Semantic property
+    internal override void InitializeClone(Asset source, ...) { HexCode = ...; }
+}
+```
+
+#### 6. Audit Properties + Soft Delete
+
+```csharp
+public DateTime? UpdatedAt { get; private set; }  // Set by all domain methods
+public bool IsDeleted { get; private set; }        // SoftDelete() method
+
+// AppDbContext:
+modelBuilder.Entity<Asset>().HasQueryFilter(a => !a.IsDeleted);
+modelBuilder.Entity<Asset>().HasIndex(a => a.IsDeleted).HasFilter("\"IsDeleted\" = 0");
+```
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `Models/Asset.cs` | Abstract class, protected constructors, private setters, domain methods, audit properties |
+| `Models/AssetTypes.cs` | FileAsset added, all sealed, internal constructors, Url/HexCode properties, InitializeClone overrides |
+| `Models/AssetFactory.cs` | Primitives-only, AssetValidator integration, copySuffix required param, removed FromDto |
+| `Models/AssetValidator.cs` | **NEW** — Centralized validation with GeneratedRegex |
+| `Services/AssetMapper.cs` | **NEW** — DTO↔Entity mapping (replaces Asset.ToDto + AssetFactory.FromDto) |
+| `Services/AssetService.cs` | AssetMapper usage, domain method calls, removed inline validation |
+| `Services/AssetCleanupHelper.cs` | RequiresFileCleanup uses IStorageService.Exists() |
+| `Services/BulkAssetService.cs` | Domain method calls (AssignToGroup, RemoveFromGroup, Reorder) |
+| `Services/CollectionService.cs` | AssetMapper.ToDtoList() |
+| `Services/SearchService.cs` | AssetMapper.ToDtoList() |
+| `Services/SmartCollectionService.cs` | AssetMapper.ToDtoList() |
+| `Data/AppDbContext.cs` | FileAsset TPH mapping, IsDeleted query filter + index, Url/HexCode columns |
+
+### Tech Debt Resolved
+
+| # | Item | Resolution |
+|---|------|-----------|
+| #1 | Public setters | All properties have `private set` — mutations via domain methods |
+| #6 | ToDto() in Entity | Moved to `AssetMapper` (service layer) |
+| #8 | Switch-based Duplicate | Virtual `InitializeClone()` dispatch |
 
 ---
 

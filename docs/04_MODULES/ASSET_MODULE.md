@@ -3,7 +3,7 @@
 > **Domain**: Core (Asset Management)  
 > **Status**: Active  
 > **Owner**: Backend Team  
-> **Last Updated**: 2026-03-08
+> **Last Updated**: 2026-03-13
 
 ---
 
@@ -72,14 +72,18 @@ Bài toán cốt lõi: Quản lý **đa dạng loại asset** (5+ content types)
 ├───────────────────────────────────────────────────────────────────┤
 │ DOMAIN LAYER                                                      │
 │                                                                   │
-│  Asset (base class) ← TPH discriminator: ContentType              │
+│  Asset (abstract) ← TPH discriminator: ContentType                │
+│  ├── FileAsset     (HasPhysicalFile=true)  — generic file         │
 │  ├── ImageAsset    (HasPhysicalFile=true, CanHaveThumbnails=true) │
-│  ├── LinkAsset     (HasPhysicalFile=false)                        │
-│  ├── ColorAsset    (HasPhysicalFile=false)                        │
+│  ├── LinkAsset     (HasPhysicalFile=false, Url property)          │
+│  ├── ColorAsset    (HasPhysicalFile=false, HexCode property)      │
 │  ├── ColorGroupAsset (HasPhysicalFile=false)                      │
 │  └── FolderAsset   (HasPhysicalFile=false)                        │
+│  All subtypes are sealed; all properties have private setters.    │
 │                                                                   │
-│  AssetFactory (static factory — 7 creation methods + Duplicate)   │
+│  AssetFactory (static — 6 create methods + Duplicate)             │
+│  AssetValidator (static — hex/URL/filename validation)            │
+│  AssetMapper (static — DTO↔Entity mapping, service layer)         │
 │  AssetContentType (enum — 6 values + bidirectional DB mapping)    │
 │  AssetResponseDto, CreateAssetDto, UpdateAssetDto, ...            │
 ├───────────────────────────────────────────────────────────────────┤
@@ -218,39 +222,47 @@ public interface IBulkAssetService
 
 ## §4 — Domain Entities
 
-### 4.1 `Asset` (Base Entity — TPH)
+### 4.1 `Asset` (Abstract Base Entity — TPH)
+
+> `Asset` is **abstract** with **protected constructors** and **private setters** on all value properties. Never instantiate directly — use `AssetFactory` to create concrete subtypes.
 
 ```csharp
-public class Asset
+public abstract class Asset
 {
-    // ── Identity ──
-    public int Id { get; set; }
+    // ── Constructors ──
+    protected Asset() { }  // EF Core materialization
+    protected Asset(fileName, filePath, contentType, collectionId, userId, ...); // Domain constructor
+
+    // ── Identity (private set) ──
+    public int Id { get; private set; }
     
-    // ── Core Properties ──
-    public string FileName { get; set; }    // Display name
-    public string FilePath { get; set; }    // Storage path / URL / hex code
-    public string Tags { get; set; }        // Legacy string-based tags
-    public DateTime CreatedAt { get; set; }
-    public AssetContentType ContentType { get; set; }   // TPH discriminator
+    // ── Core Properties (private set — mutation via domain methods only) ──
+    public string FileName { get; private set; }    // Display name
+    public string FilePath { get; private set; }    // Storage path / URL / hex code
+    [Obsolete] public string Tags { get; internal set; }  // Legacy — use AssetTags
+    public DateTime CreatedAt { get; private set; }
+    public AssetContentType ContentType { get; private set; }   // TPH discriminator
     
-    // ── Position & Layout ──
-    public double PositionX { get; set; }
-    public double PositionY { get; set; }
-    public int SortOrder { get; set; }
+    // ── Audit (private set) ──
+    public DateTime? UpdatedAt { get; private set; }
+    public bool IsDeleted { get; private set; }     // Soft-delete flag
     
-    // ── Hierarchy ──
-    public int CollectionId { get; set; }       // Parent collection (FK)
-    public int? GroupId { get; set; }           // Color group (FK, nullable)
-    public int? ParentFolderId { get; set; }    // Folder hierarchy (self-ref FK)
-    public bool IsFolder { get; set; }
+    // ── Position & Layout (private set) ──
+    public double PositionX { get; private set; }
+    public double PositionY { get; private set; }
+    public int SortOrder { get; private set; }
     
-    // ── Ownership ──
-    public string? UserId { get; set; }         // FK → ApplicationUser
+    // ── Hierarchy (private set) ──
+    public int CollectionId { get; private set; }
+    public int? GroupId { get; private set; }
+    public int? ParentFolderId { get; private set; }
+    public bool IsFolder { get; private set; }
+    public string? UserId { get; private set; }
     
-    // ── Thumbnails ──
-    public string? ThumbnailSm { get; set; }    // 150px WebP
-    public string? ThumbnailMd { get; set; }    // 400px WebP
-    public string? ThumbnailLg { get; set; }    // 800px WebP
+    // ── Thumbnails (private set) ──
+    public string? ThumbnailSm { get; private set; }
+    public string? ThumbnailMd { get; private set; }
+    public string? ThumbnailLg { get; private set; }
     
     // ── Navigation ──
     public ICollection<AssetTag> AssetTags { get; set; }
@@ -260,27 +272,35 @@ public class Asset
     // ── Virtual Behavior Properties (TPH Polymorphism) ──
     public virtual bool HasPhysicalFile => true;
     public virtual bool CanHaveThumbnails => false;
-    public virtual bool RequiresFileCleanup => HasPhysicalFile && FilePath.StartsWith("/uploads/");
     
-    // ── Domain Methods ──
+    // ── Domain Methods (the ONLY way to mutate state) ──
+    public void Rename(string newName);         // Guard: ThrowIfNullOrWhiteSpace
+    public void Reorder(int sortOrder);
+    public void AssignToGroup(int groupId);
+    public void RemoveFromGroup();
     public void UpdatePosition(double x, double y);
-    public void ApplyUpdate(UpdateAssetDto dto);
     public void SetThumbnails(string? sm, string? md, string? lg);
     public void MoveToFolder(int? folderId);
     public void MoveToCollection(int collectionId);
+    public void SoftDelete();
     public bool IsOwnedBy(string userId);
-    public AssetResponseDto ToDto();
+    public bool IsSystemAsset { get; }
+    
+    // ── Clone support (internal) ──
+    internal virtual void InitializeClone(Asset source, string userId, string copySuffix, int? targetFolderId);
 }
 ```
 
 **Invariants:**
 | # | Business Rule | Enforcement |
 |---|--------------|-------------|
-| INV-01 | `FileName` cannot be empty | `[Required]` + `ApplyUpdate()` trims |
+| INV-01 | `FileName` cannot be empty | `[Required]` + `Rename()` guard: `ThrowIfNullOrWhiteSpace` |
 | INV-02 | Asset belongs to exactly 1 Collection | `CollectionId` non-nullable FK |
 | INV-03 | Only owner can modify asset | `IsOwnedBy(userId)` check in Service |
-| INV-04 | ImageAsset has physical file | `HasPhysicalFile` override = `true` |
-| INV-05 | Non-image types have no physical file | `HasPhysicalFile` override = `false` |
+| INV-04 | File/ImageAsset has physical file | `HasPhysicalFile` override = `true` |
+| INV-05 | Non-file types have no physical file | `HasPhysicalFile` override = `false` |
+| INV-06 | Properties are immutable outside domain methods | All setters are `private` |
+| INV-07 | Soft-deleted assets excluded from queries | `IsDeleted` global query filter in DbContext |
 
 **Relationships:**
 
@@ -333,7 +353,7 @@ public static class AssetFactory
 | **Consistent initialization** | Mọi caller dùng chung factory → không ai quên set `UserId` hoặc `CreatedAt` |
 | **Duplicate correctness** | `Duplicate()` dùng switch expression để tạo đúng subtype từ `ContentType` enum |
 
-### 4.4 `AssetContentType` Enum
+### 4.6 `AssetContentType` Enum
 
 ```csharp
 public enum AssetContentType
@@ -355,10 +375,11 @@ Với `EnumMappings` class cung cấp bidirectional mapping giữa enum ↔ DB s
 
 | Pattern | Component | Vấn đề giải quyết |
 |---------|-----------|-------------------|
-| **TPH Inheritance** | `Asset` → 5 subtypes | Polymorphic entity với single DB table — không cần JOIN |
-| **Factory Method** | `AssetFactory` (8 static methods) | Tạo đúng TPH subtype, encapsulate creation logic |
-| **Template Method** | `Asset.ToDto()`, `HasPhysicalFile` | Shared mapping logic, type-specific behavior qua override |
-| **Strategy** (planned) | Asset validation per type | Type-specific validation rules |
+| **TPH Inheritance** | `Asset` → 6 sealed subtypes | Polymorphic entity với single DB table — không cần JOIN |
+| **Factory Method** | `AssetFactory` (6 create + Duplicate) | Tạo đúng TPH subtype, integrated validation via `AssetValidator` |
+| **Template Method** | `HasPhysicalFile`, `CanHaveThumbnails`, `InitializeClone` | Type-specific behavior qua virtual override |
+| **Validator** | `AssetValidator` (3 validate + 2 predicate methods) | Centralized domain validation with `[GeneratedRegex]` |
+| **Mapper** | `AssetMapper` (service layer) | DTO↔Entity mapping tách khỏi domain entity |
 | **CQRS** | `Commands/` + `Queries/` (MediatR) | Tách read/write operations, mỗi use case 1 handler |
 | **Mediator** | MediatR `IRequest`/`IRequestHandler` | Decouple Controller khỏi Service |
 | **Observer** | SignalR notification on CRUD | Real-time UI update khi asset thay đổi |
@@ -419,7 +440,7 @@ User (Browser)     React App          Controller           MediatR            As
 | 7 | `AssetService` | `asset.SetThumbnails(sm, md, lg)` | Domain Method |
 | 8 | `AssetService` | `_context.Assets.AddRange()` + `SaveChangesAsync()` | Unit of Work |
 | 9 | `AssetService` | `INotificationService.NotifyAssetChanged()` | Observer |
-| 10 | Return | `List<AssetResponseDto>` via `asset.ToDto()` | Template Method |
+| 10 | Return | `List<AssetResponseDto>` via `AssetMapper.ToDtoList()` | Mapper |
 
 ### 6.2 Delete Asset (with Cleanup)
 
@@ -452,7 +473,7 @@ Controller          MediatR            AssetService         AssetCleanup       S
 
 **Key OOP Decisions:**
 
-1. **`asset.RequiresFileCleanup`** — Polymorphic check. `ImageAsset` returns `true`, `LinkAsset` returns `false`. Service KHÔNG cần biết asset type cụ thể.
+1. **`AssetCleanupHelper.RequiresFileCleanup(asset)`** — Service-layer helper (moved from domain). Uses `IStorageService.Exists()` instead of hardcoded path check. `ImageAsset`/`FileAsset` return `HasPhysicalFile = true`, `LinkAsset` returns `false`. Service KHÔNG cần biết asset type cụ thể.
 2. **`asset.CanHaveThumbnails`** — Chỉ `ImageAsset` override = `true`. Thumbnail cleanup tự động bỏ qua cho non-image types.
 3. **`asset.IsOwnedBy(userId)`** — Domain method encapsulate ownership check. Nếu business rule thay đổi (team ownership), chỉ sửa 1 method.
 
@@ -626,8 +647,10 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
 
 | Test Type | Target | Coverage | Tools |
 |-----------|--------|----------|-------|
-| **Unit Tests** | `AssetFactory` (all 8 methods) | Correct subtype, correct defaults | xUnit |
-| **Unit Tests** | `Asset` domain methods | `UpdatePosition`, `ApplyUpdate`, `IsOwnedBy` | xUnit |
+| **Unit Tests** | `AssetFactory` (6 create + Duplicate) | Correct subtype, correct defaults, validation | xUnit |
+| **Unit Tests** | `AssetValidator` | Hex normalization, URL validation, edge cases | xUnit |
+| **Unit Tests** | `Asset` domain methods | `Rename`, `Reorder`, `AssignToGroup`, `RemoveFromGroup`, `MoveToFolder`, `SoftDelete` | xUnit |
+| **Unit Tests** | `AssetMapper` | DTO mapping correctness for all 6 subtypes | xUnit |
 | **Unit Tests** | `AssetService` (mocked dependencies) | Business logic, edge cases | xUnit, Moq |
 | **Integration Tests** | API endpoints (14 endpoints) | Full pipeline, DB integration | WebApplicationFactory |
 | **Integration Tests** | TPH serialization | Correct discriminator per subtype | SQLite in-memory |
@@ -648,16 +671,16 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
 
 ## §11 — Known Issues & Technical Debt
 
-| # | Issue | Severity | Planned Fix |
-|---|-------|----------|-------------|
-| 1 | `Asset` properties dùng `public set` thay vì `private set` | Medium | Phase: Stabilize (strict encapsulation) |
-| 2 | Chưa có Repository pattern — Service depend trực tiếp `AppDbContext` | Medium | Phase: Modularize (`IAssetRepository`) |
-| 3 | `AssetService` ~280 LOC — gần threshold 300 | Low | Monitor, split nếu thêm methods |
-| 4 | Zero unit test coverage | **Critical** | Phase: Stabilize (priority #1) |
-| 5 | `Tags` property là `string` (legacy) — nên dùng `AssetTag` M:N only | Low | Migration khi deprecate legacy tags |
-| 6 | `ToDto()` mapping nằm trong Entity — nên tách qua AutoMapper hoặc Extension | Low | Phase: Modularize |
-| 7 | `IAssetService` có 14 methods — gần threshold 15 | Low | Monitor, potential ISP split |
-| 8 | `AssetFactory.Duplicate()` dùng switch trên `ContentType` enum | Low | Refactor sang virtual `Clone()` method |
+| # | Issue | Severity | Planned Fix | Status |
+|---|-------|----------|-------------|--------|
+| ~~1~~ | ~~`Asset` public setters~~ | ~~Medium~~ | ~~private setters + domain methods~~ | ✅ **Resolved** — all properties have `private set`, mutations via domain methods only |
+| 2 | Chưa có Repository pattern — Service depend trực tiếp `AppDbContext` | Medium | Phase: Modularize (`IAssetRepository`) | Open |
+| 3 | `AssetService` ~280 LOC — gần threshold 300 | Low | Monitor, split nếu thêm methods | Open |
+| 4 | Zero unit test coverage | **Critical** | Phase: Stabilize (priority #1) | Open |
+| 5 | `Tags` property là `string` (legacy) — marked `[Obsolete]` | Low | Migration khi remove legacy tags | Open |
+| ~~6~~ | ~~`ToDto()` mapping in Entity~~ | ~~Low~~ | ~~Tách qua Mapper~~ | ✅ **Resolved** — moved to `AssetMapper` (service layer) |
+| 7 | `IAssetService` có 14 methods — gần threshold 15 | Low | Monitor, potential ISP split | Open |
+| ~~8~~ | ~~`Duplicate()` switch on ContentType~~ | ~~Low~~ | ~~Virtual Clone method~~ | ✅ **Resolved** — uses `InitializeClone()` virtual dispatch |
 
 ---
 

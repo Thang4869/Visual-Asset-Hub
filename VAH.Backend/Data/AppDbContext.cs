@@ -31,7 +31,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
             // TPH inheritance — use existing ContentType column as discriminator
             entity.HasDiscriminator(a => a.ContentType)
-                  .HasValue<Asset>(AssetContentType.File)
+                  .HasValue<FileAsset>(AssetContentType.File)
                   .HasValue<ImageAsset>(AssetContentType.Image)
                   .HasValue<LinkAsset>(AssetContentType.Link)
                   .HasValue<ColorAsset>(AssetContentType.Color)
@@ -41,8 +41,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             // Ignore virtual behavior properties (not mapped to DB)
             entity.Ignore(a => a.HasPhysicalFile);
             entity.Ignore(a => a.CanHaveThumbnails);
-            entity.Ignore(a => a.RequiresFileCleanup);
             entity.Ignore(a => a.IsSystemAsset);
+
+            // Soft-delete filter — exclude deleted assets from all queries by default
+            entity.HasQueryFilter(a => !a.IsDeleted);
+            entity.HasIndex(a => a.IsDeleted)
+                  .HasDatabaseName("IX_Assets_IsDeleted")
+                  .HasFilter("IsDeleted = 0");
 
             // FK: Asset → Collection (with navigation)
             entity.HasOne(a => a.Collection)
@@ -79,7 +84,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             // Property constraints
             entity.Property(a => a.FileName).HasMaxLength(500);
             entity.Property(a => a.FilePath).HasMaxLength(2048);
+#pragma warning disable CS0618
             entity.Property(a => a.Tags).HasMaxLength(2000);
+#pragma warning restore CS0618
 
             // Enum → string conversion (backward compat with existing DB)
             entity.Property(a => a.ContentType)
@@ -87,6 +94,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                   .HasConversion(
                       v => v.ToDbString(),
                       v => v.ToAssetContentType());
+        });
+
+        // ── TPH subtype-specific columns (nullable in shared table) ──
+        modelBuilder.Entity<LinkAsset>(entity =>
+        {
+            entity.Property(l => l.Url).HasMaxLength(2048);
+        });
+
+        modelBuilder.Entity<ColorAsset>(entity =>
+        {
+            entity.Property(c => c.HexCode).HasMaxLength(50);
         });
 
         // ── Collection table configuration ──

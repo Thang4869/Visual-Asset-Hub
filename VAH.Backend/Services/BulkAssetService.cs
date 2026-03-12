@@ -132,7 +132,10 @@ public class BulkAssetService : IBulkAssetService
         // Set group for each moved asset
         foreach (var asset in movedAssets)
         {
-            asset.GroupId = dto.TargetGroupId;
+            if (dto.TargetGroupId.HasValue)
+                asset.AssignToGroup(dto.TargetGroupId.Value);
+            else
+                asset.RemoveFromGroup();
         }
 
         // Get all existing colors in the target group (excluding the ones being moved)
@@ -172,7 +175,7 @@ public class BulkAssetService : IBulkAssetService
         // Assign sort orders
         for (int i = 0; i < finalOrder.Count; i++)
         {
-            finalOrder[i].SortOrder = i;
+            finalOrder[i].Reorder(i);
         }
 
         await _context.SaveChangesAsync(ct);
