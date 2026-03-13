@@ -16,7 +16,8 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
     public Task Invoke(HttpContext context)
     {
         var headers = context.Response.Headers;
-        headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+        headers["Content-Security-Policy"] =
+            "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'";
         headers["X-Content-Type-Options"] = "nosniff";
         headers["X-Frame-Options"] = "DENY";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
