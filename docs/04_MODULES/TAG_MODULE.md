@@ -108,11 +108,13 @@ The system originally stored tags as comma-separated strings in `Asset.Tags`:
 "react, javascript, frontend"
 ```
 
+
 `MigrateCommaSeparatedTagsAsync()` processes all assets for a user:
 1. Parses comma-separated `Asset.Tags` string
 2. Calls `GetOrCreateTagsAsync` for each parsed tag name
 3. Creates `AssetTag` junction records
-4. Clears the legacy `Asset.Tags` field
+4. (Legacy) Đã comment lại dòng code cập nhật trường `asset.Tags` (chuẩn bị loại bỏ hoàn toàn trường này, chỉ còn dùng AssetTag junction)
+5. Migration mới đồng bộ model, thêm các cột và index cần thiết cho hệ thống tag mới.
 
 ---
 

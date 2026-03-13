@@ -160,7 +160,7 @@ public class TagService : ITagService
             .Where(t => tagIds.Contains(t.Id) && t.UserId == userId)
             .Select(t => t.Name)
             .ToListAsync(ct);
-        asset.Tags = string.Join(",", tagNames);
+        //asset.Tags = string.Join(",", tagNames);
 
         await _context.SaveChangesAsync(ct);
     }
@@ -224,6 +224,7 @@ public class TagService : ITagService
     /// <summary>
     /// Migrate existing comma-separated Tags field to the new many-to-many system.
     /// </summary>
+
     public async Task MigrateCommaSeparatedTagsAsync(string userId, CancellationToken ct = default)
     {
         var assets = await _context.Assets

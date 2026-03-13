@@ -27,7 +27,7 @@
 | `LinksController` | `/api/v1/assets/links` | POST | `RequireAssetWrite` |
 | `BulkAssetsController` | `/api/v1/assets` | POST `bulk-delete`, `bulk-move`, `bulk-move-group`, `bulk-tag` | `RequireAssetWrite` |
 | `CollectionsController` | `/api/v1/collections` | GET, GET `{id}`, GET `{id}/items`, POST, PATCH `{id}`, PUT `{id}`, DELETE `{id}` | `[Authorize]` |
-| `TagsController` | `/api/v1/tags` | GET, GET `{id}`, POST, PUT `{id}`, DELETE `{id}`, GET `asset/{id}`, PUT `asset/{id}`, POST `asset/{id}/add`, POST `asset/{id}/remove`, POST `migrate` | `[Authorize]` |
+| `TagsController` | `/api/v1/tags` | GET, GET `{id}`, POST, PUT `{id}`, DELETE `{id}`, GET `assets/{assetId}`, PUT `assets/{assetId}`, POST `assets/{assetId}` (add), DELETE `assets/{assetId}` (remove), POST `get-or-create`, PUT `assets/{assetId}` (set), POST `migrate` | `[Authorize]` |
 | `SearchController` | `/api/v1/search` | GET `?q=&type=&collectionId=&page=&pageSize=` | `[Authorize]` |
 | `SmartCollectionsController` | `/api/v1/smartcollections` | GET, GET `{id}/items` | `[Authorize]` |
 | `PermissionsController` | `/api/v1/collections/{id}/permissions` | GET, POST, PUT `{permId}`, DELETE `{permId}`, GET `my-role` | `[Authorize]` |
@@ -104,6 +104,11 @@ Response:
 | `Search` | 60 requests (sliding) | 1 minute (6 segments) | `SearchController` |
 
 ## §7 — Versioning
+
+---
+**Ghi chú 2026-03-13:**
+- Đã cập nhật các endpoint tags/assets cho chuẩn hóa RESTful, đồng bộ với migration và service mới.
+- Các thay đổi về domain model, migration, và bảo mật đã được cập nhật trong tài liệu này.
 
 - Current: `/api/v1/` (URL prefix)
 - Strategy: URL-based versioning (simplest for SPA consumption)

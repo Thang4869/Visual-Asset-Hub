@@ -10,9 +10,9 @@
 
 | DTO | Fields |
 |-----|--------|
-| `RegisterDto` | DisplayName (Required), Email (Required, EmailAddress), Password (Required, MinLength 6) |
-| `LoginDto` | Email (Required), Password (Required) |
-| `AuthResponseDto` | Token, Expiration, UserId, Email, DisplayName |
+| `RegisterDto` | DisplayName (Required, MaxLength 100), Email (Required, EmailAddress, MaxLength 256), Password (Required, MinLength 8, MaxLength 100, Regex policy), ConfirmPassword (Required, Compare with Password) |
+| `LoginDto` | Email (Required, EmailAddress), Password (Required) |
+| `AuthResponseDto` | Token, Expiration, RefreshToken, RefreshTokenExpiration, UserId, Email, DisplayName |
 
 ---
 
@@ -77,7 +77,7 @@
 | File | DTOs Defined |
 |------|-------------|
 | `Models/DTOs.cs` | CreateFolderDto, CreateColorDto, UpdateAssetDto, CreateLinkDto, CreateColorGroupDto, ReorderAssetsDto, AssetPositionDto, BulkDeleteDto, BulkMoveDto, BulkMoveGroupDto, BulkTagDto, GrantPermissionDto, UpdatePermissionDto, PermissionInfoDto |
-| `Models/AuthDTOs.cs` | RegisterDto, LoginDto, AuthResponseDto |
+| `Models/AuthDTOs.cs` | RegisterDto, LoginDto, AuthResponseDto, AuthValidationConstants |
 | `Models/Common.cs` | PagedResult\<T\>, PaginationParams, FileUploadConfig, SmartCollectionDefinition |
 | `Models/Tag.cs` | CreateTagDto, UpdateTagDto, AssetTagsDto (inner records) |
 
