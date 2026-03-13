@@ -10,6 +10,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed — Domain Model, Auth, Tag, Security (2026-03-13)
+
+- **Asset domain model**: Thêm thuộc tính `IsDeleted`, `UpdatedAt`, `HexCode`, `Url` cho các subtype; soft-delete với global query filter và filtered index.
+- **Migration mới**: `20260313125712_Update_ApplicationUser_Or_OtherChanges` — đồng bộ model, thêm các cột mới và index cho bảng `Assets`.
+- **Auth DTOs**: Chuẩn hóa validation, thêm xác nhận mật khẩu (`ConfirmPassword`), thêm trường `RefreshToken` và `RefreshTokenExpiration` vào `AuthResponseDto`, sử dụng record và immutable property.
+- **TagService**: Comment lại dòng cập nhật legacy `asset.Tags` (chuẩn bị loại bỏ hoàn toàn trường này), bổ sung migration cho hệ thống tag mới.
+- **SecurityHeadersMiddleware**: Cập nhật CSP cho phép `self`, inline style/script, data: images, connect-src self; tăng cường bảo mật frontend/backend.
+- **Thêm file**: `AuthValidationConstants.cs` — regex policy cho mật khẩu mạnh.
+
 ---
 
 ## [0.5.2] — 2026-03-13
