@@ -10,6 +10,7 @@ namespace VAH.Backend.Models;
 /// </summary>
 public sealed class UploadedFileDto : IUploadedFile
 {
+    private const int MaxFileNameLength = 260;
     /// <summary>
     /// Creates a synchronous-upload descriptor.
     /// <para>The <see cref="OpenStream"/> factory returns a <see cref="Stream"/> that the caller MUST dispose when finished.</para>
@@ -78,77 +79,14 @@ public sealed class UploadedFileDto : IUploadedFile
         };
     }
 
-    /// <summary>
-    /// Validates that <see cref="Length"/> equals the actual bytes available from the stream factory.
-    /// The returned stream is disposed by this method; callers should not assume the stream remains open.
-    /// </summary>
-    public async Task<bool> ValidateLengthAsync(CancellationToken cancellationToken = default)
-    {
-        if (Length < 0)
-            return false;
-
-        if (OpenStreamAsync != null)
-        {
-            await using var s = await OpenStreamAsync(cancellationToken).ConfigureAwait(false);
-            return await CompareStreamLengthAsync(s, Length, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (OpenStream != null)
-        {
-            using var s = OpenStream();
-            return CompareStreamLength(s, Length, cancellationToken);
-        }
-
-        throw new InvalidOperationException("No stream factory available to validate length.");
-    }
-
-    private static bool CompareStreamLength(Stream s, long expected, CancellationToken cancellationToken)
-    {
-        if (s.CanSeek)
-        {
-            return s.Length == expected;
-        }
-
-        Span<byte> buffer = stackalloc byte[8192];
-        long total = 0;
-        int read;
-        while ((read = s.Read(buffer)) > 0)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            total += read;
-            if (total > expected)
-                return false;
-        }
-
-        return total == expected;
-    }
-
-    private static async Task<bool> CompareStreamLengthAsync(Stream s, long expected, CancellationToken cancellationToken)
-    {
-        if (s.CanSeek)
-        {
-            return s.Length == expected;
-        }
-
-        var buffer = new byte[8192];
-        long total = 0;
-        int read;
-        while ((read = await s.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
-        {
-            total += read;
-            if (total > expected)
-                return false;
-        }
-
-        return total == expected;
-    }
+    // Validation logic has been moved to a dedicated validator (IUploadedFileValidator / UploadedFileValidator)
 
     private static string ValidateFileName(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))
             throw new ArgumentException("File name is required.", nameof(fileName));
 
-        if (fileName.Length > 260)
+        if (fileName.Length > MaxFileNameLength)
             throw new ArgumentException("File name is too long.", nameof(fileName));
 
         // Disallow path separators and invalid file name characters to avoid path traversal or surprises.

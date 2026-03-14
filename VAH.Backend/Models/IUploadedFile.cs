@@ -20,10 +20,4 @@ public interface IUploadedFile
     /// Returns a serializable metadata-only DTO suitable for transport/serialization boundaries.
     /// </summary>
     UploadedFileMetadataDto CreateMetadata();
-
-    /// <summary>
-    /// Optionally validates that the provided <see cref="Length"/> matches the actual bytes available from the stream factory.
-    /// Implementations that cannot check should throw <see cref="InvalidOperationException"/>.
-    /// </summary>
-    Task<bool> ValidateLengthAsync(CancellationToken cancellationToken = default);
 }

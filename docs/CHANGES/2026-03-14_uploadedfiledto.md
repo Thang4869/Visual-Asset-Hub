@@ -5,7 +5,7 @@ Summary
 - Add `UploadedFileMetadataDto` (serializable) and `CreateMetadata()` to produce a metadata-only DTO for transport boundaries.
 - Add `OpenStreamAsync` overload so callers can obtain async streams via `Func<CancellationToken, Task<Stream>>`.
 - Add validation: non-negative `Length`, filename policy (no invalid chars, no directory separators, max length 260), and constructor guards.
-- Add `ValidateLengthAsync` to optionally verify that `Length` matches actual stream bytes (supports both sync and async factories).
+- Add `IUploadedFileValidator`/`UploadedFileValidator` to optionally verify that `Length` matches actual stream bytes (supports both sync and async factories).
 - Add XML docs clarifying ownership: stream factories return Streams that the caller MUST dispose.
 
 Why
@@ -22,10 +22,11 @@ Files changed
 Migration / Usage notes
 - If code previously serialized `UploadedFileDto` directly, switch to passing `UploadedFileMetadataDto` across the wire instead.
 - Callers receiving a sync/async stream factory must dispose the returned `Stream`.
-- To verify length programmatically, call `ValidateLengthAsync()`; this will open and consume the stream internally.
+- To verify length programmatically, use `IUploadedFileValidator.ValidateLengthAsync()` (see `UploadedFileValidator`). This will open and consume the stream internally.
 
 Tests
-- Unit tests should cover constructor validation, `CreateMetadata()`, and `ValidateLengthAsync()` behaviours.
+- Unit tests should cover constructor validation and `CreateMetadata()`.
+- Add unit tests for `IUploadedFileValidator` behaviours (seekable/non-seekable streams, mismatched lengths, cancellation, null stream factory).
 
 Follow-up
 - Add unit tests in the upcoming sprint before merging to `main`.
