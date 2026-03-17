@@ -23,7 +23,7 @@ public class Collection
     public DateTime CreatedAt { get; set; }
 
     [MaxLength(20)]
-    public string Color { get; set; } = "#007bff";
+    public string Color { get; internal set; } = "#007bff";
 
     public CollectionType Type { get; set; } = CollectionType.Default;
 
@@ -66,9 +66,21 @@ public class Collection
     {
         if (dto.Name != null) Name = dto.Name.Trim();
         if (dto.Description != null) Description = dto.Description;
-        if (dto.Color != null) Color = dto.Color;
+        if (dto.Color != null)
+        {
+            if (ValueObjects.ColorCode.TryParse(dto.Color, out var code))
+                SetColor(code);
+            else
+                throw new ArgumentException($"Invalid color code: {dto.Color}");
+        }
         if (dto.Type.HasValue) Type = dto.Type.Value;
         if (dto.Order.HasValue) Order = dto.Order.Value;
         if (dto.LayoutType.HasValue) LayoutType = dto.LayoutType.Value;
+    }
+
+    /// <summary>Set color via a value object.</summary>
+    public void SetColor(ValueObjects.ColorCode code)
+    {
+        Color = code.Value;
     }
 }
