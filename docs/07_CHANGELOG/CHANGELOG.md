@@ -10,6 +10,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed — ApplicationUser Refactor (2026-03-17)
+
+- **`ApplicationUser` encapsulation**: Limit public mutability of profile fields; `DisplayName` and `CreatedAt` now have private setters.
+- **Domain method `SetDisplayName(string)`**: Adds validation and sets `UpdatedAt` audit timestamp.
+- **DB migration**: `AddApplicationUserUpdatedAt` adds nullable `UpdatedAt` column — apply migration to persist audit timestamps.
+- **`AuthService` updated**: Constructs `ApplicationUser` via new ctor (`new ApplicationUser(dto.DisplayName)`) instead of mutating properties.
+
+### Changed — UploadedFileDto Improvements (2026-03-14)
+
+- **`IUploadedFile` interface**: `UploadedFileDto` implements `IUploadedFile` to improve testability and decouple from ASP.NET Core types.
+- **`UploadedFileMetadataDto`**: Serializable metadata-only DTO for transport boundaries; use instead of serializing full `UploadedFileDto`.
+- **Async stream factory**: `OpenStreamAsync` overload returns `Func<CancellationToken, Task<Stream>>` for async I/O patterns; callers must dispose returned streams.
+- **Validation & validator**: Filename policy (no invalid chars/separators, max 260), non-negative `Length` validation, and `IUploadedFileValidator`/`UploadedFileValidator` to optionally verify stream length.
+- **Testing notes**: Add unit tests for constructor validation, `CreateMetadata()`, and validator behaviours (seekable/non-seekable streams, mismatched lengths, cancellation).
+
 ### Changed — Domain Model, Auth, Tag, Security (2026-03-13)
 
 - **Asset domain model**: Thêm thuộc tính `IsDeleted`, `UpdatedAt`, `HexCode`, `Url` cho các subtype; soft-delete với global query filter và filtered index.
