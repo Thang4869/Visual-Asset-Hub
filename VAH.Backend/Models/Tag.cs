@@ -21,7 +21,7 @@ public class Tag
 
     /// <summary>Optional color for tag badge display.</summary>
     [MaxLength(20)]
-    public string? Color { get; set; }
+    public string? Color { get; internal set; }
 
     /// <summary>Owner of this tag. Null for system/shared tags.</summary>
     public string? UserId { get; set; }
@@ -47,7 +47,18 @@ public class Tag
         if (!string.IsNullOrWhiteSpace(dto.Name))
             SetName(dto.Name);
         if (dto.Color != null)
-            Color = dto.Color;
+        {
+            if (ValueObjects.ColorCode.TryParse(dto.Color, out var code))
+                SetColor(code);
+            else
+                throw new ArgumentException($"Invalid color code: {dto.Color}");
+        }
+    }
+
+    /// <summary>Set color via a value object.</summary>
+    public void SetColor(ValueObjects.ColorCode code)
+    {
+        Color = code.Value;
     }
 
     /// <summary>Check if this tag is owned by a specific user.</summary>

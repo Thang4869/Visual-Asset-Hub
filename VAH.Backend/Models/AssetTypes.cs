@@ -90,6 +90,13 @@ public sealed class ColorAsset : Asset
         base.InitializeClone(source, userId, copySuffix, targetFolderId);
         HexCode = source is ColorAsset color ? color.HexCode : source.FilePath;
     }
+
+    /// <summary>Set the hex code using a value object.</summary>
+    public void SetHexCode(ValueObjects.ColorCode code)
+    {
+        HexCode = code.Value;
+        TouchUpdatedAt();
+    }
 }
 
 /// <summary>Color group — organizes color swatches together.</summary>

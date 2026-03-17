@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using VAH.Backend.Models.ValueObjects;
 
 namespace VAH.Backend.Models;
 
@@ -117,12 +118,25 @@ public abstract class Asset
         PositionY = y;
     }
 
+    /// <summary>Update canvas position coordinates using a value object.</summary>
+    public void UpdatePosition(AssetPosition pos)
+    {
+        UpdatePosition(pos.X, pos.Y);
+    }
+
     /// <summary>Rename this asset.</summary>
     public void Rename(string newName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
         FileName = newName.Trim();
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Rename using a validated `FileName` value object.</summary>
+    public void Rename(ValueObjects.FileName fileName)
+    {
+        if (fileName.Value == null) throw new ArgumentException("FileName is required.");
+        Rename(fileName.Value);
     }
 
     /// <summary>Change the sort position of this asset.</summary>
@@ -180,6 +194,9 @@ public abstract class Asset
         IsDeleted = true;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    /// <summary>Allow subclasses to record an update timestamp without exposing setter.</summary>
+    protected void TouchUpdatedAt() => UpdatedAt = DateTime.UtcNow;
 
     // ── Clone support (internal — used by AssetFactory.Duplicate) ──
 
