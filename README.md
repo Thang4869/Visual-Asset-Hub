@@ -118,6 +118,11 @@ VAH/
 │   ├── 01_DESIGN_PHILOSOPHY/          # OOP standards, SOLID, pattern catalog
 │   ├── 02_STANDARDS/                  # Coding & API conventions
 │   ├── 03_ARCHITECTURE/               # Topology, domain model, ADRs
+## Recent backend maintenance notes
+
+See the changelog for developer-facing notes about small refactors and migrations:
+- [2026-03-17 — ApplicationUser: limit public mutability and add audit](docs/CHANGES/2026-03-17_applicationuser_refactor.md)
+
 │   ├── 04_MODULES/                    # 9 module docs + template
 │   ├── 05_FRONTEND/                   # Components, state, API layer
 │   ├── 06_OPERATIONS/                 # Runbook, troubleshooting

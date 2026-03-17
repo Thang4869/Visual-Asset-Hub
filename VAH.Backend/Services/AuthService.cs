@@ -33,12 +33,10 @@ public class AuthService : IAuthService
         if (existingUser != null)
             throw new InvalidOperationException("Email đã được sử dụng.");
 
-        var user = new ApplicationUser
+        var user = new ApplicationUser(dto.DisplayName)
         {
             UserName = dto.Email,
-            Email = dto.Email,
-            DisplayName = dto.DisplayName,
-            CreatedAt = DateTime.UtcNow
+            Email = dto.Email
         };
 
         var result = await _userManager.CreateAsync(user, dto.Password);
