@@ -326,6 +326,10 @@ public static class ServiceCollectionExtensions
         // Asset validator: default wrapper that delegates to the static AssetValidator helper.
         // Registered as singleton because it's stateless and forwards to the static helper.
         services.AddSingleton<IAssetValidator>(_ => DefaultAssetValidator.Instance);
+        // Asset factory: instance implementation that uses the injectable validator.
+        services.AddScoped<IAssetFactory, AssetFactoryImpl>();
+        // Asset mapper: injectable mapping service used across services.
+        services.AddSingleton<IAssetMapper, AssetMapper>();
 
         return services;
     }
