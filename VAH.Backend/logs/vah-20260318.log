@@ -1,0 +1,7 @@
+2026-03-18 16:41:36.814 +07:00 [INF] (VAH.Backend.Extensions.DatabaseMigrationInitializer) Applying pending EF Core migrations (Development mode)...
+2026-03-18 16:41:37.305 +07:00 [WRN] (Microsoft.EntityFrameworkCore.Model.Validation) Entity 'Asset' has a global query filter defined and is the required end of a relationship with the entity 'AssetTag'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-03-18 16:41:37.738 +07:00 [INF] (VAH.Backend.Extensions.DatabaseMigrationInitializer) Database migration completed
+2026-03-18 16:41:37.981 +07:00 [INF] (Microsoft.Hosting.Lifetime) Now listening on: http://localhost:5027
+2026-03-18 16:41:37.983 +07:00 [INF] (Microsoft.Hosting.Lifetime) Application started. Press Ctrl+C to shut down.
+2026-03-18 16:41:37.988 +07:00 [INF] (Microsoft.Hosting.Lifetime) Hosting environment: Development
+2026-03-18 16:41:37.990 +07:00 [INF] (Microsoft.Hosting.Lifetime) Content root path: B:\1A\VAH.Backend
