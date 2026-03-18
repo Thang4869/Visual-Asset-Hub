@@ -13,6 +13,7 @@ public class CollectionService : ICollectionService
     private readonly IDistributedCache _cache;
     private readonly INotificationService _notifier;
     private readonly IPermissionService _permissionService;
+    private readonly IAssetMapper _assetMapper;
 
     private static readonly DistributedCacheEntryOptions CacheOptions = new()
     {
@@ -20,13 +21,14 @@ public class CollectionService : ICollectionService
         SlidingExpiration = TimeSpan.FromMinutes(2)
     };
 
-    public CollectionService(AppDbContext context, ILogger<CollectionService> logger, IDistributedCache cache, INotificationService notifier, IPermissionService permissionService)
+    public CollectionService(AppDbContext context, ILogger<CollectionService> logger, IDistributedCache cache, INotificationService notifier, IPermissionService permissionService, IAssetMapper assetMapper)
     {
         _context = context;
         _logger = logger;
         _cache = cache;
         _notifier = notifier;
         _permissionService = permissionService;
+        _assetMapper = assetMapper;
     }
 
     private string CacheKey(string userId) => $"collections:all:{userId}";
@@ -135,7 +137,7 @@ public class CollectionService : ICollectionService
         return new CollectionWithItemsResult
         {
             Collection = collection,
-            Items = AssetMapper.ToDtoList(items),
+            Items = _assetMapper.ToDtoList(items),
             SubCollections = subcollections
         };
     }

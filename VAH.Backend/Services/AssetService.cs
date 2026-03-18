@@ -16,6 +16,8 @@ public class AssetService : IAssetService
     private readonly ILogger<AssetService> _logger;
     private readonly IPermissionService _permissions;
     private readonly IAssetValidator _assetValidator;
+    private readonly IAssetFactory _assetFactory;
+    private readonly IAssetMapper _assetMapper;
 
     public AssetService(
         AppDbContext context,
@@ -26,7 +28,9 @@ public class AssetService : IAssetService
         AssetCleanupHelper cleanup,
         ILogger<AssetService> logger,
         IPermissionService permissions,
-        IAssetValidator assetValidator)
+        IAssetValidator assetValidator,
+        IAssetFactory assetFactory,
+        IAssetMapper assetMapper)
     {
         _context = context;
         _storage = storage;
@@ -37,6 +41,8 @@ public class AssetService : IAssetService
         _logger = logger;
         _permissions = permissions;
         _assetValidator = assetValidator;
+        _assetFactory = assetFactory;
+        _assetMapper = assetMapper;
     }
 
     // ──── Private helpers ────
@@ -108,7 +114,7 @@ public class AssetService : IAssetService
 
         return new PagedResult<AssetResponseDto>
         {
-            Items = AssetMapper.ToDtoList(items),
+            Items = _assetMapper.ToDtoList(items),
             TotalCount = totalCount,
             Page = pagination.Page,
             PageSize = pagination.PageSize
@@ -118,7 +124,7 @@ public class AssetService : IAssetService
     public async Task<AssetResponseDto> GetByIdAsync(int id, string userId, CancellationToken ct = default)
     {
         var asset = await FindAssetWithAccessAsync(id, userId, CollectionRoles.Viewer, ct);
-        return AssetMapper.ToDto(asset);
+        return _assetMapper.ToDto(asset);
     }
 
     public async Task<AssetResponseDto> CreateAssetAsync(CreateAssetDto dto, string userId, CancellationToken ct = default)
@@ -128,12 +134,12 @@ public class AssetService : IAssetService
 
         var validatedFileName = _assetValidator.ValidateFileName(dto.FileName.Trim());
         var filePath = dto.FilePath?.Trim() ?? throw new ArgumentException("File path is required.");
-        var asset = AssetFactory.CreateFile(validatedFileName, filePath, dto.CollectionId, userId, dto.ParentFolderId);
+        var asset = _assetFactory.CreateFile(validatedFileName, filePath, dto.CollectionId, userId, dto.ParentFolderId);
 
         _context.Assets.Add(asset);
         await _context.SaveChangesAsync(ct);
         await _notifier.NotifyAsync(userId, "AssetCreated", new { asset.Id, asset.FileName }, ct);
-        return AssetMapper.ToDto(asset);
+        return _assetMapper.ToDto(asset);
     }
 
     public async Task<IReadOnlyList<AssetResponseDto>> UploadFilesAsync(IReadOnlyCollection<UploadedFileDto> files, int collectionId, int? folderId, string userId, CancellationToken ct = default)
@@ -190,8 +196,8 @@ public class AssetService : IAssetService
 
             // Create correct subtype based on MIME type
             var asset = contentType?.StartsWith("image") == true
-                ? (Asset)AssetFactory.CreateImage(validatedFileName, filePath, collectionId, assetOwner, folderId)
-                : AssetFactory.CreateFile(validatedFileName, filePath, collectionId, assetOwner, folderId);
+                ? (Asset)_assetFactory.CreateImage(validatedFileName, filePath, collectionId, assetOwner, folderId)
+                : _assetFactory.CreateFile(validatedFileName, filePath, collectionId, assetOwner, folderId);
 
             _context.Assets.Add(asset);
             createdAssets.Add(asset);
@@ -224,7 +230,7 @@ public class AssetService : IAssetService
             await _context.SaveChangesAsync(ct);
 
         await _notifier.NotifyAsync(userId, "AssetsUploaded", new { count = createdAssets.Count, collectionId }, ct);
-        return AssetMapper.ToDtoList(createdAssets);
+        return _assetMapper.ToDtoList(createdAssets);
     }
 
     public async Task<AssetResponseDto> UpdatePositionAsync(int id, double positionX, double positionY, string userId, CancellationToken ct = default)
@@ -234,7 +240,7 @@ public class AssetService : IAssetService
         asset.UpdatePosition(positionX, positionY);
         await _context.SaveChangesAsync(ct);
 
-        return AssetMapper.ToDto(asset);
+        return _assetMapper.ToDto(asset);
     }
 
     public async Task<AssetResponseDto> CreateFolderAsync(CreateFolderDto dto, string userId, CancellationToken ct = default)
@@ -244,24 +250,24 @@ public class AssetService : IAssetService
 
         var validatedName = _assetValidator.ValidateFileName(dto.FolderName.Trim());
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
-        var folder = AssetFactory.CreateFolder(validatedName, dto.CollectionId, ownerId, dto.ParentFolderId);
+        var folder = _assetFactory.CreateFolder(validatedName, dto.CollectionId, ownerId, dto.ParentFolderId);
 
         _context.Assets.Add(folder);
         await _context.SaveChangesAsync(ct);
-        return AssetMapper.ToDto(folder);
+        return _assetMapper.ToDto(folder);
     }
 
     public async Task<AssetResponseDto> CreateColorAsync(CreateColorDto dto, string userId, CancellationToken ct = default)
     {
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
         var normalized = _assetValidator.NormalizeHexColor(dto.ColorCode);
-        var color = AssetFactory.CreateColor(
+        var color = _assetFactory.CreateColor(
             normalized, dto.CollectionId, ownerId,
             dto.ColorName, dto.GroupId, dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(color);
         await _context.SaveChangesAsync(ct);
-        return AssetMapper.ToDto(color);
+        return _assetMapper.ToDto(color);
     }
 
     public async Task<AssetResponseDto> CreateColorGroupAsync(CreateColorGroupDto dto, string userId, CancellationToken ct = default)
@@ -271,13 +277,13 @@ public class AssetService : IAssetService
 
         var validatedGroupName = _assetValidator.ValidateFileName(dto.GroupName.Trim());
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
-        var group = AssetFactory.CreateColorGroup(
+        var group = _assetFactory.CreateColorGroup(
             validatedGroupName, dto.CollectionId, ownerId,
             dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(group);
         await _context.SaveChangesAsync(ct);
-        return AssetMapper.ToDto(group);
+        return _assetMapper.ToDto(group);
     }
 
     public async Task<AssetResponseDto> CreateLinkAsync(CreateLinkDto dto, string userId, CancellationToken ct = default)
@@ -285,12 +291,12 @@ public class AssetService : IAssetService
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
         var validatedName = _assetValidator.ValidateFileName(dto.Name ?? string.Empty);
         var validatedUrl = _assetValidator.ValidateUrl(dto.Url);
-        var link = AssetFactory.CreateLink(
+        var link = _assetFactory.CreateLink(
             validatedName, validatedUrl, dto.CollectionId, ownerId, dto.ParentFolderId);
 
         _context.Assets.Add(link);
         await _context.SaveChangesAsync(ct);
-        return AssetMapper.ToDto(link);
+        return _assetMapper.ToDto(link);
     }
 
     public async Task<AssetResponseDto> UpdateAssetAsync(int id, UpdateAssetDto dto, string userId, CancellationToken ct = default)
@@ -311,7 +317,7 @@ public class AssetService : IAssetService
             asset.MoveToFolder(dto.ParentFolderId.Value);
 
         await _context.SaveChangesAsync(ct);
-        return AssetMapper.ToDto(asset);
+        return _assetMapper.ToDto(asset);
     }
 
     public async Task<bool> DeleteAssetAsync(int id, string userId, CancellationToken ct = default)
@@ -385,18 +391,18 @@ public class AssetService : IAssetService
             if (a.UserId == userId || await _permissions.HasPermissionAsync(a.CollectionId, userId, CollectionRoles.Viewer))
                 result.Add(a);
         }
-        return AssetMapper.ToDtoList(result);
+        return _assetMapper.ToDtoList(result);
     }
 
     public async Task<AssetResponseDto> DuplicateAssetAsync(int id, int? targetFolderId, string userId, CancellationToken ct = default)
     {
         var source = await FindAssetWithAccessAsync(id, userId, CollectionRoles.Editor, ct);
 
-        var clone = AssetFactory.Duplicate(source, userId, copySuffix: " (copy)", targetFolderId);
+        var clone = _assetFactory.Duplicate(source, userId, copySuffix: " (copy)", targetFolderId);
 
         _context.Assets.Add(clone);
         await _context.SaveChangesAsync(ct);
         await _notifier.NotifyAsync(userId, "AssetCreated", new { clone.Id, clone.FileName }, ct);
-        return AssetMapper.ToDto(clone);
+        return _assetMapper.ToDto(clone);
     }
 }

@@ -1,6 +1,6 @@
 # CHANGELOG
 
-> **Last Updated**: 2026-03-13
+> **Last Updated**: 2026-03-19
 
 All notable changes to the Visual Asset Hub project.
 
@@ -9,6 +9,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ---
 
 ## [Unreleased]
+
+### Refactored — DI-ify Asset Factory & Mapper (2026-03-19)
+
+- **Description**: Refactor `AssetFactory` and `AssetMapper` from static helpers into DI-friendly abstractions. Introduced `IAssetFactory` + `AssetFactoryImpl` and `IAssetMapper` + `AssetMapper` (instance), registered via `ServiceCollectionExtensions` and injected into consuming services.
+- **Files touched**: `Models/IAssetFactory.cs`, `Models/AssetFactoryImpl.cs`, `Models/AssetFactory.cs` (facade), `Services/IAssetMapper.cs`, `Services/AssetMapper.cs`, `Extensions/ServiceCollectionExtensions.cs`, `Services/AssetService.cs`, `Services/CollectionService.cs`, `Services/SearchService.cs`, `Services/SmartCollectionService.cs`.
+- **Notes**: Backward-compatible static façade left in place (`AssetFactory`) delegating to a default impl for callers not yet migrated. No DB schema or API contract changes. Update unit tests to mock the new interfaces where appropriate.
+
 
 ### Changed — ApplicationUser Refactor (2026-03-17)
 
