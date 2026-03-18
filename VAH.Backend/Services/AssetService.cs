@@ -15,6 +15,7 @@ public class AssetService : IAssetService
     private readonly AssetCleanupHelper _cleanup;
     private readonly ILogger<AssetService> _logger;
     private readonly IPermissionService _permissions;
+    private readonly IAssetValidator _assetValidator;
 
     public AssetService(
         AppDbContext context,
@@ -24,7 +25,8 @@ public class AssetService : IAssetService
         INotificationService notifier,
         AssetCleanupHelper cleanup,
         ILogger<AssetService> logger,
-        IPermissionService permissions)
+        IPermissionService permissions,
+        IAssetValidator assetValidator)
     {
         _context = context;
         _storage = storage;
@@ -34,6 +36,7 @@ public class AssetService : IAssetService
         _cleanup = cleanup;
         _logger = logger;
         _permissions = permissions;
+        _assetValidator = assetValidator;
     }
 
     // ──── Private helpers ────
@@ -120,7 +123,13 @@ public class AssetService : IAssetService
 
     public async Task<AssetResponseDto> CreateAssetAsync(CreateAssetDto dto, string userId, CancellationToken ct = default)
     {
-        var asset = AssetMapper.CreateFileFromDto(dto, userId);
+        if (string.IsNullOrWhiteSpace(dto.FileName))
+            throw new ArgumentException("File name is required.");
+
+        var validatedFileName = _assetValidator.ValidateFileName(dto.FileName.Trim());
+        var filePath = dto.FilePath?.Trim() ?? throw new ArgumentException("File path is required.");
+        var asset = AssetFactory.CreateFile(validatedFileName, filePath, dto.CollectionId, userId, dto.ParentFolderId);
+
         _context.Assets.Add(asset);
         await _context.SaveChangesAsync(ct);
         await _notifier.NotifyAsync(userId, "AssetCreated", new { asset.Id, asset.FileName }, ct);
@@ -161,8 +170,9 @@ public class AssetService : IAssetService
             if (file.Length == 0)
                 continue;
 
-            // Validate extension
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            // Validate file name and extension
+            var validatedFileName = _assetValidator.ValidateFileName(file.FileName);
+            var extension = Path.GetExtension(validatedFileName).ToLowerInvariant();
             if (!_uploadConfig.AllowedExtensions.Contains(extension))
                 throw new ArgumentException(
                     $"File type '{extension}' is not allowed. Allowed: {string.Join(", ", _uploadConfig.AllowedExtensions)}");
@@ -176,12 +186,12 @@ public class AssetService : IAssetService
 
             // Upload via storage service
             await using var stream = file.OpenStream();
-            var filePath = await _storage.UploadAsync(stream, file.FileName, contentType ?? "application/octet-stream");
+            var filePath = await _storage.UploadAsync(stream, validatedFileName, contentType ?? "application/octet-stream");
 
             // Create correct subtype based on MIME type
             var asset = contentType?.StartsWith("image") == true
-                ? (Asset)AssetFactory.CreateImage(file.FileName, filePath, collectionId, assetOwner, folderId)
-                : AssetFactory.CreateFile(file.FileName, filePath, collectionId, assetOwner, folderId);
+                ? (Asset)AssetFactory.CreateImage(validatedFileName, filePath, collectionId, assetOwner, folderId)
+                : AssetFactory.CreateFile(validatedFileName, filePath, collectionId, assetOwner, folderId);
 
             _context.Assets.Add(asset);
             createdAssets.Add(asset);
@@ -232,8 +242,9 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.FolderName))
             throw new ArgumentException("Folder name is required.");
 
+        var validatedName = _assetValidator.ValidateFileName(dto.FolderName.Trim());
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
-        var folder = AssetFactory.CreateFolder(dto.FolderName.Trim(), dto.CollectionId, ownerId, dto.ParentFolderId);
+        var folder = AssetFactory.CreateFolder(validatedName, dto.CollectionId, ownerId, dto.ParentFolderId);
 
         _context.Assets.Add(folder);
         await _context.SaveChangesAsync(ct);
@@ -243,8 +254,9 @@ public class AssetService : IAssetService
     public async Task<AssetResponseDto> CreateColorAsync(CreateColorDto dto, string userId, CancellationToken ct = default)
     {
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
+        var normalized = _assetValidator.NormalizeHexColor(dto.ColorCode);
         var color = AssetFactory.CreateColor(
-            dto.ColorCode, dto.CollectionId, ownerId,
+            normalized, dto.CollectionId, ownerId,
             dto.ColorName, dto.GroupId, dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(color);
@@ -257,9 +269,10 @@ public class AssetService : IAssetService
         if (string.IsNullOrWhiteSpace(dto.GroupName))
             throw new ArgumentException("Group name is required.");
 
+        var validatedGroupName = _assetValidator.ValidateFileName(dto.GroupName.Trim());
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
         var group = AssetFactory.CreateColorGroup(
-            dto.GroupName.Trim(), dto.CollectionId, ownerId,
+            validatedGroupName, dto.CollectionId, ownerId,
             dto.ParentFolderId, dto.SortOrder ?? 0);
 
         _context.Assets.Add(group);
@@ -270,8 +283,10 @@ public class AssetService : IAssetService
     public async Task<AssetResponseDto> CreateLinkAsync(CreateLinkDto dto, string userId, CancellationToken ct = default)
     {
         var ownerId = await ResolveAssetOwnerAsync(dto.CollectionId, userId, ct);
+        var validatedName = _assetValidator.ValidateFileName(dto.Name ?? string.Empty);
+        var validatedUrl = _assetValidator.ValidateUrl(dto.Url);
         var link = AssetFactory.CreateLink(
-            dto.Name, dto.Url, dto.CollectionId, ownerId, dto.ParentFolderId);
+            validatedName, validatedUrl, dto.CollectionId, ownerId, dto.ParentFolderId);
 
         _context.Assets.Add(link);
         await _context.SaveChangesAsync(ct);

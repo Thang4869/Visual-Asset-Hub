@@ -323,6 +323,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAssetService, AssetService>();
         services.AddScoped<IBulkAssetService, BulkAssetService>();
         services.AddScoped<IThumbnailService, ThumbnailService>();
+        // Asset validator: default wrapper that delegates to the static AssetValidator helper.
+        // Registered as singleton because it's stateless and forwards to the static helper.
+        services.AddSingleton<IAssetValidator>(_ => DefaultAssetValidator.Instance);
 
         return services;
     }
