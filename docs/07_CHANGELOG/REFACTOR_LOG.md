@@ -156,6 +156,121 @@ modelBuilder.Entity<Asset>().HasIndex(a => a.IsDeleted).HasFilter("\"IsDeleted\"
 
 ---
 
+## RF-013 — DI-ify Asset Factory & Mapper (IAssetFactory / IAssetMapper)
+
+**Date**: 2026-03-19
+**Scope**: `Models/AssetFactory*`, `Models/AssetFactoryImpl`, `Models/IAssetFactory`, `Services/AssetMapper`, `Services/IAssetMapper`, DI registration, consumers in services (`AssetService`, `CollectionService`, `SearchService`, `SmartCollectionService`)
+**Branch**: `refactor/di-assetfactory-assetmapper`
+
+### Summary
+
+Tách các helper `AssetFactory` và `AssetMapper` từ static sang các abstraction inject được. Mục tiêu là cải thiện testability và cho phép đổi chính sách validate/runtime behavior bằng DI. Giữ một facade static ngắn hạn để bảo toàn tương thích với code chưa migrate.
+
+### Key Changes
+
+#### 1. Instance `IAssetFactory` + `AssetFactoryImpl`
+
+- **Before**: `AssetFactory` là static class chứa toàn bộ logic tạo các subtype (`CreateFile`, `CreateImage`, `Duplicate`, ...`) kèm validation trực tiếp bằng `ArgumentException` và `AssetValidator` static.
+- **After**: Thêm `IAssetFactory` (interface) và `AssetFactoryImpl` (concrete) nhận `IAssetValidator` qua constructor. `AssetFactoryImpl` thực hiện validation/delegation; `AssetFactory` static giờ là façade dùng `_impl = new AssetFactoryImpl(DefaultAssetValidator.Instance)` để giữ backward compatibility.
+
+Snippet — trước
+```csharp
+// AssetFactory.cs (before)
+public static FileAsset CreateFile(string fileName, string filePath, int collectionId, string userId, int? parentFolderId = null)
+{
+    ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+    ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+    ArgumentException.ThrowIfNullOrWhiteSpace(userId);
+
+    return new(fileName, filePath, collectionId, userId, parentFolderId);
+}
+```
+
+Snippet — sau
+```csharp
+// AssetFactory.cs (facade)
+private static readonly IAssetFactory _impl = new AssetFactoryImpl(DefaultAssetValidator.Instance);
+public static FileAsset CreateFile(...) => _impl.CreateFile(...);
+
+// AssetFactoryImpl.cs
+public FileAsset CreateFile(...) {
+    ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+    // validation via injected IAssetValidator where needed
+    return new(...);
+}
+```
+
+#### 2. `AssetMapper` → `IAssetMapper` (instance)
+
+- **Before**: `AssetMapper` static helper with `ToDto` and `ToDtoList`.
+- **After**: `AssetMapper` implements `IAssetMapper` with instance methods. Registered as `Singleton` in DI and injected into services.
+
+Snippet — trước
+```csharp
+public static List<AssetResponseDto> ToDtoList(IEnumerable<Asset> assets)
+    => assets.Select(ToDto).ToList();
+```
+
+Snippet — sau
+```csharp
+public class AssetMapper : IAssetMapper
+{
+    public AssetResponseDto ToDto(Asset asset) => new() { ... };
+    public List<AssetResponseDto> ToDtoList(IEnumerable<Asset> assets) => assets.Select(ToDto).ToList();
+}
+```
+
+#### 3. DI registration
+
+- `ServiceCollectionExtensions.cs` updated to:
+  - `services.AddScoped<IAssetFactory, AssetFactoryImpl>();`
+  - `services.AddSingleton<IAssetMapper, AssetMapper>();`
+
+#### 4. Consumers updated to accept injected dependencies
+
+- Services (`AssetService`, `CollectionService`, `SearchService`, `SmartCollectionService`, ...) updated constructors to accept `IAssetFactory` and/or `IAssetMapper` and replaced static calls `AssetFactory.*` / `AssetMapper.*` with `_assetFactory.*` / `_assetMapper.*`.
+
+### Rationale / Benefits
+
+- Testability: dễ mock `IAssetFactory`/`IAssetMapper` trong unit tests.
+- Flexibility: có thể swap validator/factory behaviour qua DI (runtime policy). 
+- Clean code: giảm phụ thuộc vào static state, tách rõ mapping/creation responsibilities.
+- Backward compatible: static facade giữ cho code chưa migrate tiếp tục hoạt động.
+
+### Impact / Notes for Team
+
+- **DB Schema**: Không thay đổi schema.
+- **API Contract**: Không đổi HTTP API/DTO contract.
+- **Env vars**: Không yêu cầu biến môi trường mới.
+- **Startup**: Bắt buộc gọi `ServiceCollectionExtensions` để đăng ký `IAssetFactory`/`IAssetMapper`; missing registration gây lỗi DI khi khởi động.
+- **Tests**: Cập nhật tests để mock interface thay vì thay đổi statics.
+- **Scopes**: `IAssetFactory` đăng ký `Scoped`; `IAssetMapper` đăng ký `Singleton`. Nếu `AssetMapper` có state sau này, chuyển scope tương ứng.
+
+### Files Changed (high-level)
+
+| File | Change |
+|---|---|
+| `Models/IAssetFactory.cs` | **NEW** interface
+| `Models/AssetFactoryImpl.cs` | **NEW** concrete implementation
+| `Models/AssetFactory.cs` | Modified: static façade delegates to `_impl`
+| `Services/IAssetMapper.cs` | **NEW** interface
+| `Services/AssetMapper.cs` | Converted from static → instance implementing `IAssetMapper`
+| `Extensions/ServiceCollectionExtensions.cs` | DI registrations added
+| `Services/AssetService.cs` | Constructors + callers updated to use injected instances
+| `Services/CollectionService.cs` | Injected `IAssetMapper` usage
+| `Services/SearchService.cs` | Injected `IAssetMapper` usage
+| `Services/SmartCollectionService.cs` | Injected `IAssetMapper` usage
+
+---
+
+### Recommended Follow-ups
+
+- Update unit tests to inject and mock `IAssetFactory`/`IAssetMapper`.
+- Remove static `AssetFactory` façade in a later major release after migrating callers (mark as deprecated first).
+- Consider aligning `AssetMapper`'s scope: `Singleton` is OK while it is stateless; revisit if it gains state.
+
+---
+
 ## RF-011 — CQRS Immutability & AssetOptions Hardening
 
 **Date**: 2026-03-12

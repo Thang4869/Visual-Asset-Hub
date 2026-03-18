@@ -1,7 +1,7 @@
 # DOCS MAINTENANCE GUIDE — Khi nào cập nhật file nào
 
 > **Mục đích**: Giúp developer biết chính xác phải cập nhật docs nào khi thêm feature, fix bug, refactor, hoặc deploy.  
-> **Last Updated**: 2026-03-03
+> **Last Updated**: 2026-03-19
 
 ---
 
