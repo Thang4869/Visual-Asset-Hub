@@ -13,6 +13,7 @@ public class SmartCollectionService : ISmartCollectionService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<SmartCollectionService> _logger;
+    private readonly IAssetMapper _assetMapper;
 
     /// <summary>Static (built-in) filters — registered once.</summary>
     private static readonly List<ISmartCollectionFilter> BuiltInFilters = new()
@@ -31,10 +32,11 @@ public class SmartCollectionService : ISmartCollectionService
         new WithThumbnailsFilter(),
     };
 
-    public SmartCollectionService(AppDbContext context, ILogger<SmartCollectionService> logger)
+    public SmartCollectionService(AppDbContext context, ILogger<SmartCollectionService> logger, IAssetMapper assetMapper)
     {
         _context = context;
         _logger = logger;
+        _assetMapper = assetMapper;
     }
 
     public async Task<List<SmartCollectionDefinition>> GetDefinitionsAsync(string userId, CancellationToken ct = default)
@@ -90,7 +92,7 @@ public class SmartCollectionService : ISmartCollectionService
 
         return new PagedResult<AssetResponseDto>
         {
-            Items = AssetMapper.ToDtoList(items),
+            Items = _assetMapper.ToDtoList(items),
             TotalCount = totalCount,
             Page = pagination.Page,
             PageSize = pagination.PageSize

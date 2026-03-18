@@ -10,10 +10,12 @@ namespace VAH.Backend.Services;
 public class SearchService : ISearchService
 {
     private readonly AppDbContext _context;
+    private readonly IAssetMapper _assetMapper;
 
-    public SearchService(AppDbContext context)
+    public SearchService(AppDbContext context, IAssetMapper assetMapper)
     {
         _context = context;
+        _assetMapper = assetMapper;
     }
 
     /// <inheritdoc />
@@ -73,7 +75,7 @@ public class SearchService : ISearchService
         return new SearchResult
         {
             Query = query ?? string.Empty,
-            Assets = AssetMapper.ToDtoList(assets),
+            Assets = _assetMapper.ToDtoList(assets),
             TotalAssets = totalAssets,
             Collections = collections,
             TotalCollections = totalCollections,
