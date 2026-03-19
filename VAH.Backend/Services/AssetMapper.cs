@@ -10,6 +10,12 @@ namespace VAH.Backend.Services;
 /// </summary>
 public class AssetMapper : IAssetMapper
 {
+    private readonly IAssetFactory _assetFactory;
+
+    public AssetMapper(IAssetFactory assetFactory)
+    {
+        _assetFactory = assetFactory ?? throw new ArgumentNullException(nameof(assetFactory));
+    }
     public AssetResponseDto ToDto(Asset asset) => new()
     {
         Id = asset.Id,
@@ -36,5 +42,5 @@ public class AssetMapper : IAssetMapper
         => assets.Select(ToDto).ToList();
 
     public Asset CreateFileFromDto(CreateAssetDto dto, string userId)
-        => AssetFactory.CreateFile(dto.FileName.Trim(), dto.FilePath.Trim(), dto.CollectionId, userId, dto.ParentFolderId);
+        => _assetFactory.CreateFile(dto.FileName.Trim(), dto.FilePath.Trim(), dto.CollectionId, userId, dto.ParentFolderId);
 }
