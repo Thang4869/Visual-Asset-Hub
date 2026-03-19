@@ -323,13 +323,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAssetService, AssetService>();
         services.AddScoped<IBulkAssetService, BulkAssetService>();
         services.AddScoped<IThumbnailService, ThumbnailService>();
-        // Asset validator: default wrapper that delegates to the static AssetValidator helper.
-        // Registered as singleton because it's stateless and forwards to the static helper.
-        services.AddSingleton<IAssetValidator>(_ => DefaultAssetValidator.Instance);
+        // Asset validator: concrete implementation registered as singleton.
+        services.AddSingleton<IAssetValidator, AssetValidatorImpl>();
         // Asset factory: instance implementation that uses the injectable validator.
         services.AddScoped<IAssetFactory, AssetFactoryImpl>();
         // Asset mapper: injectable mapping service used across services.
-        services.AddSingleton<IAssetMapper, AssetMapper>();
+        // Register as Scoped because it depends on the scoped `IAssetFactory`.
+        services.AddScoped<IAssetMapper, AssetMapper>();
 
         return services;
     }
