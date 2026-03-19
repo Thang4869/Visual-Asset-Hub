@@ -13,7 +13,7 @@ public readonly record struct FileName
 
     public FileName(string value)
     {
-        Value = AssetValidator.ValidateFileName(value);
+        Value = DefaultAssetValidator.Instance.ValidateFileName(value);
     }
 
     public static FileName Parse(string value) => new FileName(value);

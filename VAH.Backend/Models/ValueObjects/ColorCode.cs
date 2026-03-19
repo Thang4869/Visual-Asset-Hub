@@ -13,7 +13,7 @@ public readonly record struct ColorCode
 
     public ColorCode(string value)
     {
-        Value = AssetValidator.NormalizeHexColor(value);
+        Value = DefaultAssetValidator.Instance.NormalizeHexColor(value);
     }
 
     public static ColorCode Parse(string value) => new ColorCode(value);
