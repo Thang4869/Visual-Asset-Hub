@@ -8,11 +8,16 @@ public sealed class DefaultAssetValidator : IAssetValidator
 {
     public static readonly DefaultAssetValidator Instance = new();
 
-    private DefaultAssetValidator() { }
+    private readonly IAssetValidator _impl;
 
-    public bool IsValidHexColor(string colorCode) => AssetValidator.IsValidHexColor(colorCode);
-    public string NormalizeHexColor(string colorCode) => AssetValidator.NormalizeHexColor(colorCode);
-    public bool IsValidUrl(string url) => AssetValidator.IsValidUrl(url);
-    public string ValidateUrl(string url) => AssetValidator.ValidateUrl(url);
-    public string ValidateFileName(string fileName, int maxLength = 500) => AssetValidator.ValidateFileName(fileName, maxLength);
+    private DefaultAssetValidator()
+    {
+        _impl = new AssetValidatorImpl();
+    }
+
+    public bool IsValidHexColor(string colorCode) => _impl.IsValidHexColor(colorCode);
+    public string NormalizeHexColor(string colorCode) => _impl.NormalizeHexColor(colorCode);
+    public bool IsValidUrl(string url) => _impl.IsValidUrl(url);
+    public string ValidateUrl(string url) => _impl.ValidateUrl(url);
+    public string ValidateFileName(string fileName, int maxLength = 500) => _impl.ValidateFileName(fileName, maxLength);
 }
