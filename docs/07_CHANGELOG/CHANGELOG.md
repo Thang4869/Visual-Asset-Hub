@@ -10,6 +10,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Refactored — ValueObjects Hardening (2026-03-25)
+
+- **Description**: Hardened several small domain value objects to improve validation, error clarity and developer ergonomics. Added explicit null/whitespace checks, `TryParse` helpers, a `Zero` constant and `Deconstruct` for `AssetPosition`, and deterministic `ToString()` formatting.
+- **Files touched**: `Models/ValueObjects/AssetPosition.cs`, `Models/ValueObjects/FileName.cs`, `Models/ValueObjects/ColorCode.cs`, `docs/CHANGES/2026-03-25_valueobjects-refactor.md`.
+- **Notes**: No DB migrations or API contract changes. Callers that previously constructed `FileName` with `null` or expected silent normalization should migrate to `TryParse` or handle new exceptions. Add unit tests for guard clauses and `TryParse` behaviour.
+
 ### Refactored — DI-ify Asset Factory & Mapper (2026-03-19)
 
 - **Description**: Refactor `AssetFactory` and `AssetMapper` from static helpers into DI-friendly abstractions. Introduced `IAssetFactory` + `AssetFactoryImpl` and `IAssetMapper` + `AssetMapper` (instance), registered via `ServiceCollectionExtensions` and injected into consuming services.
