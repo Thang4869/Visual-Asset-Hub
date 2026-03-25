@@ -22,7 +22,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **Files touched**: `Models/IAssetFactory.cs`, `Models/AssetFactoryImpl.cs`, `Models/AssetFactory.cs` (facade), `Services/IAssetMapper.cs`, `Services/AssetMapper.cs`, `Extensions/ServiceCollectionExtensions.cs`, `Services/AssetService.cs`, `Services/CollectionService.cs`, `Services/SearchService.cs`, `Services/SmartCollectionService.cs`.
 - **Notes**: Backward-compatible static façade left in place (`AssetFactory`) delegating to a default impl for callers not yet migrated. No DB schema or API contract changes. Update unit tests to mock the new interfaces where appropriate.
 
-
 ### Changed — ApplicationUser Refactor (2026-03-17)
 
 - **`ApplicationUser` encapsulation**: Limit public mutability of profile fields; `DisplayName` and `CreatedAt` now have private setters.
