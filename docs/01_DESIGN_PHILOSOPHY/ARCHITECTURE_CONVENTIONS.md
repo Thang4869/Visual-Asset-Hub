@@ -4,6 +4,7 @@
 > **Scope**: VAH Backend (.NET 9) & Frontend (React 19)  
 > **Status**: Active  
 > **Last Updated**: 2026-03-02  
+> **Last Updated**: 2026-03-25  
 > **Owner**: Software Architect / Technical Lead
 
 ---
@@ -369,7 +370,11 @@ Layer Dependency Direction (Clean Architecture):
 └─────────────────────────────────────────────────────┘
 
 * Ngoại lệ: EF Core conventions qua Fluent API trong DbContext
-  (không dùng [Required], [MaxLength] trên entity — dùng Fluent API)
+    (ưu tiên Fluent API; một số entity hiện vẫn sử dụng DataAnnotations như `CollectionPermission.cs` — xem phần "Migration note" bên dưới)
+
+### Migration note
+
+- Prefer moving validation attributes from domain entities to the `ModelBuilder` Fluent API in `AppDbContext` over time. This is a recommended refactor (`[SHOULD]`) to keep domain types framework-agnostic. Existing uses of DataAnnotations in DTOs and permission-related types are acceptable short-term; track a migration ticket to remove entity-level attributes and centralize constraints in the DbContext.
 ```
 
 ### 4.2 Layer Dependency Rules `[MUST]`
