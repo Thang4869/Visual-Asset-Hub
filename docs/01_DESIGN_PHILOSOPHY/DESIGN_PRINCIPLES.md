@@ -3,6 +3,7 @@
 > **Document Type**: Prescriptive (MUST follow)  
 > **Scope**: VAH Full Stack  
 > **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-25
 
 ---
 
@@ -125,6 +126,7 @@ Controllers →   IAssetApplicationService (interface)
 | Violation | Current State | Target |
 |-----------|--------------|--------|
 | Entity has `[Required]` DataAnnotation | `Asset.cs`, `Collection.cs` | Move to Fluent API in `AppDbContext` |
+| Entity has `[Required]` DataAnnotation | Example: `CollectionPermission.cs` (some other DTOs/types also use attributes) | Prefer moving to Fluent API in `AppDbContext` (`[SHOULD]`) — see migration note in Architecture Conventions |
 | Service directly uses `AppDbContext` | All services | Introduce `IRepository<T>` (Phase: Modularize) |
 | DTO validation via DataAnnotations | `DTOs.cs` | Accept for now (simple & effective), FluentValidation later |
 
