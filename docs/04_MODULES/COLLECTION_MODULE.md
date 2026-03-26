@@ -2,7 +2,9 @@
 
 > **Last Updated**: 2026-03-08
 > **Status**: Active — Services/ layer (not yet migrated to Features/)
-
+> **Last Updated**: 2026-03-26
+> **Status**: Active — Services/ layer (not yet migrated to Features/)
+> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
 ---
 
 ## §1 — Overview

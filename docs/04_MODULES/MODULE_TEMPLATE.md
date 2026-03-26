@@ -12,7 +12,8 @@
 > **Status**: {Active | Planned | Deprecated}  
 > **Owner**: {Team/Person}  
 > **Last Updated**: {YYYY-MM-DD}
-
+> **Last Updated**: 2026-03-26
+> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
 ---
 
 ## §1 — Mục đích (Purpose)
