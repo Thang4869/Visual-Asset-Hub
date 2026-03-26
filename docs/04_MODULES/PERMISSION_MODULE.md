@@ -2,8 +2,10 @@
 
 > **Last Updated**: 2026-03-08
 > **Status**: Active — Services/ layer
+> **Last Updated**: 2026-03-26
+> **Status**: Active — Services/ layer
+> **Note**: This module references `CollectionPermission` which currently uses DataAnnotations in code; prefer migrating entity attributes to Fluent API (see Architecture Conventions migration note).
 
----
 
 ## §1 — Overview
 

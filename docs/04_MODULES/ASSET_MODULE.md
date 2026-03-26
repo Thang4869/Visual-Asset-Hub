@@ -4,7 +4,8 @@
 > **Status**: Active  
 > **Owner**: Backend Team  
 > **Last Updated**: 2026-03-13
-
+> **Last Updated**: 2026-03-26
+> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
 ---
 
 ## §1 — Mục đích (Purpose)

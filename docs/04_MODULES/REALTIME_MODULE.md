@@ -2,7 +2,9 @@
 
 > **Last Updated**: 2026-03-02
 > **Status**: Active — Hubs/ layer
-
+> **Last Updated**: 2026-03-26
+> **Status**: Active — Services/ layer
+> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
 ---
 
 ## §1 — Overview
