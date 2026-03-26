@@ -1,6 +1,7 @@
 # DOMAIN MODEL — Entity Relationships & Aggregates
 
 > **Last Updated**: 2026-03-13
+> **Last Updated**: 2026-03-26
 
 ---
 
@@ -229,6 +230,8 @@ static string ValidateFileName(string name, int maxLength = 500)
 static bool IsValidHexColor(string colorCode)
 static bool IsValidUrl(string url)
 ```
+
+> Migration note: The document asserts domain entities use `private set` and avoid DataAnnotations on entities. The repository currently contains a few exceptions (for example `VAH.Backend/Models/CollectionPermission.cs` uses `[Required]` and public setters on some DTO-adjacent types). Prefer incremental refactors: (1) move validation/shape rules into `IEntityTypeConfiguration<T>` Fluent API, (2) convert public setters to `private set` where possible, and (3) keep DTO-level DataAnnotations for request validation until a centralized validation strategy (e.g., FluentValidation) is in place. Track these as short-lived migration PRs.
 
 DTO ↔ Entity mapping is handled by `AssetMapper` (`Services/AssetMapper.cs`):
 

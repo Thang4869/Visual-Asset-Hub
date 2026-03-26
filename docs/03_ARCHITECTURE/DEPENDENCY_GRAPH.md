@@ -1,8 +1,7 @@
 # DEPENDENCY GRAPH — Service Registration & Wiring
 
 > **Last Updated**: 2026-03-08
-
----
+> **Last Updated**: 2026-03-26
 
 ## §1 — Dependency Injection Registration Groups
 
