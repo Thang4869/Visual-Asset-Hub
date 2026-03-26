@@ -2,7 +2,7 @@
 
 > **Last Updated**: 2026-03-13  
 > **Applies to**: `VAH.Backend/`
-
+> **Last Updated**: 2026-03-26  
 ---
 
 ## §1 — File & Namespace Organization
@@ -103,6 +103,8 @@ public abstract class Asset
 ```
 
 **Rules**: Abstract base or sealed subtypes. **Private setters** on all value properties — mutations only through domain methods (e.g., `Rename()`, `Reorder()`, `AssignToGroup()`). Guard clauses via `ArgumentException.ThrowIfNullOrWhiteSpace`. Construction via static Factory. No DTO references in domain — mapping belongs in service layer (`AssetMapper`).
+
+**Migration note**: The codebase currently contains a few entities and DTO-adjacent types that do not yet follow the `private set` pattern or that still include DataAnnotations (e.g., `VAH.Backend/Models/CollectionPermission.cs`). Prefer applying these rules incrementally: open small refactor PRs to convert setters to `private set` and move attribute-based constraints to Fluent API configurations in `Data/` (via `IEntityTypeConfiguration<T>`). Reviewers may accept documentation-justified exceptions until migrations are completed.
 
 ## §4 — Async/Await Rules
 

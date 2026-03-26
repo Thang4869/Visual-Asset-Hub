@@ -1,6 +1,6 @@
 # DATABASE CONVENTIONS — EF Core & PostgreSQL
 
-> **Last Updated**: 2026-03-02  
+> **Last Updated**: 2026-03-26  
 > **ORM**: Entity Framework Core 9  
 > **Providers**: PostgreSQL 17 (production) / SQLite (development)
 
@@ -18,9 +18,15 @@ var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
 
 ## §2 — Entity Configuration
 
-### Convention: Data Annotations + Fluent API
-- `[Key]`, `[Required]`, `[MaxLength]` on entities (current state)
-- **Target**: Migrate to Fluent API via `IEntityTypeConfiguration<T>` (tech debt item)
+### Convention: Current state & migration
+
+- Current: some entities use DataAnnotations (`[Key]`, `[Required]`, `[MaxLength]`) — this remains the current, pragmatically-migrated state.
+- Preferred: Use Fluent API via `IEntityTypeConfiguration<T>` in `AppDbContext` to keep domain types framework-agnostic. Moving entity-level validation/shape into the Fluent API is a recommended refactor (`[SHOULD]`).
+- Example: `VAH.Backend/Models/CollectionPermission.cs` contains `[Required]` attributes and should be considered for migration to Fluent API (see migration note below).
+
+### Migration note
+
+- Track a short-lived migration task to move entity DataAnnotations into Fluent API configurations. Prioritize permission and identity-adjacent types, then core domain entities. Keep DTO DataAnnotations (request validation) until a centralized validation strategy (e.g., FluentValidation) is adopted.
 
 ### TPH Discriminator
 ```csharp
