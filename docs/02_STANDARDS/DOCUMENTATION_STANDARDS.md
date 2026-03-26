@@ -1,6 +1,6 @@
 # DOCUMENTATION STANDARDS — XML Doc, JSDoc & ADR Format
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-26
 
 ---
 
@@ -29,6 +29,8 @@
 dotnet tool install -g docfx
 docfx init -q && docfx build
 ```
+
+> Note: `VAH.Backend/VAH.Backend.csproj` currently does not include `GenerateDocumentationFile`. Enabling XML doc generation is optional; if you want build-produced XML docs for CI or docfx, add the above snippet to the project file or a Directory.Build.props. Keep `NoWarn` for missing XML comments (`1591`) if you do not wish to block builds.
 
 ## §2 — JSDoc (React 19)
 
