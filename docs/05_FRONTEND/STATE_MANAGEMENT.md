@@ -1,9 +1,9 @@
 # STATE MANAGEMENT — Context & Hooks Architecture
 
 > **Last Updated**: 2026-03-02
-
+> **Last Updated**: 2026-03-27
+> **Note**: Matches current implementation in `VAH.Frontend/src/` (AppContext composed from domain hooks). Keep AppContext as orchestrator at current scale.
 ---
-
 ## §1 — Architecture Overview
 
 VAH Frontend uses **React Context + Custom Hooks** for state management (no Redux/Zustand):
