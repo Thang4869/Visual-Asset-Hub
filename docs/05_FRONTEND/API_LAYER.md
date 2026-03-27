@@ -1,9 +1,9 @@
 # API LAYER — Frontend HTTP Client Architecture
 
 > **Last Updated**: 2026-03-02
-
+> **Last Updated**: 2026-03-27
+> **Note**: Verified against `VAH.Frontend/package.json` (React 19, axios); API base path is `/api/v1` and TokenManager is used for JWT handling.
 ---
-
 ## §1 — Architecture Overview
 
 ```

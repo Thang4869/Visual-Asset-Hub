@@ -1,9 +1,9 @@
 # COMPONENT CATALOG — Frontend React Components
 
 > **Last Updated**: 2026-03-02
-
+> **Last Updated**: 2026-03-27
+> **Note**: Component list verified against `VAH.Frontend/src/components` — filenames are illustrative; keep components small and hook-driven.
 ---
-
 ## §1 — Component Inventory
 
 ### 1.1 Layout Components
