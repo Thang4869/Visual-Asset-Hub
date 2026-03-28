@@ -1,6 +1,6 @@
 # RUNBOOK — Development & Deployment Operations
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-03-28
 
 ---
 
@@ -64,6 +64,8 @@ dotnet ef database update <PreviousMigrationName>
 ### Auto-Migration (Startup)
 
 Production/Docker always runs `context.Database.Migrate()` on startup. After migration, a discriminator fix SQL runs to correct any rows with incorrect `ContentType` values.
+
+Note: In production, avoid relying solely on automatic migrations at application startup. Always take a backup before applying migrations and prefer applying migrations via a controlled CI/CD deployment pipeline where preflight checks and schema review can be performed. If automatic migrations are used, ensure they are covered by monitoring and a tested rollback plan.
 
 ### Reset Database
 
@@ -204,6 +206,7 @@ dotnet ef database update 0
 - **Always backup database before applying new migrations** (see §9)
 - Migrations with destructive operations (DROP COLUMN, DROP TABLE) **cannot rollback data** — only schema
 - Recommendation: write rollback SQL scripts for each migration with destructive ops
+- In production, do not rely on startup auto-migration without separate backup and verification steps; run migrations as part of a controlled deployment process whenever possible.
 
 ### Application Rollback (Docker)
 
@@ -272,6 +275,15 @@ Add cron job or systemd timer:
 ```
 
 > ⚠️ **NOT YET IMPLEMENTED.** This is a critical operational gap identified in [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md) (Failure Mode FM5) and ARCHITECTURE_REVIEW.md §26 (Assumption Critique A3). Prioritize setup before production deployment.
+
+### TODO: Implement automated backups
+
+- Implement scheduled automated backups (daily) for PostgreSQL and a separate backup process for uploaded files under `VAH.Backend/wwwroot/uploads/`.
+- Backup retention: keep at least 30 days of backups; rotate and prune older backups automatically.
+- Store backups off-host (object storage or separate backup server) and encrypt backups at rest.
+- Automate backup verification and test restores quarterly; add alerts for backup failures.
+
+> NOTE: These tasks should be tracked as a priority operational work item before enabling production workloads that cannot tolerate data loss.
 
 ---
 
