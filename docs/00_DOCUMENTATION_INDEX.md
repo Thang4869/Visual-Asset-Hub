@@ -2,8 +2,8 @@
 
 > **Visual Asset Hub** — Digital Asset Management Platform  
 > Stack: .NET 9 · React 19 · PostgreSQL 17 · Redis  
-> Last Updated: 2026-03-08  
-> **Status**: ✅ Tất cả hơn 30+ tập tin tài liệu đã được tạo và kiểm chứng so với mã nguồn.
+> Last Updated: 2026-04-05  
+> **Status**: ✅ Tất cả hơn 35+ tập tin tài liệu đã được tạo và kiểm chứng so với mã nguồn.
 
 ---
 
@@ -14,6 +14,7 @@ docs/
 │
 ├── 00_DOCUMENTATION_INDEX.md             ← BẠN ĐANG Ở ĐÂY
 ├── 00_DOCS_MAINTENANCE_GUIDE.md          # Quản lý cập nhật docs (khi nào sửa file nào)
+├── GIT_BRANCHING_GUIDELINES.md           # Git branching strategy & conventions
 │
 ├── 01_DESIGN_PHILOSOPHY/                 # Tư duy thiết kế & Quy ước kiến trúc
 │   ├── ARCHITECTURE_CONVENTIONS.md       # Tiêu chuẩn OOP cho .NET 9 & React 19
@@ -71,12 +72,18 @@ docs/
 │   ├── TECHNICAL_DEBT.md                 # Tracked debt items & prioritization
 │   └── REFACTOR_LOG.md                   # Completed refactorings & impact analysis
 │
-└── 08_REPORTS/                           # Báo cáo lịch sử (Historical Reports)
-    ├── INDEX.md                          # Report registry & migration status
-    ├── OOP_ASSESSMENT.md                 # [Historical] OOP assessment results
-    ├── PHASE1_REPORT.md                  # [Historical] Phase 1 completion report
-    ├── FIX_REPORT_20260227.md            # [Historical] Development session log (14 sessions)
-    └── DOCUMENTATION_AUDIT_REPORT.md     # [Historical] Documentation quality audit
+├── 08_REPORTS/                           # Báo cáo lịch sử (Historical Reports)
+│   ├── INDEX.md                          # Report registry & migration status
+│   ├── OOP_ASSESSMENT.md                 # [Historical] OOP assessment results
+│   ├── PHASE1_REPORT.md                  # [Historical] Phase 1 completion report
+│   ├── FIX_REPORT_20260227.md            # [Historical] Development session log (14 sessions)
+│   └── DOCUMENTATION_AUDIT_REPORT.md     # [Historical] Documentation quality audit
+│
+└── CHANGES/                              # Developer-facing change notes (per-refactor)
+    ├── 2026-03-14_uploadedfiledto.md     # UploadedFileDto update
+    ├── 2026-03-17_applicationuser_refactor.md  # ApplicationUser refactor
+    ├── 2026-03-20_asset-validator-refactor.md  # Asset Validator refactor
+    └── 2026-03-25_valueobjects-refactor.md     # Value Objects refactor
 ```
 
 ---
@@ -91,7 +98,7 @@ docs/
 | 4 | `02_STANDARDS/CODING_STANDARDS_BACKEND.md` | Quy tắc viết code .NET 9 | Backend developers |
 | 5 | `02_STANDARDS/CODING_STANDARDS_FRONTEND.md` | Quy tắc viết code React 19 | Frontend developers |
 | 6 | `04_MODULES/ASSET_MODULE.md` | Core module — bắt đầu từ đây | Tất cả developers |
-| 7 | `06_OPERATIONS/IMPLEMENTATION_GUIDE.md` | Setup local dev environment | New team members |
+| 7 | `06_OPERATIONS/RUNBOOK.md` | Setup & operational procedures | New team members |
 
 ---
 

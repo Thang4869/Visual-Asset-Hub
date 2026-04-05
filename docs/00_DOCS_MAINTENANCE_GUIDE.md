@@ -1,7 +1,7 @@
 # DOCS MAINTENANCE GUIDE — Khi nào cập nhật file nào
 
 > **Mục đích**: Giúp developer biết chính xác phải cập nhật docs nào khi thêm feature, fix bug, refactor, hoặc deploy.  
-> **Last Updated**: 2026-03-19
+> **Last Updated**: 2026-04-05
 
 ---
 
@@ -16,6 +16,7 @@ Những file này **gần như chắc chắn** phải sửa mỗi khi code thay 
 | [CHANGELOG.md](07_CHANGELOG/CHANGELOG.md) | Mỗi PR / mỗi version | Thêm entry vào `[Unreleased]` section |
 | [TECHNICAL_DEBT.md](07_CHANGELOG/TECHNICAL_DEBT.md) | Khi phát hiện hoặc resolve debt | Thêm/cập nhật Status row |
 | [API_CONVENTIONS.md](02_STANDARDS/API_CONVENTIONS.md) | Khi thêm/sửa/xóa endpoint | Cập nhật endpoint table (§3) |
+| `CHANGES/*.md` | Sau mỗi refactoring đáng chú ý | Tạo file `YYYY-MM-DD_short-name.md` |
 
 ### 🟠 Tier 2 — CẬP NHẬT KHI MODULE LIÊN QUAN THAY ĐỔI
 
@@ -74,6 +75,7 @@ Chỉ sửa khi thay đổi cấu trúc hệ thống (không phải feature thư
 | [ADR-005_JWT_SIGNALR_AUTH.md](03_ARCHITECTURE/ADR/ADR-005_JWT_SIGNALR_AUTH.md) | (như trên) |
 | [ADR-006_STRATEGY_SMART_COLLECTIONS.md](03_ARCHITECTURE/ADR/ADR-006_STRATEGY_SMART_COLLECTIONS.md) | (như trên) |
 | [00_DOCUMENTATION_INDEX.md](00_DOCUMENTATION_INDEX.md) | Chỉ sửa nếu thêm directory mới (rất hiếm) |
+| [GIT_BRANCHING_GUIDELINES.md](GIT_BRANCHING_GUIDELINES.md) | Đổi Git workflow |
 | `08_REPORTS/*` (tất cả) | Historical snapshots — đã đóng băng |
 | `docs/*.md` (root-level legacy) | Đã thay thế bởi hệ thống mới |
 
@@ -105,6 +107,7 @@ Chỉ sửa khi thay đổi cấu trúc hệ thống (không phải feature thư
 ```
 □ 07_CHANGELOG/REFACTOR_LOG.md          → Ghi before/after
 □ 07_CHANGELOG/TECHNICAL_DEBT.md        → Cập nhật status debt item đã resolve
+□ CHANGES/YYYY-MM-DD_short-name.md      → Tạo file mới cho refactor đáng chú ý
 □ 04_MODULES/{MODULE}_MODULE.md         → Cập nhật nếu interface/flow thay đổi
 □ 03_ARCHITECTURE/DEPENDENCY_GRAPH.md   → Cập nhật nếu DI thay đổi
 ```
@@ -161,16 +164,29 @@ ADR đã accepted **KHÔNG BAO GIỜ** sửa nội dung. Nếu quyết định c
 ## §4 — Thống kê tổng quan
 
 ```
-Tổng files docs mới:                30  files
-├── 🔴 Tier 1 (mỗi feature):        3   files   (10%)
-├── 🟠 Tier 2 (theo module):        12  files   (40%)
-├── 🟡 Tier 3 (kiến trúc):          6   files   (20%)
-├── 🟢 Tier 4 (gần cố định):        7   files   (23%)
+Tổng files docs mới:                35+ files
+├── 🔴 Tier 1 (mỗi feature):        4   files   (11%)
+├── 🟠 Tier 2 (theo module):        12  files   (34%)
+├── 🟡 Tier 3 (kiến trúc):          6   files   (17%)
+├── 🟢 Tier 4 (gần cố định):        8   files   (23%)
 └── 🔵 Tier 5 (đóng băng):          10+ files
+
+Directories:
+├── 00_* (Root)            2 files
+├── 01_DESIGN_PHILOSOPHY   3 files
+├── 02_STANDARDS           6 files
+├── 03_ARCHITECTURE        7 files + 7 ADRs
+├── 04_MODULES            10 files
+├── 05_FRONTEND            3 files
+├── 06_OPERATIONS          3 files
+├── 07_CHANGELOG           3 files
+├── 08_REPORTS             5 files
+├── CHANGES                4 files (growing)
+└── GIT_BRANCHING_GUIDELINES.md
 
 Trung bình mỗi feature mới:     sửa 3-5 files docs
 Trung bình mỗi bug fix:         sửa 1-2 files docs
-Trung bình mỗi refactor:        sửa 2-4 files docs
+Trung bình mỗi refactor:        sửa 2-4 files docs + tạo CHANGES entry
 ```
 
 ---
