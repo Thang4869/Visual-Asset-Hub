@@ -118,11 +118,6 @@ VAH/
 │   ├── 01_DESIGN_PHILOSOPHY/          # OOP standards, SOLID, pattern catalog
 │   ├── 02_STANDARDS/                  # Coding & API conventions
 │   ├── 03_ARCHITECTURE/               # Topology, domain model, ADRs
-## Recent backend maintenance notes
-
-See the changelog for developer-facing notes about small refactors and migrations:
-- [2026-03-17 — ApplicationUser: limit public mutability and add audit](docs/CHANGES/2026-03-17_applicationuser_refactor.md)
-
 │   ├── 04_MODULES/                    # 9 module docs + template
 │   ├── 05_FRONTEND/                   # Components, state, API layer
 │   ├── 06_OPERATIONS/                 # Runbook, troubleshooting
@@ -198,6 +193,19 @@ See the changelog for developer-facing notes about small refactors and migration
 | [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) | Technical documentation (pre-CQRS) |
 | [docs/PHASE1_REPORT.md](docs/PHASE1_REPORT.md) | Phase 1 completion report |
 | [docs/FIX_REPORT_20260227.md](docs/FIX_REPORT_20260227.md) | Fix report 2026-02-27 |
+
+---
+
+## Recent Changes
+
+See [docs/CHANGES/](docs/CHANGES/) for developer-facing notes about refactors and migrations:
+
+| Date | Change |
+|------|--------|
+| 2026-03-25 | [Value Objects refactor](docs/CHANGES/2026-03-25_valueobjects-refactor.md) |
+| 2026-03-20 | [Asset Validator refactor](docs/CHANGES/2026-03-20_asset-validator-refactor.md) |
+| 2026-03-17 | [ApplicationUser: limit public mutability and add audit](docs/CHANGES/2026-03-17_applicationuser_refactor.md) |
+| 2026-03-14 | [UploadedFileDto update](docs/CHANGES/2026-03-14_uploadedfiledto.md) |
 
 ---
 
