@@ -1,7 +1,7 @@
 # DANH MỤC COMPONENT — React Components phía frontend
 
 > **Last Updated**: 2026-04-06
-> **Ghi chú**: Danh sách component đã đối chiếu với `VAH.Frontend/src/components` — tên file chỉ mang tính minh họa; giữ component nhỏ và thiên về hooks.
+> **Ghi chú**: Danh sách component đã đối chiếu với `src/VAH.Frontend/src/components` — tên file chỉ mang tính minh họa; giữ component nhỏ và thiên về hooks.
 ---
 ## §1 — Danh mục component
 

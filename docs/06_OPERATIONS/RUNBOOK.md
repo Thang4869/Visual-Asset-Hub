@@ -28,7 +28,7 @@ dotnet run
 ### Chỉ Frontend
 
 ```bash
-cd VAH.Frontend
+cd src/VAH.Frontend
 npm install
 npm run dev
 # → http://localhost:5173

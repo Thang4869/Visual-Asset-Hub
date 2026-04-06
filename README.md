@@ -90,7 +90,7 @@ dotnet run
 
 **Frontend:**
 ```bash
-cd VAH.Frontend
+cd src/VAH.Frontend
 npm install
 npm run dev
 # → http://localhost:5173
@@ -112,7 +112,7 @@ VAH/
 ├── VAH.sln
 ├── README.md
 │
-├── docs/                              # 30+ files — 8 directories
+├── docs/                              # 40+ files — 9 directories
 │   ├── 00_DOCUMENTATION_INDEX.md      # Master index & reading order
 │   ├── 00_DOCS_MAINTENANCE_GUIDE.md   # Khi nào cập nhật file nào
 │   ├── 01_DESIGN_PHILOSOPHY/          # OOP standards, SOLID, pattern catalog
@@ -122,7 +122,10 @@ VAH/
 │   ├── 05_FRONTEND/                   # Components, state, API layer
 │   ├── 06_OPERATIONS/                 # Runbook, troubleshooting
 │   ├── 07_CHANGELOG/                  # Changelog, tech debt, refactor log
-│   └── 08_REPORTS/                    # Historical reports
+│   ├── 08_REPORTS/                    # Historical reports
+│   └── project_planning/              # Initial setup logs & context
+│
+├── scripts/                           # Build & setup automation tool
 │
 ├── VAH.Backend/                       # .NET 9 API
 │   ├── Controllers/                   # 15 controllers (incl. abstract base)
@@ -147,7 +150,8 @@ VAH/
 │   ├── Exceptions/                    # NotFoundException, ValidationException, AuthContextMissingException
 │   └── Migrations/                    # 5 migrations (PostgreSQL + SQLite)
 │
-└── VAH.Frontend/                      # React 19 SPA
+└── src/
+    └── VAH.Frontend/                  # React 19 SPA
     └── src/
         ├── api/                       # 11 files — BaseApiService + 7 subclasses + TokenManager
         ├── hooks/                     # 11 custom hooks

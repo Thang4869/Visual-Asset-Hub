@@ -19,7 +19,7 @@
 
 ```
 VAH.Backend/          → §2-§12
-VAH.Frontend/         → §2, §12
+src/VAH.Frontend/     → §2, §12
 ```
 
 ---

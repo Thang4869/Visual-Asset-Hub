@@ -1,7 +1,7 @@
 # TẦNG API — Kiến trúc HTTP client của frontend
 
 > **Last Updated**: 2026-04-06
-> **Ghi chú**: Đã đối chiếu với `VAH.Frontend/package.json` (React 19, axios); base path của API là `/api/v1` và TokenManager được dùng để xử lý JWT.
+> **Ghi chú**: Đã đối chiếu với `src/VAH.Frontend/package.json` (React 19, axios); base path của API là `/api/v1` và TokenManager được dùng để xử lý JWT.
 ---
 ## §1 — Tổng quan kiến trúc
 

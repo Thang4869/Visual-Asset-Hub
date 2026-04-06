@@ -77,7 +77,7 @@ cd VAH.Backend
 dotnet run                    # → http://localhost:5027
 
 # Frontend
-cd VAH.Frontend
+cd src/VAH.Frontend
 npm install && npm run dev    # → http://localhost:5173
 
 # Docker Compose (full stack)
