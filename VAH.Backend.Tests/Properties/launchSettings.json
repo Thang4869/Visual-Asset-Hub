@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "VAH.Backend.Tests": {
+      "commandName": "Project"
+    }
+  }
+}
