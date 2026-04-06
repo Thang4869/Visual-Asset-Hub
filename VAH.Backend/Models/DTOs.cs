@@ -1,9 +1,9 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace VAH.Backend.Models;
 
-// ──── Response DTOs (Clean Architecture — never leak domain entities) ────
+// â”€â”€â”€â”€ Response DTOs (Clean Architecture â€” never leak domain entities) â”€â”€â”€â”€
 
 /// <summary>
 /// API response DTO for Asset. Prevents domain model leakage across API boundary.
@@ -28,7 +28,7 @@ public class AssetResponseDto
     public string? ThumbnailLg { get; set; }
 }
 
-// ──── Asset Creation DTOs ────
+// â”€â”€â”€â”€ Asset Creation DTOs â”€â”€â”€â”€
 
 public class CreateAssetDto
 {
@@ -115,33 +115,6 @@ public class ReorderAssetsDto
     public List<int> AssetIds { get; set; } = new List<int>();
 }
 
-// ──── Tag DTOs ────
-
-public class CreateTagDto
-{
-    [Required, MaxLength(100)]
-    public string Name { get; set; } = string.Empty;
-
-    [MaxLength(20)]
-    public string? Color { get; set; }
-}
-
-public class UpdateTagDto
-{
-    [MaxLength(100)]
-    public string? Name { get; set; }
-
-    [MaxLength(20)]
-    public string? Color { get; set; }
-}
-
-public class AssetTagsDto
-{
-    [Required]
-    public List<int> TagIds { get; set; } = new();
-}
-
-// ──── Bulk Operation Result DTOs (typed responses — replaces anonymous objects) ────
 
 /// <summary>Typed response for bulk delete operations.</summary>
 public sealed record BulkDeleteResult(int Deleted);
@@ -152,7 +125,7 @@ public sealed record BulkMoveResult(int Moved);
 /// <summary>Typed response for bulk tag operations.</summary>
 public sealed record BulkTagResult(int Affected);
 
-// ──── Bulk Operation DTOs ────
+// â”€â”€â”€â”€ Bulk Operation DTOs â”€â”€â”€â”€
 
 public class BulkDeleteDto
 {
@@ -194,7 +167,7 @@ public class BulkTagDto
     public bool Remove { get; set; } = false;
 }
 
-// ──── Collection Creation DTO ────
+// â”€â”€â”€â”€ Collection Creation DTO â”€â”€â”€â”€
 
 public class CreateCollectionDto
 {
@@ -213,7 +186,7 @@ public class CreateCollectionDto
     public LayoutType? LayoutType { get; set; }
 }
 
-// ──── Collection Update DTO ────
+// â”€â”€â”€â”€ Collection Update DTO â”€â”€â”€â”€
 
 public class UpdateCollectionDto
 {
@@ -231,7 +204,7 @@ public class UpdateCollectionDto
     public LayoutType? LayoutType { get; set; }
 }
 
-// ──── Position DTOs ────
+// â”€â”€â”€â”€ Position DTOs â”€â”€â”€â”€
 
 public class AssetPositionDto
 {
@@ -242,7 +215,7 @@ public class AssetPositionDto
     public double PositionY { get; set; }
 }
 
-// ──── Result DTOs ────
+// â”€â”€â”€â”€ Result DTOs â”€â”€â”€â”€
 
 /// <summary>
 /// Combined search result for assets and collections.
@@ -277,20 +250,20 @@ public class SmartCollectionDefinition
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string Icon { get; set; } = "📁";
+    public string Icon { get; set; } = "đŸ“";
     public string Color { get; set; } = "#2196F3";
     public int Count { get; set; }
 }
 
-// ──── Thin response DTOs (replaces anonymous objects for type-safe Swagger) ────
+// â”€â”€â”€â”€ Thin response DTOs (replaces anonymous objects for type-safe Swagger) â”€â”€â”€â”€
 
-/// <summary>Typed response for role queries — replaces <c>new { role }</c>.</summary>
+/// <summary>Typed response for role queries â€” replaces <c>new { role }</c>.</summary>
 public sealed record RoleResult(string? Role);
 
 /// <summary>Typed response for one-off operational messages.</summary>
 public sealed record MessageResult(string Message);
 
-// ──── Search request DTO (cohesion: groups all search params) ────
+// â”€â”€â”€â”€ Search request DTO (cohesion: groups all search params) â”€â”€â”€â”€
 
 /// <summary>
 /// Query-string parameters for the search endpoint.
@@ -315,3 +288,4 @@ public sealed class SearchRequestParams
     [Range(1, 200)]
     public int PageSize { get; init; } = 50;
 }
+

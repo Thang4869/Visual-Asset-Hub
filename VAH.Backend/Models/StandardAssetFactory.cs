@@ -7,11 +7,11 @@ namespace VAH.Backend.Models;
 /// validation to an injected <see cref="IAssetValidator"/>. This allows
 /// runtime policy changes and makes the factory testable.
 /// </summary>
-public class AssetFactoryImpl : IAssetFactory
+public class StandardAssetFactory : IAssetFactory
 {
     private readonly IAssetValidator _validator;
 
-    public AssetFactoryImpl(IAssetValidator validator)
+    public StandardAssetFactory(IAssetValidator validator)
     {
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
     }
