@@ -12,7 +12,7 @@ public sealed class DefaultAssetValidator : IAssetValidator
 
     private DefaultAssetValidator()
     {
-        _impl = new AssetValidatorImpl();
+        _impl = new StandardAssetValidator();
     }
 
     public bool IsValidHexColor(string colorCode) => _impl.IsValidHexColor(colorCode);

@@ -10,7 +10,7 @@ public static class AssetFactory
 {
     // Backing instance used by the static facade so callers that still use
     // the static API get validation delegated through IAssetValidator.
-    private static readonly IAssetFactory _impl = new AssetFactoryImpl(new AssetValidatorImpl());
+    private static readonly IAssetFactory _impl = new StandardAssetFactory(new StandardAssetValidator());
 
     public static ImageAsset CreateImage(string fileName, string filePath, int collectionId, string userId, int? parentFolderId = null)
     {
