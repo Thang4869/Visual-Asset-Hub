@@ -1,14 +1,14 @@
-# 03_ARCHITECTURE — Strategic Roadmap & Growth Planning
+# 03_ARCHITECTURE — Lộ trình chiến lược & kế hoạch tăng trưởng
 
-> **Last Updated**: 2026-03-03  
-> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §10, §11, §13, §23, §24, §25  
-> **Status**: Living Document — review quarterly
+> **Last Updated**: 2026-04-06  
+> **Nguồn**: Di chuyển từ `ARCHITECTURE_REVIEW.md` §10, §11, §13, §23, §24, §25  
+> **Trạng thái**: Tài liệu sống — review hàng quý
 
 ---
 
-## 1. Gap Analysis: Current vs. Future
+## §1 — Phân tích khoảng cách: hiện tại vs. tương lai
 
-### 1.1 Scalability Gaps
+### §1.1 — Khoảng trống về khả năng mở rộng
 
 | Capability | Current | Needed for 100+ users | Gap |
 |------------|---------|----------------------|-----|
@@ -18,7 +18,7 @@
 | Caching | Redis (single instance) | Redis Cluster hoặc managed cache | Đủ cho single instance |
 | Search | LIKE queries | Full-text search (PostgreSQL tsvector) | Cần implement mới |
 
-### 1.2 Reliability Gaps
+### §1.2 — Khoảng trống về độ tin cậy
 
 | Capability | Current | Production Requirement | Gap |
 |------------|---------|----------------------|-----|
@@ -29,7 +29,7 @@
 | Backup | Manual pg_dump | Automated scheduled backup | Medium gap |
 | HTTPS | HTTP only | TLS termination at proxy | Easy fix |
 
-### 1.3 Maintainability Gaps
+### §1.3 — Khoảng trống về khả năng bảo trì
 
 | Capability | Current | Sustainable Codebase | Gap |
 |------------|---------|---------------------|-----|
@@ -40,9 +40,9 @@
 
 ---
 
-## 2. Recommended Improvements
+## §2 — Cải tiến được khuyến nghị
 
-### Priority Framework
+### Khung ưu tiên
 
 ```
          HIGH IMPACT
@@ -58,7 +58,7 @@
          LOW IMPACT
 ```
 
-### P1 — High Impact, Low-to-Medium Effort
+### P1 — Tác động cao, công sức thấp đến trung bình
 
 | # | Item | Effort | Expected Outcome |
 |---|------|--------|-----------------|
@@ -69,7 +69,7 @@
 | 5 | **Secret management** (env vars / Docker secrets) | 0.5 day | No credentials in source |
 | 6 | **CI pipeline** (GitHub Actions) | 1 day | Automated quality gate |
 
-### P2 — High Impact, High Effort
+### P2 — Tác động cao, công sức cao
 
 | # | Item | Effort | Expected Outcome |
 |---|------|--------|-----------------|
@@ -79,7 +79,7 @@
 | 10 | **Cloud storage** (S3/Azure via IStorageService) | 2–3 days | Unlock horizontal scaling |
 | 11 | **CD pipeline** (auto-deploy staging) | 2–3 days | Eliminate manual deployment |
 
-### P3 — Quick Wins
+### P3 — Mục tiêu nhanh
 
 | # | Item | Effort | Expected Outcome |
 |---|------|--------|-----------------|
@@ -88,7 +88,7 @@
 | 14 | **N+1 query audit** | 1 day | Giảm DB round-trips |
 | 15 | **Swagger cho production** (behind auth) | 0.5 day | API docs accessible |
 
-### P4 — Defer
+### P4 — Hoãn lại
 
 | # | Item | Effort | Notes |
 |---|------|--------|-------|
@@ -101,7 +101,7 @@
 
 ---
 
-## 3. Refactor Risk Analysis
+## §3 — Phân tích rủi ro refactor
 
 | Refactor | Blast Radius | Rollback Difficulty | Prerequisite | Risk |
 |----------|-------------|--------------------|--------------|------|
@@ -112,7 +112,7 @@
 | **Repository pattern** | All 12 services | High (cross-cutting) | Full test coverage | 🔴 High |
 | **CI/CD pipeline** | Build + deploy process | Low (additive) | Reproducible Docker builds | 🟢 Low |
 
-### Sequencing Constraints
+### Ràng buộc theo thứ tự thực hiện
 
 ```
 Unit Tests (safety net)
@@ -128,20 +128,20 @@ Unit Tests (safety net)
 
 ---
 
-## 4. Strategic Roadmap (3-Phase)
+## §4 — Lộ trình chiến lược (3 giai đoạn)
 
-### Phase 1: Stabilize (Month 1–2)
+### Giai đoạn 1: Ổn định (Tháng 1–2)
 
-**Mục tiêu:** Safety net và khắc phục rủi ro critical.
+**Mục tiêu:** Tạo safety net và khắc phục các rủi ro nghiêm trọng.
 
 ```
-Week 1-2: Test infrastructure
+Tuần 1-2: Hạ tầng test
 ├── Add VAH.Backend.Tests project (xUnit + Moq)
 ├── Cover 5 core services: Asset, Collection, Auth, Tag, Permission
 ├── Setup CI pipeline (build + test on every PR)
 └── Target: 60% service layer coverage
 
-Week 3-4: Security & Reliability
+Tuần 3-4: Bảo mật & độ tin cậy
 ├── HTTPS enforcement (Nginx TLS config)
 ├── URL sanitization (backend validation)
 ├── Optimistic concurrency (RowVersion on Asset, Collection)
@@ -150,47 +150,47 @@ Week 3-4: Security & Reliability
 └── Environment-based frontend config (VITE_API_URL)
 ```
 
-**Exit Criteria:**
+**Tiêu chí hoàn thành:**
 - [ ] CI pipeline green on every merge
 - [ ] ≥60% unit test coverage on service layer
 - [ ] HTTPS enforced in production
 - [ ] No secrets in source control
 - [ ] Concurrency conflicts return 409
 
-### Phase 2: Modularize (Month 3–4)
+### Giai đoạn 2: Module hóa (Tháng 3–4)
 
 ```
-Week 5-6: Frontend Architecture
+Tuần 5-6: Kiến trúc frontend
 ├── Tách AppContext → AssetContext + CollectionContext + UIContext
 ├── Adopt TanStack Query (start with assets)
 ├── Extract App.jsx → container components
 └── N+1 query audit + fix
 
-Week 7-8: Backend Hardening
+Tuần 7-8: Cứng hóa backend
 ├── Integration tests (WebApplicationFactory + test DB)
 ├── CD pipeline (auto-deploy staging)
 ├── Monitoring: structured metrics (Prometheus)
 └── Automated backup schedule for PostgreSQL
 ```
 
-**Exit Criteria:**
+**Tiêu chí hoàn thành:**
 - [ ] No single context/component >250 lines
 - [ ] TanStack Query cho ≥80% API calls
 - [ ] Integration tests for critical API paths
 - [ ] One-command deploy to staging
 - [ ] Automated daily backup
 
-### Phase 3: Scale (Month 5–8)
+### Giai đoạn 3: Mở rộng quy mô (Tháng 5–8)
 
 ```
-Week 9-12: Infrastructure
+Tuần 9-12: Hạ tầng
 ├── Cloud storage (S3/Azure via IStorageService)
 ├── SignalR Redis backplane
 ├── PostgreSQL full-text search (tsvector)
 ├── CDN for uploaded files
 └── Multi-instance Docker Compose / Kubernetes
 
-Week 13-16: Observability & Quality
+Tuần 13-16: Khả năng quan sát & chất lượng
 ├── Distributed tracing (OpenTelemetry)
 ├── Alerting (error rate, latency P95, disk usage)
 ├── E2E tests (Playwright, core flows)
@@ -198,7 +198,7 @@ Week 13-16: Observability & Quality
 └── Load testing (k6, target 100 concurrent users)
 ```
 
-**Exit Criteria:**
+**Tiêu chí hoàn thành:**
 - [ ] Multi-instance verified
 - [ ] ≥100 concurrent users sustained
 - [ ] P95 latency <500ms for reads
@@ -207,11 +207,11 @@ Week 13-16: Observability & Quality
 
 ---
 
-## 5. Cost Projection
+## §5 — Dự phóng chi phí
 
 Monthly infrastructure estimates (AWS pricing, Azure/GCP comparable).
 
-### 5.1 Infrastructure Cost by Scale
+### §5.1 — Chi phí hạ tầng theo quy mô
 
 | Component | 100 Users | 1,000 Users | 10,000 Users |
 |-----------|-----------|-------------|---------------|
@@ -226,7 +226,7 @@ Monthly infrastructure estimates (AWS pricing, Azure/GCP comparable).
 | **Total Monthly** | **~$48** | **~$200** | **~$1,125** |
 | **Per-user/month** | **$0.48** | **$0.20** | **$0.11** |
 
-### 5.2 Break-Even Analysis (SaaS)
+### §5.2 — Phân tích hòa vốn (SaaS)
 
 - At **$5/user/month**: Break-even at ~40 users
 - At **$10/user/month**: Profitable from ~20 users
@@ -234,7 +234,7 @@ Monthly infrastructure estimates (AWS pricing, Azure/GCP comparable).
 
 > Personnel cost dominates total cost at this scale. Infrastructure is <10% of total cost with 1 FTE developer.
 
-### 5.3 Self-Hosted Option
+### §5.3 — Tùy chọn tự host
 
 | Scale | Minimum Hardware | Estimated Cost |
 |-------|-----------------|----------------|
@@ -244,7 +244,7 @@ Monthly infrastructure estimates (AWS pricing, Azure/GCP comparable).
 
 ---
 
-## 6. Architectural Pivot Triggers
+## §6 — Ngưỡng buộc phải chuyển hướng kiến trúc
 
 Conditions that indicate the current architecture needs fundamental restructuring.
 
@@ -260,7 +260,7 @@ Conditions that indicate the current architecture needs fundamental restructurin
 | PT8 | **File storage volume** | >1 TB local disk | <1 GB | **Mandatory pivot to S3** |
 | PT9 | **Frontend bundle size** | >2 MB gzipped | ~200 KB | Code splitting, lazy routes |
 
-### Decision Framework
+### Khung quyết định
 
 ```
 ┌─────────────────────┐      ┌─────────────────────┐      ┌────────────────────┐
@@ -275,13 +275,13 @@ Conditions that indicate the current architecture needs fundamental restructurin
 
 ---
 
-## 7. 2-Year North Star (2026–2028)
+## §7 — Mục tiêu 2 năm (2026–2028)
 
-### Vision Statement
+### Tuyên bố tầm nhìn
 
 > By Q1 2028, VAH operates as a **multi-instance, horizontally scalable SaaS platform** serving ≤10,000 users with 99.9% uptime, zero-downtime deployments, and <200ms P95 API latency — while maintaining a codebase that a new developer can understand and ship to production within one week.
 
-### Target Architecture (Q1 2028)
+### Kiến trúc mục tiêu (Q1 2028)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -306,7 +306,7 @@ Conditions that indicate the current architecture needs fundamental restructurin
   (managed)         (cache+backplane)
 ```
 
-### Technical Milestones
+### Mốc kỹ thuật
 
 | Quarter | Milestone | Success Metric |
 |---------|-----------|---------------|
@@ -319,7 +319,7 @@ Conditions that indicate the current architecture needs fundamental restructurin
 | Q4 2027 | **Operational Maturity:** DR drill, runbooks, on-call | RTO <15min verified |
 | Q1 2028 | **Scale Validation:** Load test 10K users, pen-test | P95 <200ms, 99.9% uptime 30d |
 
-### Anti-Goals for 2 Years
+### Mục tiêu không làm trong 2 năm
 
 | We will NOT | Because |
 |-------------|---------|
@@ -329,7 +329,7 @@ Conditions that indicate the current architecture needs fundamental restructurin
 | Support self-hosted deployment | Focus on SaaS |
 | Add GraphQL or gRPC | REST sufficient at <15 entities |
 
-### Decision Checkpoints (Kill-or-Invest Gates)
+### Điểm kiểm tra quyết định (Kill-or-Invest Gates)
 
 | Checkpoint | Date | Signal | If YES | If NO |
 |------------|------|--------|--------|-------|

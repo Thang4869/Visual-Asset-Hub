@@ -2,7 +2,14 @@
 
 > **Status**: Accepted
 > **Date**: 2026-02-25
+> **Last Updated**: 2026-04-06
 > **Deciders**: Tech Lead
+
+## Tóm tắt tiếng Việt
+
+- **Bối cảnh:** Cần dùng JWT cho API đồng thời hỗ trợ SignalR connection.
+- **Quyết định:** Truyền token theo cách tương thích với SignalR và xác thực nhất quán ở backend.
+- **Hệ quả:** Một cơ chế auth cho cả API và realtime, nhưng cần chú ý bảo mật token.
 
 ## Context
 

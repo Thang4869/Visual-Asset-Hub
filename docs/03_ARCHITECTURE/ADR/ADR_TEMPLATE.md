@@ -2,7 +2,14 @@
 
 > **Status**: [Proposed | Accepted | Deprecated | Superseded by ADR-XXX]
 > **Date**: YYYY-MM-DD
+> **Last Updated**: 2026-04-06
 > **Deciders**: [Names or roles]
+
+## Tóm tắt tiếng Việt
+
+- **Bối cảnh:** [Mô tả ngắn vấn đề hoặc cơ hội]
+- **Quyết định:** [Mô tả ngắn quyết định được đưa ra]
+- **Hệ quả:** [Tóm tắt ngắn về đánh đổi và tác động]
 
 ## Context
 

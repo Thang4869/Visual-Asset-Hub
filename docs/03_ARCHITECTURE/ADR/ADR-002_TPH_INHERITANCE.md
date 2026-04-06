@@ -2,7 +2,14 @@
 
 > **Status**: Accepted
 > **Date**: 2026-02-25
+> **Last Updated**: 2026-04-06
 > **Deciders**: Tech Lead
+
+## Tóm tắt tiếng Việt
+
+- **Bối cảnh:** Cần một cách lưu trữ nhiều loại asset khác nhau trong cùng một bảng.
+- **Quyết định:** Dùng TPH inheritance cho `Asset` và các subtype.
+- **Hệ quả:** Đơn giản hóa schema và truy vấn, nhưng cần discriminator nhất quán.
 
 ## Context
 

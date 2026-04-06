@@ -2,7 +2,14 @@
 
 > **Status**: Accepted
 > **Date**: 2026-02-27
+> **Last Updated**: 2026-04-06
 > **Deciders**: Tech Lead
+
+## Tóm tắt tiếng Việt
+
+- **Bối cảnh:** Module Asset có nhiều use case đọc/ghi và cần tách rõ trách nhiệm.
+- **Quyết định:** Áp dụng CQRS với MediatR cho luồng command/query.
+- **Hệ quả:** Code dễ mở rộng và test hơn, nhưng tăng số lượng lớp và handler.
 
 ## Context
 

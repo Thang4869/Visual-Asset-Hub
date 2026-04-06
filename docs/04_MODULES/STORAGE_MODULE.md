@@ -1,23 +1,21 @@
-# STORAGE MODULE
+# Storage Module
 
-> **Last Updated**: 2026-03-02
-> **Status**: Active — Services/ layer
-> **Last Updated**: 2026-03-26
-> **Status**: Active — Services/ layer
-> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
+> **Mục đích**: Upload file, xóa, tạo thumbnail
+> **Last Updated**: 2026-04-06
+
 ---
 
-## §1 — Overview
+## §1 — Tổng quan (Overview)
 
-| Aspect | Detail |
-|--------|--------|
-| **Domain** | File upload, deletion, thumbnail generation |
+| Khía cạnh | Chi tiết |
+|-----------|----------|
+| **Domain** | Upload file, xóa, tạo thumbnail |
 | **Services** | `IStorageService` → `LocalStorageService`, `IThumbnailService` → `ThumbnailService` |
 | **Library** | SixLabors.ImageSharp 3.1.12 |
 | **Storage** | Local filesystem (`wwwroot/uploads/`) |
 | **Patterns** | Strategy (IStorageService), Template Method (thumbnail sizes) |
 
-## §2 — Service Interfaces
+## §2 — Giao diện Service (Service Interfaces)
 
 ### IStorageService
 
@@ -31,8 +29,8 @@ public interface IStorageService
 }
 ```
 
-Current implementation: `LocalStorageService` (filesystem-based).
-Designed for future swap to S3 or Azure Blob via DI without changing callers.
+Triển khai hiện tại: `LocalStorageService` (dựa trên filesystem).
+Được thiết kế để swap sang S3 hoặc Azure Blob qua DI trong tương lai mà không cần thay đổi caller.
 
 ### IThumbnailService
 
@@ -43,19 +41,19 @@ public interface IThumbnailService
 }
 ```
 
-## §3 — File Storage Layout
+## §3 — Bố cục lưu trữ file (File Storage Layout)
 
 ```
 wwwroot/
 └── uploads/
-    ├── {uuid}.{ext}              # Original file (UUID-renamed)
+    ├── {uuid}.{ext}              # File gốc (đổi tên UUID)
     └── thumbs/
         ├── sm_{uuid}.webp        # 150px max dimension
         ├── md_{uuid}.webp        # 400px max dimension
         └── lg_{uuid}.webp        # 800px max dimension
 ```
 
-## §4 — Upload Flow
+## §4 — Luồng Upload (Upload Flow)
 
 ```
 Client              Controller    IAssetService    IStorageService    IThumbnailService
@@ -76,39 +74,39 @@ Client              Controller    IAssetService    IStorageService    IThumbnail
   │←── 201 Created ─────│              │                    │                   │
 ```
 
-## §5 — Thumbnail Generation
+## §5 — Tạo Thumbnail (Thumbnail Generation)
 
-| Size | Max Dimension | Format | Naming |
-|------|--------------|--------|--------|
+| Kích thước | Kích thước tối đa | Định dạng | Đặt tên |
+|------------|------------------|-----------|---------|
 | Small | 150px | WebP | `sm_{uuid}.webp` |
 | Medium | 400px | WebP | `md_{uuid}.webp` |
 | Large | 800px | WebP | `lg_{uuid}.webp` |
 
-- Only generated for `ImageAsset` types (`CanHaveThumbnails == true`)
-- Uses **ImageSharp** for cross-platform image processing
-- Maintains aspect ratio (max dimension constraint)
-- WebP format for optimal compression
+- Chỉ được tạo cho loại `ImageAsset` (`CanHaveThumbnails == true`)
+- Sử dụng **ImageSharp** để xử lý hình ảnh đa nền tảng
+- Duy trì tỷ lệ khung hình (ràng buộc kích thước tối đa)
+- Định dạng WebP để nén tối ưu
 
-## §6 — File Upload Constraints
+## §6 — Ràng buộc Upload File (File Upload Constraints)
 
-| Constraint | Value | Source |
-|-----------|-------|--------|
-| Max file size | 50 MB | `FileUploadConfig` |
-| Max files per request | 20 | `FileUploadConfig` |
-| Kestrel body limit | 100 MB | `Program.cs` |
-| Allowed extensions | .jpg, .png, .gif, .webp, .svg, .pdf, .doc, .mp4, .mp3, etc. | `FileUploadConfig` |
+| Ràng buộc | Giá trị | Nguồn |
+|-----------|---------|-------|
+| Kích thước file tối đa | 50 MB | `FileUploadConfig` |
+| Số file tối đa mỗi request | 20 | `FileUploadConfig` |
+| Giới hạn Kestrel body | 100 MB | `Program.cs` |
+| Extension cho phép | .jpg, .png, .gif, .webp, .svg, .pdf, .doc, .mp4, .mp3, etc. | `FileUploadConfig` |
 | Rate limit | 20/min | Upload rate limiter |
 
-## §7 — Cleanup Strategy
+## §7 — Chiến lược dọn dẹp (Cleanup Strategy)
 
-Asset deletion triggers physical file cleanup via `AssetCleanupHelper`:
+Xóa asset sẽ kích hoạt dọn dẹp file vật lý qua `AssetCleanupHelper`:
 
 ```csharp
-// Only if RequiresFileCleanup (virtual property, true for Image/File types)
+// Chỉ nếu RequiresFileCleanup (virtual property, true cho Image/File types)
 if (asset.RequiresFileCleanup)
 {
     await storageService.DeleteAsync(asset.FilePath);
-    // Delete thumbnails if present
+    // Xóa thumbnail nếu có
     if (asset.ThumbnailSm != null) await storageService.DeleteAsync(asset.ThumbnailSm);
     if (asset.ThumbnailMd != null) await storageService.DeleteAsync(asset.ThumbnailMd);
     if (asset.ThumbnailLg != null) await storageService.DeleteAsync(asset.ThumbnailLg);

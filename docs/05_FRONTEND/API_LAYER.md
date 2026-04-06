@@ -1,10 +1,9 @@
-# API LAYER — Frontend HTTP Client Architecture
+# TẦNG API — Kiến trúc HTTP client của frontend
 
-> **Last Updated**: 2026-03-02
-> **Last Updated**: 2026-03-27
-> **Note**: Verified against `VAH.Frontend/package.json` (React 19, axios); API base path is `/api/v1` and TokenManager is used for JWT handling.
+> **Last Updated**: 2026-04-06
+> **Ghi chú**: Đã đối chiếu với `VAH.Frontend/package.json` (React 19, axios); base path của API là `/api/v1` và TokenManager được dùng để xử lý JWT.
 ---
-## §1 — Architecture Overview
+## §1 — Tổng quan kiến trúc
 
 ```
 Components → Hooks → API Services → Axios Client → Backend REST API
@@ -19,9 +18,9 @@ Components → Hooks → API Services → Axios Client → Backend REST API
                     └── PermissionsApi   /api/v1/permissions
 ```
 
-## §2 — Core Files
+## §2 — Tệp cốt lõi
 
-### client.js — Axios Instance
+### client.js — Axios instance
 
 ```javascript
 const apiClient = axios.create({
@@ -30,7 +29,7 @@ const apiClient = axios.create({
 });
 ```
 
-**Interceptors:**
+**Interceptor:**
 - **Request**: Attaches `Authorization: Bearer <token>` from `TokenManager`
 - **Response (401)**: Auto-clears token and redirects to login
 
@@ -38,7 +37,7 @@ const apiClient = axios.create({
 - `apiClient` — configured Axios instance
 - `staticUrl` / `STATIC_URL` — base URL for static file references
 
-### TokenManager.js — JWT Token Singleton
+### TokenManager.js — JWT token singleton
 
 ```javascript
 class TokenManager {
@@ -52,12 +51,12 @@ class TokenManager {
 export default new TokenManager();  // Singleton instance
 ```
 
-**OOP Patterns:**
+**Mẫu OOP:**
 - **Singleton** — single export instance
 - **Encapsulation** — private `#storageKey` field
 - Uses `localStorage` for persistence
 
-### BaseApiService.js — Abstract Base Class
+### BaseApiService.js — Lớp cơ sở abstract
 
 ```javascript
 export default class BaseApiService {
@@ -79,7 +78,7 @@ export default class BaseApiService {
 
 All helpers auto-unwrap `response.data` for cleaner consumption.
 
-## §3 — API Service Classes
+## §3 — Các lớp API service
 
 ### AssetsApi
 
@@ -142,16 +141,16 @@ class TagsApi extends BaseApiService {
 }
 ```
 
-### Other Services
+### Các service khác
 
-| Service | Endpoint | Key Methods |
+| Service | Endpoint | Phương thức chính |
 |---------|----------|-------------|
 | `AuthApi` | `/auth` | `register(dto)`, `login(dto)` |
 | `SearchApi` | `/search` | `search(query, type?, collectionId?, page?, pageSize?)` |
 | `SmartCollectionsApi` | `/smart-collections` | `getDefinitions()`, `getItems(id, params)` |
 | `PermissionsApi` | `/permissions` | `list(colId)`, `grant(colId, dto)`, `update(id, dto)`, `revoke(id)`, `getMyRole(colId)`, `getShared()` |
 
-## §4 — Barrel Export
+## §4 — Barrel export
 
 ```javascript
 // src/api/index.js
@@ -168,7 +167,7 @@ export { staticUrl, STATIC_URL } from './client';
 
 All exports are **singleton instances** — one API service per domain.
 
-## §5 — OOP Patterns Summary
+## §5 — Tóm tắt mẫu OOP
 
 | Pattern | Implementation |
 |---------|---------------|

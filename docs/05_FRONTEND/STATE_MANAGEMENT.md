@@ -1,10 +1,9 @@
-# STATE MANAGEMENT — Context & Hooks Architecture
+# QUẢN LÝ TRẠNG THÁI — Kiến trúc Context & Hooks
 
-> **Last Updated**: 2026-03-02
-> **Last Updated**: 2026-03-27
-> **Note**: Matches current implementation in `VAH.Frontend/src/` (AppContext composed from domain hooks). Keep AppContext as orchestrator at current scale.
----
-## §1 — Architecture Overview
+> **Last Updated**: 2026-04-06
+> **Ghi chú**: Khớp với implementation hiện tại trong `VAH.Frontend/src/` (AppContext được compose từ domain hooks). Giữ AppContext làm orchestrator ở quy mô hiện tại.
+--- 
+## §1 — Tổng quan kiến trúc
 
 VAH Frontend uses **React Context + Custom Hooks** for state management (no Redux/Zustand):
 
@@ -25,7 +24,7 @@ VAH Frontend uses **React Context + Custom Hooks** for state management (no Redu
 
 ### AppContext (`AppContext.js`)
 
-Central context that composes all domain hooks into a single provider. Eliminates prop-drilling across the component tree.
+Context trung tâm gom toàn bộ domain hooks thành một provider duy nhất. Loại bỏ prop-drilling trên toàn bộ component tree.
 
 **Composed State:**
 - `auth` — `useAuth()` → login state, token, user info
@@ -41,7 +40,7 @@ Central context that composes all domain hooks into a single provider. Eliminate
 
 ### ConfirmContext (`ConfirmContext.js`)
 
-Promise-based dialog system:
+Hệ thống dialog dựa trên Promise:
 
 ```javascript
 const { confirm, prompt, alert } = useConfirm();
@@ -53,9 +52,9 @@ await alert('Operation complete');                     // → void
 
 Wraps `ConfirmDialog` component with resolve/reject pattern.
 
-## §3 — Custom Hooks Inventory
+## §3 — Danh mục custom hooks
 
-| Hook | Domain | Key State | API Layer |
+| Hook | Domain | Trạng thái chính | Tầng API |
 |------|--------|-----------|-----------|
 | `useAuth` | Authentication | `isAuthenticated`, `user`, `token` | `authApi` |
 | `useAssets` | Asset operations | `selectedAssetId`, `assets`, `loading` | `assetApi` |
@@ -69,7 +68,7 @@ Wraps `ConfirmDialog` component with resolve/reject pattern.
 | `useTags` | Tags | `tags`, `loading` | `tagApi` |
 | `useUndoRedo` | Undo/redo stack | `undoStack`, `redoStack` | — (local state) |
 
-## §4 — Data Flow Pattern
+## §4 — Mẫu luồng dữ liệu
 
 ```
 User Action → Component → Hook (state update + API call) → API Service → Backend
@@ -81,9 +80,9 @@ User Action → Component → Hook (state update + API call) → API Service →
                                                                   Component re-renders
 ```
 
-## §5 — SignalR Integration
+## §5 — Tích hợp SignalR
 
-Real-time events are registered in `AppContext`:
+Các sự kiện realtime được đăng ký trong `AppContext`:
 
 ```javascript
 const signalRHandlers = {
@@ -100,15 +99,15 @@ const signalRHandlers = {
 useSignalR(signalRHandlers, isAuthenticated);
 ```
 
-All handlers trigger a `refreshItems()` which refetches the current collection's data.
+Tất cả handlers đều kích hoạt `refreshItems()` để refetch dữ liệu của collection hiện tại.
 
-## §6 — Design Decisions
+## §6 — Quyết định thiết kế
 
-1. **No Redux** — Context + hooks sufficient for current scale; avoids boilerplate
-2. **Composed hooks** — Each hook is independently testable and reusable
-3. **AppContext as orchestrator** — Cross-concern coordination in one place
-4. **Promise-based dialogs** — `useConfirm()` replaces `window.confirm()` with async/await
-5. **Debounced search** — 300ms debounce in `AppContext` via `useRef` timer
+1. **Không dùng Redux** — Context + hooks đủ cho quy mô hiện tại; tránh boilerplate
+2. **Composed hooks** — Mỗi hook có thể test độc lập và tái sử dụng
+3. **AppContext làm orchestrator** — Điều phối xuyên các concern ở một nơi
+4. **Dialog dựa trên Promise** — `useConfirm()` thay `window.confirm()` bằng async/await
+5. **Tìm kiếm có debounce** — debounce 300ms trong `AppContext` qua timer `useRef`
 
 ---
 
