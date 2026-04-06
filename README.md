@@ -198,14 +198,14 @@ VAH/
 
 ## Recent Changes
 
-See [docs/CHANGES/](docs/CHANGES/) for developer-facing notes about refactors and migrations:
+Chi tiết về các refactors và migrations xem tại [docs/07_CHANGELOG/REFACTOR_LOG.md](docs/07_CHANGELOG/REFACTOR_LOG.md).
 
 | Date | Change |
 |------|--------|
-| 2026-03-25 | [Value Objects refactor](docs/CHANGES/2026-03-25_valueobjects-refactor.md) |
-| 2026-03-20 | [Asset Validator refactor](docs/CHANGES/2026-03-20_asset-validator-refactor.md) |
-| 2026-03-17 | [ApplicationUser: limit public mutability and add audit](docs/CHANGES/2026-03-17_applicationuser_refactor.md) |
-| 2026-03-14 | [UploadedFileDto update](docs/CHANGES/2026-03-14_uploadedfiledto.md) |
+| 2026-03-25 | Value Objects refactor |
+| 2026-03-20 | Asset Validator refactor |
+| 2026-03-17 | ApplicationUser refactor |
+| 2026-03-14 | UploadedFileDto update |
 
 ---
 

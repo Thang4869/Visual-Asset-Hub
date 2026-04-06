@@ -90,12 +90,10 @@ docs/
 │   ├── FIX_REPORT_20260227.md            # Development sessions
 │   └── DOCUMENTATION_AUDIT_REPORT.md     # Documentation audit
 │
-└── 📁 CHANGES/                           # Ghi chú thay đổi (per-refactor)
-    ├── 2026-03-14_uploadedfiledto.md
-    ├── 2026-03-17_applicationuser_refactor.md
-    ├── 2026-03-20_asset-validator-refactor.md
-    └── 2026-03-25_valueobjects-refactor.md
+└── GIT_BRANCHING_GUIDELINES.md            # Quy tắc Git workflow
 ```
+
+> **Note**: Ghi chú thay đổi chi tiết (per-refactor notes) đã được tổng hợp vào `07_CHANGELOG/REFACTOR_LOG.md`.
 
 ---
 

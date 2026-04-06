@@ -14,8 +14,8 @@ Những file này thường phải cập nhật khi thay đổi mã nguồn liê
 
 - 07_CHANGELOG/CHANGELOG.md — Thêm entry vào mục [Unreleased] cho mọi PR lớn/nhỏ.
 - 07_CHANGELOG/TECHNICAL_DEBT.md — Ghi/điều chỉnh status technical debt khi phát hiện hoặc resolve.
+- 07_CHANGELOG/REFACTOR_LOG.md — Ghi trước/sau (before/after) cho mọi refactor có ý nghĩa.
 - 02_STANDARDS/API_CONVENTIONS.md — Cập nhật khi thêm/sửa/xóa endpoint (bảng endpoints).
-- docs/CHANGES/*.md — Tạo file `YYYY-MM-DD_short-name.md` cho mỗi refactor/maintenance có ý nghĩa.
 
 ---
 
@@ -94,7 +94,6 @@ Khi REFACTOR:
 
 - [ ] 07_CHANGELOG/REFACTOR_LOG.md → Ghi trước/sau (before/after)
 - [ ] 07_CHANGELOG/TECHNICAL_DEBT.md → Cập nhật trạng thái debt liên quan
-- [ ] docs/CHANGES/YYYY-MM-DD_*.md → Tạo ghi chú refactor (nếu có ý nghĩa)
 - [ ] 04_MODULES/{MODULE}_MODULE.md → Cập nhật interface/flow khi thay đổi
 - [ ] 03_ARCHITECTURE/DEPENDENCY_GRAPH.md → Nếu DI thay đổi
 
@@ -130,13 +129,13 @@ Nếu cần thay đổi template chuẩn (ADR_TEMPLATE.md, MODULE_TEMPLATE.md), 
 
 ## §4 — Thống kê & hướng dẫn vận hành nhẹ
 
-- Tổng tài liệu hiện tại: ~35 files (cập nhật khi có thay đổi lớn)
-- Khi thực hiện refactor có ảnh hưởng phạm vi lớn, **tạo file trong docs/CHANGES/** để mô tả ngắn gọn mục đích, phạm vi và migration steps.
+- Tổng tài liệu hiện tại: ~53 files (cập nhật khi có thay đổi lớn)
+- Khi thực hiện refactor có ảnh hưởng phạm vi lớn, **ghi vào 07_CHANGELOG/REFACTOR_LOG.md** để mô tả ngắn gọn mục đích, phạm vi và migration steps.
 
 Gợi ý vận hành:
 
 - Trước merge PR lớn: chạy checklist docs (các item ở §2).
-- Sau merge: nếu có thay đổi docs, cập nhật `07_CHANGELOG/CHANGELOG.md` và CHANGES entry.
+- Sau merge: nếu có thay đổi docs, cập nhật `07_CHANGELOG/CHANGELOG.md`.
 
 ---
 

@@ -1,658 +1,214 @@
-# REFACTOR LOG
+# Nhật ký Refactoring (Refactor Log)
 
-> **Last Updated**: 2026-03-13
-
-Tracks completed refactoring efforts with before/after comparisons.
-
----
-
-## RF-012 — Asset Domain Model Hardening (Abstract Base, Private Setters, Validation)
-
-**Date**: 2026-03-13
-**Scope**: Asset aggregate root, TPH subtypes, AssetFactory, domain validation, DTO mapping, service layer consumers
-**Branch**: `refactor/cqrs-immutability-options-hardening`
-
-### Summary
-
-Elevated the Asset domain model from a DTO-coupled entity with public setters to an enterprise-grade DDD aggregate root. Asset is now abstract with private setters, domain methods as the only mutation path, centralized validation via `AssetValidator`, and separated DTO mapping via `AssetMapper`.
-
-### Key Changes
-
-#### 1. Abstract Asset + FileAsset Subtype
-
-**Before**
-```csharp
-public class Asset
-{
-    public string FileName { get; set; }
-    public void ApplyUpdate(UpdateAssetDto dto) { ... }
-    public AssetResponseDto ToDto() => new() { ... };
-}
-```
-
-**After**
-```csharp
-public abstract class Asset
-{
-    protected Asset() { }  // EF Core
-    protected Asset(fileName, filePath, contentType, ...) { ... }  // Domain
-
-    public string FileName { get; private set; }
-    public void Rename(string newName) { ... }  // Guard: ThrowIfNullOrWhiteSpace
-}
-
-public sealed class FileAsset : Asset  // New concrete subtype for ContentType.File
-{
-    internal FileAsset() { }
-    internal FileAsset(fileName, filePath, collectionId, userId, parentFolderId?) : base(...) { }
-}
-```
-
-#### 2. Private Setters + Domain Methods
-
-**Before**
-```csharp
-asset.FileName = dto.FileName;
-asset.SortOrder = dto.SortOrder;
-asset.GroupId = dto.GroupId;
-asset.ParentFolderId = null;
-```
-
-**After**
-```csharp
-asset.Rename(dto.FileName);
-asset.Reorder(dto.SortOrder);
-asset.AssignToGroup(dto.GroupId);
-asset.MoveToFolder(null);
-```
-
-All domain methods set `UpdatedAt = DateTime.UtcNow`. `Rename()` uses `ArgumentException.ThrowIfNullOrWhiteSpace`.
-
-#### 3. AssetValidator (Centralized Validation)
-
-```csharp
-public static partial class AssetValidator
-{
-    [GeneratedRegex(@"^#?([0-9A-Fa-f]{3}|...)$")]
-    private static partial Regex HexColorPattern();
-
-    static string NormalizeHexColor(string colorCode);  // Auto-prepend #
-    static string ValidateUrl(string url);               // Absolute http(s) only
-    static string ValidateFileName(string name, int maxLength = 500);
-}
-```
-
-Integrated into `AssetFactory.CreateColor()` and `CreateLink()`.
-
-#### 4. AssetMapper (DTO Mapping Separated)
-
-**Before** (domain entity coupled to DTO):
-```csharp
-// In Asset.cs:
-public AssetResponseDto ToDto() => new() { Id = Id, FileName = FileName, ... };
-// In AssetFactory.cs:
-public static Asset FromDto(CreateAssetDto dto, string userId) { ... }
-```
-
-**After** (service-layer mapper):
-```csharp
-// In Services/AssetMapper.cs:
-public static AssetResponseDto ToDto(Asset asset) => new() { ... };
-public static List<AssetResponseDto> ToDtoList(IEnumerable<Asset> assets) => ...;
-public static Asset CreateFileFromDto(CreateAssetDto dto, string userId) => ...;
-```
-
-#### 5. Semantic Subtype Properties + Virtual Duplicate
-
-```csharp
-public sealed class LinkAsset : Asset
-{
-    public string? Url { get; private set; }             // Semantic property
-    internal override void InitializeClone(Asset source, ...) { Url = ...; }
-}
-
-public sealed class ColorAsset : Asset
-{
-    public string? HexCode { get; private set; }         // Semantic property
-    internal override void InitializeClone(Asset source, ...) { HexCode = ...; }
-}
-```
-
-#### 6. Audit Properties + Soft Delete
-
-```csharp
-public DateTime? UpdatedAt { get; private set; }  // Set by all domain methods
-public bool IsDeleted { get; private set; }        // SoftDelete() method
-
-// AppDbContext:
-modelBuilder.Entity<Asset>().HasQueryFilter(a => !a.IsDeleted);
-modelBuilder.Entity<Asset>().HasIndex(a => a.IsDeleted).HasFilter("\"IsDeleted\" = 0");
-```
-
-### Files Changed
-
-| File | Change |
-|---|---|
-| `Models/Asset.cs` | Abstract class, protected constructors, private setters, domain methods, audit properties |
-| `Models/AssetTypes.cs` | FileAsset added, all sealed, internal constructors, Url/HexCode properties, InitializeClone overrides |
-| `Models/AssetFactory.cs` | Primitives-only, AssetValidator integration, copySuffix required param, removed FromDto |
-| `Models/AssetValidator.cs` | **NEW** — Centralized validation with GeneratedRegex |
-| `Services/AssetMapper.cs` | **NEW** — DTO↔Entity mapping (replaces Asset.ToDto + AssetFactory.FromDto) |
-| `Services/AssetService.cs` | AssetMapper usage, domain method calls, removed inline validation |
-| `Services/AssetCleanupHelper.cs` | RequiresFileCleanup uses IStorageService.Exists() |
-| `Services/BulkAssetService.cs` | Domain method calls (AssignToGroup, RemoveFromGroup, Reorder) |
-| `Services/CollectionService.cs` | AssetMapper.ToDtoList() |
-| `Services/SearchService.cs` | AssetMapper.ToDtoList() |
-| `Services/SmartCollectionService.cs` | AssetMapper.ToDtoList() |
-| `Data/AppDbContext.cs` | FileAsset TPH mapping, IsDeleted query filter + index, Url/HexCode columns |
-
-### Tech Debt Resolved
-
-| # | Item | Resolution |
-|---|------|-----------|
-| #1 | Public setters | All properties have `private set` — mutations via domain methods |
-| #6 | ToDto() in Entity | Moved to `AssetMapper` (service layer) |
-| #8 | Switch-based Duplicate | Virtual `InitializeClone()` dispatch |
+> **Mục đích**: Ghi chép các refactoring đã hoàn thành với before/after.  
+> **Last Updated**: 2026-04-06
 
 ---
 
-## RF-013 — DI-ify Asset Factory & Mapper (IAssetFactory / IAssetMapper)
+## Tổng quan
 
-**Date**: 2026-03-19
-**Scope**: `Models/AssetFactory*`, `Models/AssetFactoryImpl`, `Models/IAssetFactory`, `Services/AssetMapper`, `Services/IAssetMapper`, DI registration, consumers in services (`AssetService`, `CollectionService`, `SearchService`, `SmartCollectionService`)
-**Branch**: `refactor/di-assetfactory-assetmapper`
-
-### Summary
-
-Tách các helper `AssetFactory` và `AssetMapper` từ static sang các abstraction inject được. Mục tiêu là cải thiện testability và cho phép đổi chính sách validate/runtime behavior bằng DI. Giữ một facade static ngắn hạn để bảo toàn tương thích với code chưa migrate.
-
-### Key Changes
-
-#### 1. Instance `IAssetFactory` + `AssetFactoryImpl`
-
-- **Before**: `AssetFactory` là static class chứa toàn bộ logic tạo các subtype (`CreateFile`, `CreateImage`, `Duplicate`, ...`) kèm validation trực tiếp bằng `ArgumentException` và `AssetValidator` static.
-- **After**: Thêm `IAssetFactory` (interface) và `AssetFactoryImpl` (concrete) nhận `IAssetValidator` qua constructor. `AssetFactoryImpl` thực hiện validation/delegation; `AssetFactory` static giờ là façade dùng `_impl = new AssetFactoryImpl(DefaultAssetValidator.Instance)` để giữ backward compatibility.
-
-Snippet — trước
-```csharp
-// AssetFactory.cs (before)
-public static FileAsset CreateFile(string fileName, string filePath, int collectionId, string userId, int? parentFolderId = null)
-{
-    ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
-    ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-    ArgumentException.ThrowIfNullOrWhiteSpace(userId);
-
-    return new(fileName, filePath, collectionId, userId, parentFolderId);
-}
-```
-
-Snippet — sau
-```csharp
-// AssetFactory.cs (facade)
-private static readonly IAssetFactory _impl = new AssetFactoryImpl(DefaultAssetValidator.Instance);
-public static FileAsset CreateFile(...) => _impl.CreateFile(...);
-
-// AssetFactoryImpl.cs
-public FileAsset CreateFile(...) {
-    ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
-    // validation via injected IAssetValidator where needed
-    return new(...);
-}
-```
-
-#### 2. `AssetMapper` → `IAssetMapper` (instance)
-
-- **Before**: `AssetMapper` static helper with `ToDto` and `ToDtoList`.
-- **After**: `AssetMapper` implements `IAssetMapper` with instance methods. Registered as `Singleton` in DI and injected into services.
-
-Snippet — trước
-```csharp
-public static List<AssetResponseDto> ToDtoList(IEnumerable<Asset> assets)
-    => assets.Select(ToDto).ToList();
-```
-
-Snippet — sau
-```csharp
-public class AssetMapper : IAssetMapper
-{
-    public AssetResponseDto ToDto(Asset asset) => new() { ... };
-    public List<AssetResponseDto> ToDtoList(IEnumerable<Asset> assets) => assets.Select(ToDto).ToList();
-}
-```
-
-#### 3. DI registration
-
-- `ServiceCollectionExtensions.cs` updated to:
-  - `services.AddScoped<IAssetFactory, AssetFactoryImpl>();`
-  - `services.AddSingleton<IAssetMapper, AssetMapper>();`
-
-#### 4. Consumers updated to accept injected dependencies
-
-- Services (`AssetService`, `CollectionService`, `SearchService`, `SmartCollectionService`, ...) updated constructors to accept `IAssetFactory` and/or `IAssetMapper` and replaced static calls `AssetFactory.*` / `AssetMapper.*` with `_assetFactory.*` / `_assetMapper.*`.
-
-### Rationale / Benefits
-
-- Testability: dễ mock `IAssetFactory`/`IAssetMapper` trong unit tests.
-- Flexibility: có thể swap validator/factory behaviour qua DI (runtime policy). 
-- Clean code: giảm phụ thuộc vào static state, tách rõ mapping/creation responsibilities.
-- Backward compatible: static facade giữ cho code chưa migrate tiếp tục hoạt động.
-
-### Impact / Notes for Team
-
-- **DB Schema**: Không thay đổi schema.
-- **API Contract**: Không đổi HTTP API/DTO contract.
-- **Env vars**: Không yêu cầu biến môi trường mới.
-- **Startup**: Bắt buộc gọi `ServiceCollectionExtensions` để đăng ký `IAssetFactory`/`IAssetMapper`; missing registration gây lỗi DI khi khởi động.
-- **Tests**: Cập nhật tests để mock interface thay vì thay đổi statics.
-- **Scopes**: `IAssetFactory` đăng ký `Scoped`; `IAssetMapper` đăng ký `Singleton`. Nếu `AssetMapper` có state sau này, chuyển scope tương ứng.
-
-### Files Changed (high-level)
-
-| File | Change |
-|---|---|
-| `Models/IAssetFactory.cs` | **NEW** interface
-| `Models/AssetFactoryImpl.cs` | **NEW** concrete implementation
-| `Models/AssetFactory.cs` | Modified: static façade delegates to `_impl`
-| `Services/IAssetMapper.cs` | **NEW** interface
-| `Services/AssetMapper.cs` | Converted from static → instance implementing `IAssetMapper`
-| `Extensions/ServiceCollectionExtensions.cs` | DI registrations added
-| `Services/AssetService.cs` | Constructors + callers updated to use injected instances
-| `Services/CollectionService.cs` | Injected `IAssetMapper` usage
-| `Services/SearchService.cs` | Injected `IAssetMapper` usage
-| `Services/SmartCollectionService.cs` | Injected `IAssetMapper` usage
+| ID | Ngày | Tên | Phạm vi |
+|----|------|-----|---------|
+| RF-014 | 2026-03-25 | ValueObjects Hardening | AssetPosition, FileName, ColorCode |
+| RF-013 | 2026-03-20 | Asset Validator & DI | Validator, Factory, Mapper lifetimes |
+| RF-012 | 2026-03-17 | ApplicationUser Encapsulation | Auth entity, audit timestamps |
+| RF-011 | 2026-03-14 | UploadedFileDto | IUploadedFile, metadata DTO, validation |
+| RF-010 | 2026-03-13 | Asset Domain Model Hardening | Abstract class, private setters |
+| RF-009 | 2026-03-12 | CQRS Immutability | IReadOnlyList, AssetOptions |
+| RF-008 | 2026-03-12 | Three-Tier Bootstrap | Program.cs, 12 new infra files |
+| RF-007 | 2026-03-10 | ApiErrors & Controllers | ProblemDetails RFC 9457 |
+| RF-006 | 2026-03-08 | Lead-Level Controllers | Batch filters, error codes |
+| RF-005 | 2026-03-07 | Batch Guards & Rate Limiting | BulkOperationLimits, search policy |
+| RF-004 | 2026-03-06 | ProblemDetails Consistency | SRP extraction, validation |
+| RF-003 | 2026-03-05 | Controller Hardening | Magic strings, typed DTOs |
+| RF-002 | 2026-02-27 | CQRS Extraction | Asset module command/query split |
+| RF-001 | 2026-02-26 | TPH Inheritance | Asset subtypes, Strategy pattern |
 
 ---
 
-### Recommended Follow-ups
+## RF-014 — ValueObjects Hardening (2026-03-25)
 
-- Update unit tests to inject and mock `IAssetFactory`/`IAssetMapper`.
-- Remove static `AssetFactory` façade in a later major release after migrating callers (mark as deprecated first).
-- Consider aligning `AssetMapper`'s scope: `Singleton` is OK while it is stateless; revisit if it gains state.
+**Phạm vi**: `Models/ValueObjects/AssetPosition.cs`, `FileName.cs`, `ColorCode.cs`
 
----
+**Thay đổi**:
+- `AssetPosition`: Thêm `Zero` constant, `Deconstruct()`, exception với `nameof()`
+- `FileName`: Null-check, `TryParse()` helper, validation exception
+- `ColorCode`: Whitespace guard, normalization validation
 
-## RF-011 — CQRS Immutability & AssetOptions Hardening
-
-**Date**: 2026-03-12
-**Scope**: CQRS layer (Commands, Queries, Handlers), Service interfaces/implementations, AssetOptions, ServiceCollectionExtensions
-**Branch**: `refactor/cqrs-immutability-options-hardening`
-
-### Summary
-
-Enforced immutable collection contracts across the entire CQRS → Service chain. Hardened `AssetOptions` with data annotation validation and fail-fast startup registration.
-
-### Key Changes
-
-#### 1. IReadOnlyList<T> Return Types (Full Chain)
-
-**Before**
-```csharp
-// Command returns mutable List
-public sealed record UploadFilesCommand(...) : IRequest<List<AssetResponseDto>>;
-// Query returns mutable List
-public sealed record GetAssetsByGroupQuery(...) : IRequest<List<AssetResponseDto>>;
-```
-
-**After**
-```csharp
-// Immutable — callers cannot add/remove from results
-public sealed record UploadFilesCommand(...) : IRequest<IReadOnlyList<AssetResponseDto>>;
-public sealed record GetAssetsByGroupQuery(...) : IRequest<IReadOnlyList<AssetResponseDto>>;
-```
-
-Updated in all 6 layers: Command/Query record → Handler → IAssetService → AssetService → IAssetApplicationService → AssetApplicationService.
-
-#### 2. AssetOptions — Validation + Registration
-
-**Before**
-```csharp
-public int DefaultCollectionId { get; init; } = 1;
-// Registration: services.Configure<AssetOptions>(...)
-```
-
-**After**
-```csharp
-[Range(1, int.MaxValue)]
-public int DefaultCollectionId { get; init; } = 1;
-// Registration: AddOptions<T>().Bind().ValidateDataAnnotations().ValidateOnStart()
-```
-
-### Files Changed
-
-| File | Change |
-|---|---|
-| `CQRS/Assets/Commands/AssetCommands.cs` | `List<>` → `IReadOnlyList<>`, removed redundant using |
-| `CQRS/Assets/Queries/AssetQueries.cs` | `List<>` → `IReadOnlyList<>` |
-| `CQRS/Assets/Handlers/AssetCommandHandlers.cs` | Handler return type updated |
-| `CQRS/Assets/Handlers/AssetQueryHandlers.cs` | Handler return type updated |
-| `Services/IAssetService.cs` | Interface signatures updated |
-| `Services/AssetService.cs` | Implementation signatures updated |
-| `Features/Assets/Application/IAssetApplicationService.cs` | Interface signatures updated |
-| `Features/Assets/Application/AssetApplicationService.cs` | Implementation signatures updated |
-| `Configuration/AssetOptions.cs` | `[Range]` + enhanced XML docs |
-| `Extensions/ServiceCollectionExtensions.cs` | `ValidateDataAnnotations().ValidateOnStart()` |
+**Breaking**: Callers dựa vào `FileName(null)` silent acceptance phải migrate sang `TryParse`.
 
 ---
 
-## RF-010 — Program.cs Three-Tier Bootstrap & Production Infrastructure
+## RF-013 — Asset Validator & DI Refactor (2026-03-20)
 
-**Date**: 2026-03-12
-**Scope**: Program.cs, 11 new infrastructure files, ServiceCollectionExtensions.cs, appsettings.json, VAH.Backend.csproj
-**Branch**: `refactor/program-bootstrap-infrastructure`
+**Phạm vi**: DI registrations, `AssetValidatorImpl`, `AssetMapper` lifetimes
 
-### Summary
+**Thay đổi**:
+- `AssetValidator` → `internal` (public API via `DefaultAssetValidator.Instance`)
+- `IAssetValidator` → `Singleton` concrete `AssetValidatorImpl`
+- `IAssetMapper` → `Scoped` (depends on scoped `IAssetFactory`)
 
-Complete restructuring of Program.cs from a monolithic ~180-line file into a clean 46-line orchestrator via three-tier bootstrap pattern. Added production-grade infrastructure: OpenTelemetry observability, HTTP resilience (Polly 8), security headers middleware, health probes, API versioning, Serilog structured logging from config, and diagnostic endpoints.
-
-### Before → After: Program.cs
-
-**Before** (~180 lines — all inline)
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-// 150+ lines of inline service registration:
-// - CORS, rate limiting, DB, identity, auth, caching
-// - Swagger, controllers, SignalR
-// - Logging, middleware, endpoints
-// All in one flat file with no separation of concerns
-app.Run();
-```
-
-**After** (46 lines — three-tier orchestrator)
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-builder.AddCoreHosting();    // Serilog, infra, OTEL, initializers
-builder.AddApplication();    // feature modules
-builder.AddWeb();            // HTTP API + real-time API
-
-var app = builder.Build();
-app.UseCoreHostingPipeline();
-app.MapSystemEndpoints();    // Swagger, health, /version
-app.MapAssetEndpoints();     // controllers + SignalR
-app.MapAutoDiscoveredEndpoints();
-await app.RunStartupInitializersAsync();
-await app.RunAsync();
-```
-
-### Architecture: Three-Tier Bootstrap
-
-```
-┌─────────────────────────────────────────────────────┐
-│  Program.cs (46 lines — orchestrator only)           │
-├─────────────────────────────────────────────────────┤
-│  AddCoreHosting()     → LoggingSetup                 │
-│                       → ServiceCollectionExtensions   │
-│                       → ObservabilitySetup            │
-│                       → StartupInitializerExtensions  │
-├─────────────────────────────────────────────────────┤
-│  AddApplication()     → FeatureModules               │
-│                         (Asset, Collection, Search,   │
-│                          Auth, Notification)          │
-├─────────────────────────────────────────────────────┤
-│  AddWeb()             → WebServerSetup               │
-│                         (Kestrel, MVC, SignalR,       │
-│                          Swagger, HealthChecks)       │
-├─────────────────────────────────────────────────────┤
-│  UseCoreHostingPipeline() → SecuritySetup            │
-│                           → LoggingSetup             │
-│                           → Middleware pipeline       │
-│                             (6-step numbered order)   │
-└─────────────────────────────────────────────────────┘
-```
-
-### New Files
-
-| File | Lines | Responsibility |
-|---|---|---|
-| `Extensions/BootstrapExtensions.cs` | ~80 | Three-tier facades + pipeline |
-| `Extensions/WebServerSetup.cs` | ~200 | HTTP/SignalR/health/versioning/Swagger |
-| `Extensions/ObservabilitySetup.cs` | ~80 | OTEL tracing + metrics + OTLP |
-| `Extensions/LoggingSetup.cs` | ~40 | Serilog configuration |
-| `Extensions/SecuritySetup.cs` | ~30 | Security pipeline |
-| `Extensions/IStartupInitializer.cs` | ~10 | Startup task interface |
-| `Extensions/DatabaseMigrationInitializer.cs` | ~25 | Dev-only migration |
-| `Extensions/StartupInitializerExtensions.cs` | ~30 | Initializer DI + execution |
-| `Middleware/SecurityHeadersMiddleware.cs` | ~25 | Security response headers |
-| `Controllers/RouteConstants.cs` | ~15 | Centralized route string constants |
-| `Data/DatabaseProviderInfo.cs` | ~10 | Dual DB provider record |
-| `Migrations/20260311...Discriminator.cs` | ~40 | Data-fix migration |
-
-### Key Design Decisions
-
-1. **Three-tier over flat registration** — Each tier has a clear remit (infra → business → HTTP), making it easy to test, swap, or extend any layer independently
-2. **Explicit endpoint mapping over full auto-discovery** — `MapSystemEndpoints()` / `MapAssetEndpoints()` are explicit for readability; `MapAutoDiscoveredEndpoints()` as escape hatch for future modules
-3. **`IEndpointModule` with `static abstract`** — C# 12 static interface method for zero-allocation module discovery
-4. **Security headers as middleware, not library** — Avoids `NWebSec` dependency for 5 simple headers
-5. **Separate startup initializers over `IHostedService`** — `IStartupInitializer` runs before traffic, not concurrently with the host
-6. **`Diagnostics.Source` ActivitySource** — Named `VAH.Backend` for domain-specific custom spans in OTEL
-7. **HTTP resilience on named client only** — `AddStandardResilienceHandler()` scoped to `"Resilient"` HttpClient to avoid wrapping all HTTP globally
-
-### Risk Assessment
-
-- **Low**: All changes are additive; no breaking API surface changes
-- **Medium**: New NuGet dependencies (8 packages) — all Microsoft-maintained or CNCF-backed
-- **Mitigation**: Build succeeds with 0 errors, 0 warnings; all existing controller routes unchanged
+**Trade-offs**: Static `AssetFactory._impl` vẫn bypass DI container.
 
 ---
 
-## RF-009 — ApiErrors & Controllers Lead-Level Upgrade (9.8/10)
+## RF-012 — ApplicationUser Encapsulation (2026-03-17)
 
-**Date**: 2026-03-10
-**Scope**: ApiErrors, ErrorCodes (new), BaseApiController, AuthController, AssetLayoutController, BulkAssetsController, BulkOperationLimits, CollectionsController, ColorGroupsController, ColorsController, FoldersController
-**Branch**: `refactor/lead-level-apierrors-controllers`
+**Phạm vi**: `ApplicationUser` entity, `AuthService`
 
-### Summary
-
-Elevated 10 controller-layer files from Senior (8.2–8.7) to Lead (9.0–9.8) quality. Focus areas: RFC 9457-compliant ProblemDetails, centralized error code constants, structured extensions schema, input sanitization, PII hardening, Swagger contract completeness, and route parameter validation.
-
-### New Files
-
-| File | Purpose |
-|---|---|
-| `Controllers/ErrorCodes.cs` | Centralized `snake_case` error code constants — single source of truth for machine-readable codes |
-
-### Key Changes
-
-#### 1. ApiErrors — URN Type + Extensions Schema + Input Sanitization (8.3 → 9.8)
-
-**Before**
-```csharp
-internal static class ApiErrors
-{
-    public static ProblemDetails EmptyBatch() => new()
-    {
-        Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-        Title = "AssetIds must not be empty.",
-        Status = StatusCodes.Status400BadRequest,
-        Extensions = { ["code"] = "empty_batch" }
-    };
-
-    public static ProblemDetails InvalidSmartCollectionId(string id) => new()
-    {
-        Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-        Title = $"Unknown smart collection identifier '{id}'.",
-        Status = StatusCodes.Status400BadRequest,
-        Extensions = { ["code"] = "invalid_smart_collection_id" }
-    };
-}
-```
-
-**After**
-```csharp
-internal static class ApiErrors
-{
-    private const string ErrorTypeBase = "urn:vah:error:";
-    private const string CodeKey = "code";
-    private const string MetaKey = "meta";
-    private const int MaxInputEchoLength = 100;
-
-    public static ProblemDetails EmptyBatch() => new()
-    {
-        Type = $"{ErrorTypeBase}{ErrorCodes.EmptyBatch}",
-        Title = "AssetIds must not be empty.",
-        Detail = "The request body must contain at least one asset ID.",
-        Status = StatusCodes.Status400BadRequest,
-        Extensions = { [CodeKey] = ErrorCodes.EmptyBatch }
-    };
-
-    public static ProblemDetails InvalidSmartCollectionId(string id) => new()
-    {
-        Type = $"{ErrorTypeBase}{ErrorCodes.InvalidSmartCollectionId}",
-        Title = "Unknown smart collection identifier.",
-        Detail = "The provided identifier does not match any registered smart collection definition.",
-        Status = StatusCodes.Status400BadRequest,
-        Extensions =
-        {
-            [CodeKey] = ErrorCodes.InvalidSmartCollectionId,
-            [MetaKey] = new { invalidId = Truncate(id) }
-        }
-    };
-
-    private static string Truncate(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-        var trimmed = value.Trim();
-        return trimmed.Length <= MaxInputEchoLength ? trimmed : string.Concat(trimmed.AsSpan(0, MaxInputEchoLength), "…");
-    }
-}
-```
-
-**What changed and why:**
-- `Type` → stable `urn:vah:error:` URN per RFC 9457 §3.1.1 (was generic RFC 9110 URL)
-- `CodeKey`/`MetaKey` constants → no more magic strings in Extensions
-- `Detail` field → actionable guidance for API consumers
-- Raw `id` removed from `Title` → moved to `meta.invalidId` (security hygiene)
-- `Truncate()` → null-safe, trims, caps at 100 chars (prevents payload abuse)
-- Extensions schema documented: only `code` + `meta` keys allowed
-
-#### 2. AuthController — PII Hardening + Typed 401 (7.9 → 9.0)
-
-**Before**
-```csharp
-private static string MaskEmail(string email)
-{
-    var at = email.IndexOf('@');
-    return at <= 1 ? "***" : $"{email[0]}***{email[at..]}";
-}
-// Output: "t***@domain.com" — domain fully visible
-```
-
-**After**
-```csharp
-private static string MaskEmail(string email)
-{
-    var at = email.IndexOf('@');
-    if (at <= 1) return "***";
-    var domain = email[(at + 1)..];
-    var dot = domain.LastIndexOf('.');
-    var maskedDomain = dot > 1 ? $"{domain[0]}***{domain[dot..]}" : "***";
-    return $"{email[0]}***@{maskedDomain}";
-}
-// Output: "t***@d***.com" — domain also masked
-```
-
-Also: Login endpoint `[ProducesResponseType(StatusCodes.Status401Unauthorized)]` → `[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]`.
-
-#### 3. BaseApiController — TraceId Helper (8.7 → 9.2)
-
-Added `GetTraceId()` for correlation:
-```csharp
-protected string GetTraceId() => HttpContext.TraceIdentifier;
-```
-
-#### 4. BulkAssetsController — 404 on Move Operations (8.4 → 9.0)
-
-Added `[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]` on `BulkMove` and `BulkMoveGroup` — target collection/group may not exist.
-
-#### 5. BulkOperationLimits — Rationale Documentation (7.5 → 9.0)
-
-Added remarks explaining the 500 limit choice (UX vs DB pressure) and `IOptions<BulkOptions>` upgrade path.
-
-#### 6. CollectionsController — Route Validation + Async Consistency (8.5 → 9.2)
-
-- `[Range(1, int.MaxValue)]` on all `int id` route parameters (was only on `folderId`)
-- `UpdateCollectionPut` → async/await for cleaner stack traces
-
-#### 7. ColorGroupsController, ColorsController, FoldersController — Swagger Completeness (8.2 → 9.0)
-
-All three: added `[ProducesResponseType(404)]` + `[ProducesResponseType(403)]` on create endpoints — service layer can throw NotFoundException (collection missing) or ForbiddenAccessException (no write permission).
-
-### Score Summary
-
-| File | Before | After |
-|---|---|---|
-| ApiErrors.cs | 8.3 | 9.8 |
-| ErrorCodes.cs | — | 9.8 (new) |
-| AssetLayoutController.cs | 8.6 | 9.0 |
-| AuthController.cs | 7.9 | 9.0 |
-| BaseApiController.cs | 8.7 | 9.2 |
-| BulkAssetsController.cs | 8.4 | 9.0 |
-| BulkOperationLimits.cs | 7.5 | 9.0 |
-| CollectionsController.cs | 8.5 | 9.2 |
-| ColorGroupsController.cs | 8.2 | 9.0 |
-| ColorsController.cs | 8.2 | 9.0 |
-| FoldersController.cs | 8.2 | 9.0 |
+**Thay đổi**:
+- `DisplayName`, `CreatedAt` → private setters
+- Domain method `SetDisplayName(string)` với validation + `UpdatedAt` audit
+- Migration `AddApplicationUserUpdatedAt` thêm nullable `UpdatedAt` column
 
 ---
 
-## RF-008 — Lead-Level Controller Hardening (Score 10/10)
+## RF-011 — UploadedFileDto Improvements (2026-03-14)
 
-**Date**: 2026-03-08
-**Scope**: All backend controllers, GlobalExceptionHandler, new cross-cutting infrastructure
-**Branch**: `refactor/controller-lead-level`
+**Phạm vi**: `UploadedFileDto`, `IUploadedFile`, `UploadedFileMetadataDto`
 
-### Summary
+**Thay đổi**:
+- `IUploadedFile` interface cho testability
+- `UploadedFileMetadataDto` cho serialization boundaries
+- `OpenStreamAsync` overload, filename validation (max 260 chars)
+- `IUploadedFileValidator` để verify stream length
 
-Comprehensive lead-level refactoring across all 12+ controllers addressing: custom exception semantics, DRY bulk validation via action filter, standardized error factory with machine-readable codes, structured log event IDs, consistent Swagger contract completeness (403/404/409), REST semantics (201 Created), pagination/route validation, cache headers, and build-info exposure. ~20 files changed.
+---
 
-### New Infrastructure Files
+## RF-010 — Asset Domain Model Hardening (2026-03-13)
 
-| File | Purpose |
-|---|---|
-| `Exceptions/AuthContextMissingException.cs` | Distinct from `UnauthorizedAccessException` — maps to 401 with "Authentication Context Missing" title |
-| `Controllers/Filters/ValidateBatchFilterAttribute.cs` | Action filter centralizing empty + max-batch-size validation (replaces 5× inline guard blocks) |
-| `Controllers/ApiErrors.cs` | Factory methods for standardized ProblemDetails with machine-readable `code` extension |
-| `Controllers/LogEvents.cs` | Structured EventId constants by domain (1xxx=Auth, 2xxx=Bulk, 3xxx=Collection, etc.) |
+**Phạm vi**: Asset aggregate root, TPH subtypes, AssetFactory, AssetMapper
 
-### Key Changes
+**Thay đổi**:
+- `Asset` → abstract class với protected constructors
+- All properties → private setters
+- Domain methods: `Rename()`, `Reorder()`, `AssignToGroup()`, `MoveToFolder()`, `SoftDelete()`
+- `AssetValidator` với `[GeneratedRegex]` cho validation
+- `AssetMapper` tách DTO mapping ra khỏi entity
 
-#### 1. BaseApiController — Custom Exception + Guid Helper (9.3 → 10)
+**Tech debt resolved**: Public setters, ToDto() in entity, switch-based Duplicate
 
-**Before**
-```csharp
-protected string GetUserId() =>
-    User.FindFirstValue(ClaimTypes.NameIdentifier)
-    ?? throw new UnauthorizedAccessException("User identity not found.");
-```
+---
 
-**After**
-```csharp
-protected string GetUserId() =>
-    User.FindFirstValue(ClaimTypes.NameIdentifier)
-    ?? throw new AuthContextMissingException();
+## RF-009 — CQRS Immutability & AssetOptions (2026-03-12)
 
-protected Guid GetUserGuid() =>
-    Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var guid)
-        ? guid
-        : throw new AuthContextMissingException();
-```
+**Phạm vi**: Commands, Queries, Handlers, Service interfaces, AssetOptions
 
-Also added `[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]` globally.
+**Thay đổi**:
+- `List<>` → `IReadOnlyList<>` qua toàn bộ CQRS → Service chain
+- `AssetOptions` thêm `[Range]` validation + `ValidateOnStart()`
+- DI: `IAssetFactory` (Scoped), `IAssetMapper` (Singleton)
 
-#### 2. AuthController — 201 Created + Event IDs (8.4 → 10)
+**Files changed**: 10 files (Commands, Queries, Handlers, Services, AssetOptions)
 
-**Before**: `Register` returned `200 OK` with `[ProducesResponseType(StatusCodes.Status200OK)]`.
+---
 
-**After**: Returns `201 Created` per REST semantics. All log calls use `LogEvents.RegisterAttempt` / `LogEvents.LoginAttempt`.
+## RF-008 — Three-Tier Bootstrap (2026-03-12)
 
-```csharp
-[ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status201Created)]
-public async Task<ActionResult<AuthResponseDto>> Register(...)
-{
-    logger.LogInformation(LogEvents.RegisterAttempt, "Registration attempt for {Email}", MaskEmail(dto.Email));
-    var result = await authService.RegisterAsync(dto, ct);
-    return StatusCode(StatusCodes.Status201Created, result);
-}
-```
+**Phạm vi**: Program.cs, 11 new infrastructure files
+
+**Thay đổi**:
+- Program.cs: 180 lines → 46 lines orchestrator
+- Three-tier: `AddCoreHosting()` → `AddApplication()` → `AddWeb()`
+- OpenTelemetry tracing + metrics
+- HTTP resilience với Polly 8
+- Security headers middleware
+- Health probes + API versioning
+
+**New files**: BootstrapExtensions, WebServerSetup, ObservabilitySetup, LoggingSetup, SecuritySetup, IStartupInitializer, DatabaseMigrationInitializer, StartupInitializerExtensions, SecurityHeadersMiddleware, RouteConstants, DatabaseProviderInfo
+
+---
+
+## RF-007 — ApiErrors & Controllers Lead-Level (2026-03-10)
+
+**Phạm vi**: ApiErrors, ErrorCodes, 10 controllers
+
+**Thay đổi**:
+- URN Type scheme: `/errors/{code}` → `urn:vah:error:{code}` (RFC 9457)
+- `ErrorCodes.cs`: Centralized snake_case error constants
+- `Truncate()` helper: Input sanitization (max 100 chars)
+- `MaskEmail()`: Domain cũng được mask (`t***@d***.com`)
+- `[ProducesResponseType]` đầy đủ cho 401/403/404/409
+
+**Quality**: 10 controllers upgraded từ Senior (8.2–8.7) → Lead (9.0–9.8)
+
+---
+
+## RF-006 — Lead-Level Controllers (2026-03-08)
+
+**Phạm vi**: BulkAssetsController, AssetLayoutController, ValidateBatchFilterAttribute
+
+**Thay đổi**:
+- `ValidateBatchFilterAttribute`: Centralized empty + max-batch validation
+- `AuthContextMissingException`: Custom exception cho missing auth context
+- `LogEvents`: Structured EventId constants organized by domain (1xxx-6xxx)
+- `GET /collections/{id}`: Canonical resource endpoint
+
+**Tech debt resolved**: 40+ lines duplicated guard code eliminated
+
+---
+
+## RF-005 — Batch Guards & Rate Limiting (2026-03-07)
+
+**Phạm vi**: BulkOperationLimits, RateLimitPolicies, SearchController, HealthController
+
+**Thay đổi**:
+- `BulkOperationLimits.MaxBatchSize = 500`
+- `Search` rate-limit policy: 60 req/min sliding window
+- `GET /api/v1/health/live`: K8s liveness probe
+- `TagService.CreateOrGetAsync`: `(Tag, bool Created)` tuple cho idempotent behavior
+
+---
+
+## RF-004 — ProblemDetails Consistency (2026-03-06)
+
+**Phạm vi**: BaseApiController, BulkAssetsController, SharedCollectionsController, TagsController
+
+**Thay đổi**:
+- `SharedCollectionsController`: Extracted từ PermissionsController (SRP)
+- All `typeof(ProblemDetails)` declarations trên 400/401/404/409
+- Admin-only tag migration: `[Authorize(Roles = "Admin")]`
+- Structured logging cho bulk operations
+
+---
+
+## RF-003 — Controller Hardening (2026-03-05)
+
+**Phạm vi**: 15 controllers, PolicyNames, RateLimitPolicies, typed response DTOs
+
+**Thay đổi**:
+- `PolicyNames`, `RateLimitPolicies`: Magic strings → constants
+- Typed DTOs: `BulkDeleteResult`, `BulkMoveResult`, `BulkTagResult`, `RoleResult`, `MessageResult`
+- `SearchRequestParams`: Grouped query parameters
+- All controllers marked `sealed`
+- Route constraints: `{id:int}`, `{collectionId:int}`
+
+---
+
+## RF-002 — CQRS Extraction (2026-02-27)
+
+**Phạm vi**: Asset module, MediatR
+
+**Thay đổi**:
+- Split `AssetsController` → `AssetsCommandController` + `AssetsQueryController`
+- `AssetApplicationService` facade (wraps ISender + IUserContextProvider)
+- `IUserContextProvider`: Decouple handlers từ HttpContext
+- 15+ Commands/Queries với dedicated handlers
+
+---
+
+## RF-001 — TPH Inheritance (2026-02-26)
+
+**Phạm vi**: Asset entity, 5 subtypes
+
+**Thay đổi**:
+- `Asset` base class + 5 TPH subtypes: `FileAsset`, `ImageAsset`, `VideoAsset`, `LinkAsset`, `FolderAsset`
+- `ISmartCollectionFilter`: Strategy pattern cho Smart Collections
+- 5 filter strategies: Recent, Favorites, ByType, ByTag, ByDateRange
+
+---
+
+> **Document End**
 
 #### 3. DRY Bulk Validation via Action Filter (8.5 → 10)
 
