@@ -139,13 +139,48 @@ Gợi ý vận hành:
 
 ---
 
-## §5 — Tóm tắt ngắn (Quick Reference)
+## §5 — Automation & Validation
+
+### 5.1 Documentation Quality Checklist
+
+Trước khi merge PR có thay đổi docs, chạy validation:
+
+```bash
+# Kiểm tra consistency
+docs/.validate-docs.md
+
+# Hoặc manual check:
+- [ ] Headers có "Last Updated: YYYY-MM-DD"
+- [ ] Vietnamese titles (trừ templates)
+- [ ] § section numbering
+- [ ] "Document End" markers
+- [ ] Cross-references chính xác
+```
+
+### 5.2 Pre-commit Hook (Đề xuất)
+
+```bash
+#!/bin/sh
+# .git/hooks/pre-commit
+echo "Validating documentation..."
+if grep -L "Document End" docs/**/*.md | grep -v "08_REPORTS" | grep -q .; then
+  echo "❌ Some docs missing 'Document End' marker"
+  exit 1
+fi
+echo "✅ Documentation validation passed"
+```
+
+---
+
+## §6 — Tóm tắt ngắn (Quick Reference)
 
 - Tier 1 → cập nhật mọi PR liên quan
 - Tier 2 → chỉ sửa module liên quan
 - Tier 3 → sửa khi kiến trúc thay đổi
 - Tier 4 → sửa khi thay đổi quy ước hệ thống
 - Tier 5 → đóng băng, hiếm khi sửa
+
+**Validation**: Check `.validate-docs.md` trước merge
 
 ---
 

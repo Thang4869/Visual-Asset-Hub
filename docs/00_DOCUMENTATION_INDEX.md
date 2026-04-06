@@ -13,10 +13,11 @@
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng số files | 35+ |
+| Tổng số files | 50+ |
 | Directories | 10 |
 | ADRs | 6 |
 | Module docs | 9 |
+| Quality tooling | Style guide + validation |
 
 ### 1.2 Cây thư mục
 
@@ -26,6 +27,8 @@ docs/
 ├── 📋 00_DOCUMENTATION_INDEX.md          ← BẠN ĐANG Ở ĐÂY
 ├── 📋 00_DOCS_MAINTENANCE_GUIDE.md       # Hướng dẫn bảo trì docs
 ├── 📋 GIT_BRANCHING_GUIDELINES.md        # Quy tắc Git & PR
+├── 📋 STYLE_GUIDE.md                     # Hướng dẫn phong cách docs
+├── 📋 .validate-docs.md                  # Quality validation checklist
 │
 ├── 📁 01_DESIGN_PHILOSOPHY/              # Tư duy thiết kế
 │   ├── ARCHITECTURE_CONVENTIONS.md       # Tiêu chuẩn OOP (.NET 9 & React 19)
@@ -232,3 +235,7 @@ export class AssetsApi extends BaseApiService { }
 ---
 
 > **Xem thêm**: [00_DOCS_MAINTENANCE_GUIDE.md](00_DOCS_MAINTENANCE_GUIDE.md) — Hướng dẫn khi nào cập nhật file nào
+
+---
+
+> **Document End**
