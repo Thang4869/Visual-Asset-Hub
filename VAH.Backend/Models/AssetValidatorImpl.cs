@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace VAH.Backend.Models;
 
-public sealed class AssetValidatorImpl : IAssetValidator
+public sealed partial class AssetValidatorImpl : IAssetValidator
 {
     [GeneratedRegex(@"^#?([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")]
     private static partial Regex HexColorPattern();
