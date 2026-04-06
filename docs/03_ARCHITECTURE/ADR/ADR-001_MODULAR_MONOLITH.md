@@ -2,7 +2,14 @@
 
 > **Status**: Accepted
 > **Date**: 2026-02-25
+> **Last Updated**: 2026-04-06
 > **Deciders**: Tech Lead
+
+## Tóm tắt tiếng Việt
+
+- **Bối cảnh:** Cần cân bằng tốc độ phát triển với khả năng bảo trì dài hạn.
+- **Quyết định:** Chọn mô hình modular monolith với ranh giới module rõ ràng.
+- **Hệ quả:** Giảm chi phí vận hành, nhưng vẫn cần kiểm soát coupling giữa các module.
 
 ## Context
 

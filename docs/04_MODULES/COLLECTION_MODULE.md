@@ -1,22 +1,20 @@
-# COLLECTION MODULE
+# Collection Module
 
-> **Last Updated**: 2026-03-08
-> **Status**: Active — Services/ layer (not yet migrated to Features/)
-> **Last Updated**: 2026-03-26
-> **Status**: Active — Services/ layer (not yet migrated to Features/)
-> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
+> **Mục đích**: Tổ chức tài sản theo cấu trúc phân cấp
+> **Last Updated**: 2026-04-06
+
 ---
 
-## §1 — Overview
+## §1 — Tổng quan (Overview)
 
-| Aspect | Detail |
-|--------|--------|
-| **Domain** | Hierarchical organization of assets |
+| Khía cạnh | Chi tiết |
+|-----------|----------|
+| **Domain** | Tổ chức tài sản theo cấu trúc phân cấp |
 | **Aggregate Root** | `Collection` |
 | **Service** | `ICollectionService` → `CollectionService` |
 | **Controller** | `CollectionsController` (7 endpoints) |
 | **DB Table** | `Collections` |
-| **Patterns** | Self-referential tree, domain methods, multi-tenancy via UserId |
+| **Patterns** | Self-referential tree, domain methods, multi-tenancy qua UserId |
 
 ## §2 — Domain Model
 
@@ -43,12 +41,12 @@ public class Collection
 
 **Domain Methods:**
 
-| Method | Purpose |
-|--------|---------|
-| `IsOwnedBy(userId)` | Ownership check |
-| `IsSystemCollection` | True when `UserId == null` |
-| `IsAccessibleBy(userId)` | System collection OR owned |
-| `ApplyUpdate(dto)` | Null-safe partial update |
+| Method | Mục đích |
+|--------|----------|
+| `IsOwnedBy(userId)` | Kiểm tra quyền sở hữu |
+| `IsSystemCollection` | True khi `UserId == null` |
+| `IsAccessibleBy(userId)` | System collection HOẶC sở hữu |
+| `ApplyUpdate(dto)` | Cập nhật từng phần an toàn với null |
 
 ## §3 — Service Interface
 
@@ -66,17 +64,17 @@ public interface ICollectionService
 
 ## §4 — API Endpoints
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/collections` | List user's collections (owned + system) |
-| GET | `/api/v1/collections/{id}` | Get single collection (canonical resource endpoint) |
-| GET | `/api/v1/collections/{id}/items` | Get collection with assets (optional `?folderId=`) |
-| POST | `/api/v1/collections` | Create collection (201 Created → `GET {id}`) |
-| PATCH | `/api/v1/collections/{id}` | Partial update |
-| PUT | `/api/v1/collections/{id}` | Full update (alias for PATCH) |
-| DELETE | `/api/v1/collections/{id}` | Delete collection + cascade assets |
+| Method | Route | Mô tả |
+|--------|-------|-------|
+| GET | `/api/v1/collections` | Lấy danh sách collections của người dùng (sở hữu + system) |
+| GET | `/api/v1/collections/{id}` | Lấy một collection (canonical resource endpoint) |
+| GET | `/api/v1/collections/{id}/items` | Lấy collection với assets (tùy chọn `?folderId=`) |
+| POST | `/api/v1/collections` | Tạo collection (201 Created → `GET {id}`) |
+| PATCH | `/api/v1/collections/{id}` | Cập nhật từng phần |
+| PUT | `/api/v1/collections/{id}` | Cập nhật toàn bộ (alias cho PATCH) |
+| DELETE | `/api/v1/collections/{id}` | Xóa collection + cascade assets |
 
-## §5 — Sequence Diagram — Create Collection
+## §5 — Sequence Diagram — Tạo Collection
 
 ```
 Client                CollectionsController    ICollectionService    AppDbContext
@@ -92,12 +90,12 @@ Client                CollectionsController    ICollectionService    AppDbContex
   │←── 201 Created ─────────│                        │                   │
 ```
 
-## §6 — Access Control
+## §6 — Kiểm soát truy cập (Access Control)
 
-Collections support two access models:
-1. **Ownership**: `UserId` field — user owns the collection
-2. **Sharing**: Via `CollectionPermission` (see PERMISSION_MODULE)
-3. **System**: `UserId == null` — accessible by all authenticated users
+Collections hỗ trợ hai mô hình truy cập:
+1. **Quyền sở hữu**: Trường `UserId` — người dùng sở hữu collection
+2. **Chia sẻ**: Qua `CollectionPermission` (xem PERMISSION_MODULE)
+3. **System**: `UserId == null` — tất cả người dùng đã xác thực có thể truy cập
 
 ---
 

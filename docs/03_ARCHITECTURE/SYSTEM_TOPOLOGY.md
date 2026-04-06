@@ -1,10 +1,10 @@
-# SYSTEM TOPOLOGY — Infrastructure & Deployment
+# TOPOLOGY HỆ THỐNG — Hạ tầng & Triển khai
 
-> **Last Updated**: 2026-03-26
+> **Last Updated**: 2026-04-06
 
 ---
 
-## §1 — Deployment Architecture
+## §1 — Kiến trúc triển khai
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -32,16 +32,16 @@
 └──────────────────────────────────────────────────────────┘
 ```
 
-## §2 — Service Details
+## §2 — Chi tiết dịch vụ
 
-| Service | Image | Port | Health Check | Dependencies |
+| Dịch vụ | Image | Port | Health Check | Phụ thuộc |
 |---------|-------|------|-------------|-------------|
 | **Frontend** | `node:20` → Nginx | 3000 | HTTP GET / | None |
 | **Backend** | `mcr.microsoft.com/dotnet/aspnet:9.0` | 5027 | GET `/api/v1/health` | PostgreSQL, Redis (optional) |
 | **PostgreSQL** | `postgres:17` | 5432 | `pg_isready` | None |
 | **Redis** | `redis:7` | 6379 | `redis-cli ping` | None |
 
-## §3 — Network Flow
+## §3 — Luồng mạng
 
 ```
 Browser (SPA)
@@ -55,9 +55,9 @@ Browser (SPA)
         └── wss://           upgrade
 ```
 
-## §4 — Environment Matrix
+## §4 — Ma trận môi trường
 
-| Setting | Development | Staging | Production |
+| Cấu hình | Development | Staging | Production |
 |---------|------------|---------|------------|
 | DB Provider | SQLite | PostgreSQL | PostgreSQL |
 | Redis | None (in-memory) | Redis | Redis |
@@ -69,7 +69,7 @@ Browser (SPA)
 | Kestrel Body Limit | 100 MB | 100 MB | 50 MB |
 | Rate Limit (Fixed) | 100/min | 100/min | 60/min |
 
-## §5 — Local Development Setup
+## §5 — Thiết lập phát triển cục bộ
 
 ```bash
 # Backend (SQLite mode)
@@ -84,7 +84,7 @@ npm install && npm run dev    # → http://localhost:5173
 docker compose up -d          # Frontend:3000, Backend:5027, PG:5432, Redis:6379
 ```
 
-## §6 — File Storage Layout
+## §6 — Bố cục lưu trữ tệp
 
 ```
 wwwroot/
@@ -98,11 +98,11 @@ wwwroot/
 
 ---
 
-## §7 — Target Deployment Architecture
+## §7 — Kiến trúc triển khai mục tiêu
 
-> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §14
+> **Nguồn**: Di chuyển từ `ARCHITECTURE_REVIEW.md` §14
 
-### Current: Single Instance
+### Hiện tại: Single Instance
 
 ```
 docker-compose.yml
@@ -114,7 +114,7 @@ docker-compose.yml
 Volumes: postgres-data, redis-data, backend-uploads, backend-logs
 ```
 
-### Target: Scalable Production
+### Mục tiêu: Production có khả năng mở rộng
 
 ```
                     Load Balancer (TLS termination)
@@ -133,7 +133,7 @@ Volumes: postgres-data, redis-data, backend-uploads, backend-logs
                             CDN Edge
 ```
 
-**Prerequisites for target architecture:**
+**Điều kiện tiên quyết cho kiến trúc mục tiêu:**
 1. Cloud storage implementation (IStorageService already abstracted)
 2. SignalR Redis backplane configuration
 3. Externalized secrets (Key Vault / SSM)
@@ -142,11 +142,11 @@ Volumes: postgres-data, redis-data, backend-uploads, backend-logs
 
 ---
 
-## §8 — Environment Strategy
+## §8 — Chiến lược môi trường
 
-> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §15
+> **Nguồn**: Di chuyển từ `ARCHITECTURE_REVIEW.md` §15
 
-| Aspect | Development | Staging | Production |
+| Khía cạnh | Development | Staging | Production |
 |--------|-------------|---------|------------|
 | **Database** | SQLite (zero-config) | PostgreSQL (Docker) | PostgreSQL (managed RDS/Cloud SQL) |
 | **Cache** | In-memory (no Redis) | Redis (Docker) | Redis (managed ElastiCache/Memorystore) |
@@ -161,21 +161,21 @@ Volumes: postgres-data, redis-data, backend-uploads, backend-logs
 | **SignalR** | Single instance | Single instance | Redis backplane (if multi-instance) |
 | **Monitoring** | None | Health endpoint | Health + Metrics + Alerting |
 
-### Environment Parity Principle
+### Nguyên tắc tương đồng môi trường
 
-Staging must mirror production infrastructure to catch environment-specific bugs (especially SQLite↔PostgreSQL drift). Dev may diverge for convenience but must run the full integration test suite against PostgreSQL before merge.
+Staging phải phản chiếu hạ tầng production để phát hiện lỗi theo môi trường (đặc biệt là sai lệch SQLite↔PostgreSQL). Development có thể khác biệt để thuận tiện, nhưng phải chạy toàn bộ integration test suite trên PostgreSQL trước khi merge.
 
-### Current Gap
+### Khoảng trống hiện tại
 
-**No staging environment exists.** Code goes from dev → production. This is the primary operational risk. Adding a staging environment (even as a second docker-compose profile) is a prerequisite for safe deployments.
+**Chưa có staging environment.** Code đi thẳng từ dev → production. Đây là rủi ro vận hành chính. Việc thêm staging environment (dù chỉ là một docker-compose profile thứ hai) là điều kiện tiên quyết cho triển khai an toàn.
 
 ---
 
-## §9 — Data Flow Diagrams
+## §9 — Sơ đồ luồng dữ liệu
 
-> **Source**: Migrated from `PROJECT_DOCUMENTATION.md` §1.1–1.3
+> **Nguồn**: Di chuyển từ `PROJECT_DOCUMENTATION.md` §1.1–1.3
 
-### 9.1 Upload Flow
+### §9.1 — Upload Flow
 
 ```
 User (Browser)
@@ -202,7 +202,7 @@ AssetService.CreateAssetFromUploadAsync()
   └──⑦ INotificationService.NotifyAssetCreated()        → SignalR → all user clients
 ```
 
-### 9.2 Read Flow (GET Assets)
+### §9.2 — Read Flow (GET Assets)
 
 ```
 Browser → Nginx → Auth → AssetsQueryController.GetAssets()
@@ -219,7 +219,7 @@ AssetService.GetAssetsAsync(paginationParams, userId)
         → Frontend: axios → useAssets hook → AssetGrid render
 ```
 
-### 9.3 Cache Invalidation Flow
+### §9.3 — Cache Invalidation Flow
 
 ```
 Write operation (Create/Update/Delete)

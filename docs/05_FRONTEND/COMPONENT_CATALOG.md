@@ -1,21 +1,20 @@
-# COMPONENT CATALOG — Frontend React Components
+# DANH MỤC COMPONENT — React Components phía frontend
 
-> **Last Updated**: 2026-03-02
-> **Last Updated**: 2026-03-27
-> **Note**: Component list verified against `VAH.Frontend/src/components` — filenames are illustrative; keep components small and hook-driven.
+> **Last Updated**: 2026-04-06
+> **Ghi chú**: Danh sách component đã đối chiếu với `VAH.Frontend/src/components` — tên file chỉ mang tính minh họa; giữ component nhỏ và thiên về hooks.
 ---
-## §1 — Component Inventory
+## §1 — Danh mục component
 
-### 1.1 Layout Components
+### §1.1 — Component bố cục
 
-| Component | File | Purpose |
+| Component | File | Mục đích |
 |-----------|------|---------|
 | `AppHeader` | `AppHeader.jsx` | Top navigation bar — search, view mode toggle, user menu |
 | `AppSidebar` | `AppSidebar.jsx` | Left sidebar — collection tree, smart collections, actions |
 
-### 1.2 Asset Display Components
+### §1.2 — Component hiển thị asset
 
-| Component | File | Purpose |
+| Component | File | Mục đích |
 |-----------|------|---------|
 | `AssetGrid` | `AssetGrid.jsx` | Grid/list view of assets in a collection |
 | `AssetDisplayer` | `AssetDisplayer.jsx` | Single asset card rendering (thumbnail, name, type icon) |
@@ -23,32 +22,32 @@
 | `ColorBoard` | `ColorBoard.jsx` | Color palette display for color/color-group assets |
 | `DetailsPanel` | `DetailsPanel.jsx` | Right panel — selected asset metadata, tags, actions |
 
-### 1.3 Navigation Components
+### §1.3 — Component điều hướng
 
-| Component | File | Purpose |
+| Component | File | Mục đích |
 |-----------|------|---------|
 | `CollectionBrowser` | `CollectionBrowser.jsx` | Main content area — routes between collections |
 | `CollectionTree` | `CollectionTree.jsx` | Hierarchical tree of collections in sidebar |
 | `TreeViewPanel` | `TreeViewPanel.jsx` | Folder tree within a collection |
 | `SearchBar` | `SearchBar.jsx` | Search input with debounce |
 
-### 1.4 Dialog Components
+### §1.4 — Component hộp thoại
 
-| Component | File | Purpose |
+| Component | File | Mục đích |
 |-----------|------|---------|
 | `ConfirmDialog` | `ConfirmDialog.jsx` | Promise-based confirm/prompt/alert modal |
 | `ShareDialog` | `ShareDialog.jsx` | Collection sharing — grant/revoke permissions |
 | `ContextMenu` | `ContextMenu.jsx` | Right-click context menu for assets/folders |
 
-### 1.5 Utility Components
+### §1.5 — Component tiện ích
 
-| Component | File | Purpose |
+| Component | File | Mục đích |
 |-----------|------|---------|
 | `UploadArea` | `UploadArea.jsx` | Drag-and-drop file upload zone |
 | `LoginPage` | `LoginPage.jsx` | Authentication page (login/register) |
 | `ErrorBoundary` | `ErrorBoundary.jsx` | React error boundary — catches render errors |
 
-## §2 — Component Hierarchy
+## §2 — Phân cấp component
 
 ```
 App
@@ -76,15 +75,15 @@ App
 │           └── ErrorBoundary
 ```
 
-## §3 — Component Design Rules
+## §3 — Quy tắc thiết kế component
 
-1. **No class components** — all components are functional with hooks
-2. **No local API calls** — components consume hooks which call API services
-3. **Props-driven** — components receive data via props or context, not global state
-4. **Single responsibility** — each component handles one UI concern
-5. **Error boundaries** — `ErrorBoundary` wraps the main layout
+1. **Không dùng class components** — tất cả component là functional với hooks
+2. **Không gọi API trực tiếp** — component chỉ dùng hooks, còn hooks gọi API services
+3. **Dựa trên props** — component nhận dữ liệu qua props hoặc context, không qua global state
+4. **Single responsibility** — mỗi component xử lý một concern UI
+5. **Error boundaries** — `ErrorBoundary` bọc layout chính
 
-## §4 — Key Component Details
+## §4 — Chi tiết component chính
 
 ### AssetGrid
 - Renders assets in grid or list mode based on `layoutMode`

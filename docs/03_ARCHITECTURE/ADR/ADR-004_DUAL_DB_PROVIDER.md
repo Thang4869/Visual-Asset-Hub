@@ -2,7 +2,14 @@
 
 > **Status**: Accepted
 > **Date**: 2026-02-25
+> **Last Updated**: 2026-04-06
 > **Deciders**: Tech Lead
+
+## Tóm tắt tiếng Việt
+
+- **Bối cảnh:** Cần hỗ trợ development cục bộ đơn giản nhưng vẫn dùng PostgreSQL cho production.
+- **Quyết định:** Cho phép song song SQLite và PostgreSQL qua database provider abstraction.
+- **Hệ quả:** Tăng tiện lợi cho dev, nhưng cần quản lý drift giữa hai provider.
 
 ## Context
 

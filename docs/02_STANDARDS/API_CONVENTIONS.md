@@ -1,20 +1,21 @@
-# API CONVENTIONS — REST API Design Rules
+# Quy Ước API (API Conventions)
 
-> **Last Updated**: 2026-03-08  
+> **Mục đích**: Định nghĩa quy tắc thiết kế REST API cho hệ thống  
+> **Last Updated**: 2026-04-06  
 > **Base URL**: `/api/v1`
 
 ---
 
-## §1 — URL Design
+## §1 — Thiết Kế URL
 
-### Pattern
+### Mẫu URL (Pattern)
 ```
 /api/v1/{resource}              → Collection (GET list, POST create)
 /api/v1/{resource}/{id}         → Item (GET, PATCH/PUT, DELETE)
 /api/v1/{resource}/{id}/{sub}   → Sub-resource or action
 ```
 
-### Current Endpoints (60 total)
+### Danh Sách Endpoints Hiện Tại (60 endpoints)
 
 | Controller | Route Prefix | Endpoints | Auth |
 |-----------|-------------|-----------|------|
@@ -35,21 +36,25 @@
 | `AuthController` | `/api/v1/auth` | POST `register` (201), POST `login` | Rate-limited |
 | `HealthController` | `/api/v1/health` | GET, GET `live` | Public |
 
-## §2 — HTTP Methods & Status Codes
+---
 
-| Action | Method | Success | Error |
-|--------|--------|---------|-------|
-| List resources | `GET` | 200 + array/paged | 401 |
-| Get single | `GET` | 200 | 404 |
-| Create | `POST` | 201 + `Location` header | 400, 409 |
-| Full update | `PUT` | 200 | 400, 404 |
-| Partial update | `PATCH` | 200 | 400, 404 |
-| Delete | `DELETE` | 204 (no body) | 404 |
-| Action (bulk) | `POST` | 200 + count | 400 |
+## §2 — Phương Thức HTTP & Mã Trạng Thái
 
-## §3 — Request/Response Format
+| Hành động | Method | Thành công | Lỗi |
+|-----------|--------|------------|-----|
+| Liệt kê tài nguyên | `GET` | 200 + array/paged | 401 |
+| Lấy chi tiết | `GET` | 200 | 404 |
+| Tạo mới | `POST` | 201 + `Location` header | 400, 409 |
+| Cập nhật toàn bộ | `PUT` | 200 | 400, 404 |
+| Cập nhật một phần | `PATCH` | 200 | 400, 404 |
+| Xóa | `DELETE` | 204 (no body) | 404 |
+| Thao tác hàng loạt | `POST` | 200 + count | 400 |
 
-All responses use `application/json`. Errors follow RFC 7807 ProblemDetails:
+---
+
+## §3 — Định Dạng Request/Response
+
+Tất cả response sử dụng `application/json`. Lỗi tuân theo RFC 7807 ProblemDetails:
 
 ```json
 {
@@ -60,7 +65,7 @@ All responses use `application/json`. Errors follow RFC 7807 ProblemDetails:
 }
 ```
 
-Validation errors include field-level detail:
+Lỗi validation bao gồm chi tiết theo từng field:
 ```json
 {
   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
@@ -73,7 +78,9 @@ Validation errors include field-level detail:
 }
 ```
 
-## §4 — Pagination
+---
+
+## §4 — Phân Trang
 
 ```
 GET /api/v1/assets?page=1&pageSize=50
@@ -87,32 +94,37 @@ Response:
 }
 ```
 
-## §5 — Authentication
+---
 
-- **Method**: JWT Bearer token
+## §5 — Xác Thực
+
+- **Phương thức**: JWT Bearer token
 - **Header**: `Authorization: Bearer {token}`
-- **SignalR**: Token via query string `?access_token={token}`
-- **Token lifetime**: Configured in `appsettings.json` → `Jwt:*`
-- **401 handling**: Frontend clears token + reloads on 401
-
-## §6 — Rate Limiting
-
-| Policy | Limit | Window | Applied To |
-|--------|-------|--------|------------|
-| `Fixed` | 100 requests | 1 minute | `AuthController`, `TagsController` (migrate) |
-| `Upload` | 20 requests | 1 minute | File upload endpoints |
-| `Search` | 60 requests (sliding) | 1 minute (6 segments) | `SearchController` |
-
-## §7 — Versioning
+- **SignalR**: Token qua query string `?access_token={token}`
+- **Thời hạn token**: Cấu hình trong `appsettings.json` → `Jwt:*`
+- **Xử lý 401**: Frontend xóa token + reload trang khi nhận 401
 
 ---
+
+## §6 — Giới Hạn Tốc Độ (Rate Limiting)
+
+| Policy | Giới hạn | Thời gian | Áp dụng cho |
+|--------|----------|-----------|-------------|
+| `Fixed` | 100 requests | 1 phút | `AuthController`, `TagsController` (migrate) |
+| `Upload` | 20 requests | 1 phút | File upload endpoints |
+| `Search` | 60 requests (sliding) | 1 phút (6 segments) | `SearchController` |
+
+---
+
+## §7 — Phiên Bản API
+
 **Ghi chú 2026-03-13:**
 - Đã cập nhật các endpoint tags/assets cho chuẩn hóa RESTful, đồng bộ với migration và service mới.
 - Các thay đổi về domain model, migration, và bảo mật đã được cập nhật trong tài liệu này.
 
-- Current: `/api/v1/` (URL prefix)
-- Strategy: URL-based versioning (simplest for SPA consumption)
-- Breaking change = new version (`/api/v2/`)
+- Hiện tại: `/api/v1/` (URL prefix)
+- Chiến lược: URL-based versioning (đơn giản nhất cho SPA)
+- Breaking change = phiên bản mới (`/api/v2/`)
 
 ---
 

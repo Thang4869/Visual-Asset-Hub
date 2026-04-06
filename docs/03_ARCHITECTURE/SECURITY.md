@@ -1,12 +1,12 @@
-# 03_ARCHITECTURE — Security Posture & Threat Model
+# 03_ARCHITECTURE — Tư thế bảo mật & mô hình đe dọa
 
-> **Last Updated**: 2026-03-08  
-> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §16, §17 + `IMPLEMENTATION_GUIDE.md` §11  
-> **Status**: Living Document — review semi-annually or before major releases
+> **Last Updated**: 2026-04-06  
+> **Nguồn**: Di chuyển từ `ARCHITECTURE_REVIEW.md` §16, §17 + `IMPLEMENTATION_GUIDE.md` §11  
+> **Trạng thái**: Tài liệu sống — review nửa năm một lần hoặc trước major release
 
 ---
 
-## 1. Implemented Security Controls
+## §1 — Các kiểm soát bảo mật đã triển khai
 
 | Control | Implementation | Status |
 |---------|---------------|--------|
@@ -24,7 +24,7 @@
 
 ---
 
-## 2. Outstanding Security Items
+## §2 — Các hạng mục bảo mật còn tồn đọng
 
 | Item | Severity | Remediation |
 |------|----------|-------------|
@@ -36,11 +36,11 @@
 
 ---
 
-## 3. Threat Model Overview (STRIDE)
+## §3 — Tổng quan threat model (STRIDE)
 
 STRIDE-based threat analysis for VAH's current attack surface.
 
-### 3.1 Attack Surface Summary
+### §3.1 — Tóm tắt attack surface
 
 | Entry Point | Protocol | Auth Required | Exposure |
 |-------------|----------|---------------|----------|
@@ -50,7 +50,7 @@ STRIDE-based threat analysis for VAH's current attack surface.
 | Health endpoint (`/api/v1/health`) | HTTP(S) | No | System status (readiness + liveness) |
 | Swagger UI (`/swagger`) | HTTP(S) | No (dev only) | API schema exposure |
 
-### 3.2 STRIDE Analysis
+### §3.2 — Phân tích STRIDE
 
 | Threat | Category | Attack Vector | Current Mitigation | Gap |
 |--------|----------|---------------|-------------------|-----|
@@ -64,7 +64,7 @@ STRIDE-based threat analysis for VAH's current attack surface.
 | **T8: SQL injection** | Tampering | Malformed input in search/filter | EF Core parameterized queries | 🟢 Low risk — ORM prevents direct SQL injection |
 | **T9: SignalR abuse** | Denial of Service | Flood WebSocket connections | ASP.NET Core connection limits, JWT required | 🟡 Basic — no per-user connection throttle |
 
-### 3.3 Breach Scenario: Compromised JWT Key
+### §3.3 — Kịch bản breach: lộ JWT key
 
 **Scenario:** Attacker obtains the HS256 signing key from source control or environment leak.
 
@@ -80,7 +80,7 @@ STRIDE-based threat analysis for VAH's current attack surface.
 3. Add token revocation list (Redis-backed) for emergency invalidation
 4. Add audit logging for all write operations
 
-### 3.4 Priority Remediation
+### §3.4 — Ưu tiên khắc phục
 
 | Priority | Threat | Fix | Effort |
 |----------|--------|-----|--------|
@@ -93,21 +93,21 @@ STRIDE-based threat analysis for VAH's current attack surface.
 
 ---
 
-## 4. Compliance & Regulatory Statement
+## §4 — Tuyên bố compliance & pháp lý
 
 > Migrated from `IMPLEMENTATION_GUIDE.md` §11
 
-### 4.1 Current Status
+### §4.1 — Trạng thái hiện tại
 
 VAH hiện tại **không target regulated industries** và chưa có compliance requirement cụ thể.
 
-### 4.2 Data Residency
+### §4.2 — Data residency
 
 - **Single-region deployment** (Constraint C8 trong ARCHITECTURE_REVIEW.md)
 - Tất cả data (database + uploaded files) nằm trên cùng server / cloud region
 - Không có geo-replication hay cross-border data transfer
 
-### 4.3 GDPR Applicability (nếu target EU users)
+### §4.3 — Áp dụng GDPR (nếu nhắm tới EU users)
 
 | Requirement | Current Status | Gap |
 |-------------|---------------|-----|
@@ -118,7 +118,7 @@ VAH hiện tại **không target regulated industries** và chưa có compliance
 | Privacy by design (Art. 25) | ✅ User data isolation (UserId FK on all entities) | — |
 | Consent for processing | 🟡 Implicit (registration = consent) | No explicit consent flow |
 
-### 4.4 GDPR Recommendations
+### §4.4 — Khuyến nghị GDPR
 
 Nếu VAH hướng tới SaaS cho EU users:
 1. **P1:** Implement "Delete My Account" endpoint (cascade delete user + all assets + files)

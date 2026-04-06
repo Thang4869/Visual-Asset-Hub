@@ -1,11 +1,10 @@
-# DOMAIN MODEL — Entity Relationships & Aggregates
+# MÔ HÌNH MIỀN — Quan hệ thực thể & Aggregates
 
-> **Last Updated**: 2026-03-13
-> **Last Updated**: 2026-03-26
+> **Last Updated**: 2026-04-06
 
 ---
 
-## §1 — Entity Relationship Diagram
+## §1 — Sơ đồ quan hệ thực thể
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -43,9 +42,9 @@
      └── self-ref (ParentId)       └──────────┘
 ```
 
-## §2 — Aggregate Boundaries
+## §2 — Ranh giới aggregate
 
-### 2.1 Asset Aggregate (Root: `Asset`)
+### §2.1 — Aggregate Asset (Root: `Asset`)
 
 > `Asset` is **abstract** — never instantiated directly. All state mutations go through domain methods; every property has a **private setter**. Subtypes are **sealed**.
 
@@ -60,7 +59,7 @@
 | `FolderAsset` | TPH subtype | `HasPhysicalFile = false`, `IsFolder = true` |
 | `AssetTag` | Junction entity | Composite key (AssetId, TagId) |
 
-**Domain Methods on Asset (only mutation path):**
+**Domain methods trên Asset (chỉ đường mutation):**
 
 ```csharp
 void Rename(string newName)                 // Guard: ThrowIfNullOrWhiteSpace
@@ -91,14 +90,14 @@ ContentType value  →  EF Core .NET Type
 "folder"           →  FolderAsset
 ```
 
-### 2.2 Collection Aggregate (Root: `Collection`)
+### §2.2 — Aggregate Collection (Root: `Collection`)
 
 | Entity | Role | Invariants |
 |--------|------|-----------|
 | `Collection` | Aggregate root | Name required; hierarchical via ParentId (self-ref) |
 | `CollectionPermission` | Value-like entity | Role ∈ {"owner", "editor", "viewer"} |
 
-**Domain Methods on Collection:**
+**Domain methods trên Collection:**
 
 ```csharp
 bool IsOwnedBy(string userId)               // Direct ownership check
@@ -115,13 +114,13 @@ void ApplyUpdate(UpdateCollectionDto dto)   // Partial update (null-safe)
 | `editor` | ✅ | ❌ |
 | `viewer` | ❌ | ❌ |
 
-### 2.3 Tag Aggregate (Root: `Tag`)
+### §2.3 — Aggregate Tag (Root: `Tag`)
 
 | Entity | Role | Invariants |
 |--------|------|-----------|
 | `Tag` | Aggregate root | Name unique per user (via NormalizedName); auto-computed on SetName() |
 
-**Domain Methods on Tag:**
+**Domain methods trên Tag:**
 
 ```csharp
 void SetName(string name)              // Trim + auto-set NormalizedName (lowercase)
@@ -129,7 +128,7 @@ void UpdateFrom(UpdateTagDto dto)      // Partial update, delegates to SetName
 bool IsOwnedBy(string userId)          // Ownership check
 ```
 
-### 2.4 Identity Aggregate (Root: `ApplicationUser`)
+### §2.4 — Aggregate Identity (Root: `ApplicationUser`)
 
 ```csharp
 public class ApplicationUser : IdentityUser
@@ -141,11 +140,11 @@ public class ApplicationUser : IdentityUser
 
 Extends ASP.NET Identity's `IdentityUser`. Managed entirely by Identity framework — no custom domain methods.
 
-## §3 — Value Objects & Supporting Types
+## §3 — Value Objects & kiểu hỗ trợ
 
-### 3.1 PagedResult\<T\>
+### §3.1 — PagedResult\<T\>
 
-Generic pagination wrapper used by all list endpoints:
+Wrapper phân trang dùng cho tất cả list endpoints:
 
 ```csharp
 PagedResult<T> {
@@ -156,9 +155,9 @@ PagedResult<T> {
 }
 ```
 
-### 3.2 PaginationParams
+### §3.2 — PaginationParams
 
-Query parameter binding for paginated endpoints:
+Binding query parameter cho các endpoint phân trang:
 
 | Property | Default | Constraint |
 |----------|---------|-----------|
@@ -167,7 +166,7 @@ Query parameter binding for paginated endpoints:
 | SortBy | null | Optional |
 | SortOrder | "asc" | "asc" or "desc" |
 
-### 3.3 Enum Types
+### §3.3 — Kiểu enum
 
 | Enum | Values | DB Storage |
 |------|--------|-----------|
@@ -177,9 +176,9 @@ Query parameter binding for paginated endpoints:
 
 `EnumMappings` provides bidirectional conversion with `StringComparer.OrdinalIgnoreCase` for DB backward compatibility.
 
-## §4 — Database Schema (EF Core 9 + PostgreSQL 17)
+## §4 — Schema database (EF Core 9 + PostgreSQL 17)
 
-### 4.1 Table Mapping
+### §4.1 — Mapping bảng
 
 | Entity | Table | Strategy | Notes |
 |--------|-------|----------|-------|
@@ -190,7 +189,7 @@ Query parameter binding for paginated endpoints:
 | CollectionPermission | `CollectionPermissions` | Standard | FK to Collection |
 | ApplicationUser | `AspNetUsers` | Identity | + `DisplayName`, `CreatedAt` columns |
 
-### 4.2 Relationship Configuration
+### §4.2 — Cấu hình quan hệ
 
 ```
 Asset.CollectionId    → Collection.Id      (Required, Cascade)
@@ -201,9 +200,9 @@ AssetTag.TagId        → Tag.Id             (Required, Cascade)
 CollectionPermission.CollectionId → Collection.Id (Required, Cascade)
 ```
 
-## §5 — Factory Pattern & Validation
+## §5 — Factory Pattern & validation
 
-`AssetFactory` provides 6 typed creation methods + 1 duplication method. Accepts only primitives — **never DTOs**. Input validation is handled by `AssetValidator` (pre-construction) and guard clauses.
+`AssetFactory` cung cấp 6 phương thức tạo có kiểu + 1 phương thức nhân bản. Chỉ nhận primitive — **không bao giờ nhận DTOs**. Validation đầu vào do `AssetValidator` xử lý (trước khi tạo) và guard clauses.
 
 ```csharp
 static ImageAsset CreateImage(fileName, filePath, collectionId, userId, parentFolderId?)
@@ -215,11 +214,11 @@ static LinkAsset CreateLink(name, url, collectionId, userId, parentFolderId?)
 static Asset Duplicate(source, userId, copySuffix, targetFolderId?)
 ```
 
-- `CreateColor` calls `AssetValidator.NormalizeHexColor()` (auto-prepend `#`, 3/4/6/8 digit hex)
-- `CreateLink` calls `AssetValidator.ValidateUrl()` (absolute http/https only)
-- All methods use `ArgumentException.ThrowIfNullOrWhiteSpace` guard clauses
-- `Duplicate` uses virtual `InitializeClone()` for subtype-specific property copying (Url, HexCode)
-- `copySuffix` is a **required** parameter (no default) for localization readiness
+- `CreateColor` gọi `AssetValidator.NormalizeHexColor()` (tự động thêm `#`, hex 3/4/6/8 ký tự)
+- `CreateLink` gọi `AssetValidator.ValidateUrl()` (chỉ absolute http/https)
+- Tất cả methods dùng guard clauses `ArgumentException.ThrowIfNullOrWhiteSpace`
+- `Duplicate` dùng `InitializeClone()` virtual để copy thuộc tính theo subtype (Url, HexCode)
+- `copySuffix` là tham số **bắt buộc** (không có default) để sẵn sàng localization
 
 `AssetValidator` (`Models/AssetValidator.cs`) centralizes domain validation:
 
@@ -233,7 +232,7 @@ static bool IsValidUrl(string url)
 
 > Migration note: The document asserts domain entities use `private set` and avoid DataAnnotations on entities. The repository currently contains a few exceptions (for example `VAH.Backend/Models/CollectionPermission.cs` uses `[Required]` and public setters on some DTO-adjacent types). Prefer incremental refactors: (1) move validation/shape rules into `IEntityTypeConfiguration<T>` Fluent API, (2) convert public setters to `private set` where possible, and (3) keep DTO-level DataAnnotations for request validation until a centralized validation strategy (e.g., FluentValidation) is in place. Track these as short-lived migration PRs.
 
-DTO ↔ Entity mapping is handled by `AssetMapper` (`Services/AssetMapper.cs`):
+DTO ↔ Entity mapping do `AssetMapper` (`Services/AssetMapper.cs`) xử lý:
 
 ```csharp
 static AssetResponseDto ToDto(Asset asset)
@@ -243,11 +242,11 @@ static Asset CreateFileFromDto(CreateAssetDto dto, string userId)
 
 ---
 
-## §6 — Entity Property Reference
+## §6 — Tham chiếu thuộc tính entity
 
 > **Source**: Migrated from `PROJECT_DOCUMENTATION.md` §2
 
-### 6.1 Asset (Full Property List)
+### §6.1 — Asset (Full Property List)
 
 > All properties have **private setters** — mutations only through domain methods or factory construction. `Asset` is **abstract**; concrete subtypes: `FileAsset`, `ImageAsset`, `LinkAsset`, `ColorAsset`, `ColorGroupAsset`, `FolderAsset`.
 
@@ -281,7 +280,7 @@ static Asset CreateFileFromDto(CreateAssetDto dto, string userId)
 | `LinkAsset` | `Url` | string? | Bookmarked URL (semantic, separate from FilePath) |
 | `ColorAsset` | `HexCode` | string? | Hex color code e.g. `#FF5733` (semantic, separate from FilePath) |
 
-### 6.2 Collection (Full Property List)
+### §6.2 — Collection (Full Property List)
 
 | Property | Type | Constraints | Default | Description |
 |----------|------|-------------|---------|-------------|
@@ -296,7 +295,7 @@ static Asset CreateFileFromDto(CreateAssetDto dto, string userId)
 | `LayoutType` | string | MaxLength(20) | `"grid"` | grid/list/masonry |
 | `UserId` | string? | FK→AspNetUsers | null | null = system collection |
 
-### 6.3 Tag
+### §6.3 — Tag
 
 | Property | Type | Constraints |
 |----------|------|-------------|
@@ -307,14 +306,14 @@ static Asset CreateFileFromDto(CreateAssetDto dto, string userId)
 | `UserId` | string? | FK→AspNetUsers |
 | `CreatedAt` | DateTime | DB default |
 
-### 6.4 AssetTag (Junction)
+### §6.4 — AssetTag (Junction)
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `AssetId` | int | FK→Assets, composite PK |
 | `TagId` | int | FK→Tags, composite PK |
 
-### 6.5 CollectionPermission
+### §6.5 — CollectionPermission
 
 | Property | Type | Constraints |
 |----------|------|-------------|
@@ -325,7 +324,7 @@ static Asset CreateFileFromDto(CreateAssetDto dto, string userId)
 | `GrantedBy` | string? | User ID of grantor |
 | `GrantedAt` | DateTime | DB default |
 
-### 6.6 ApplicationUser (extends IdentityUser)
+### §6.6 — ApplicationUser (extends IdentityUser)
 
 | Property | Type | Default |
 |----------|------|---------|

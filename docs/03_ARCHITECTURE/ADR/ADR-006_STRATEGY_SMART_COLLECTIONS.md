@@ -2,7 +2,14 @@
 
 > **Status**: Accepted
 > **Date**: 2026-02-27
+> **Last Updated**: 2026-04-06
 > **Deciders**: Tech Lead
+
+## Tóm tắt tiếng Việt
+
+- **Bối cảnh:** Smart collections có nhiều kiểu lọc/logic khác nhau.
+- **Quyết định:** Dùng Strategy pattern để tách từng thuật toán xử lý.
+- **Hệ quả:** Dễ mở rộng thêm chiến lược mới, nhưng cần quản lý số lượng strategy tăng dần.
 
 ## Context
 

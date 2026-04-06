@@ -1,22 +1,23 @@
-# TECHNICAL DEBT REGISTER
+# Sổ đăng ký Technical Debt (Technical Debt Register)
 
-> **Last Updated**: 2026-03-08
-> **Source**: Extracted from ARCHITECTURE_REVIEW.md §7 + code analysis
-
----
-
-## Severity Scale
-
-| Level | Impact | Action Deadline |
-|-------|--------|----------------|
-| 🔴 Critical | Blocks scaling or causes data loss | Next sprint |
-| 🟠 High | Significant maintenance burden | Within 2 sprints |
-| 🟡 Medium | Code quality / consistency issue | Within quarter |
-| 🟢 Low | Nice-to-have improvement | Backlog |
+> **Mục đích**: Theo dõi các technical debt items và ưu tiên xử lý.  
+> **Last Updated**: 2026-04-06  
+> **Nguồn**: Extracted from ARCHITECTURE_REVIEW.md + code analysis
 
 ---
 
-## Active Debt Items
+## Thang đánh giá mức độ nghiêm trọng
+
+| Level | Ảnh hưởng | Deadline |
+|-------|----------|----------|
+| 🔴 Critical | Chặn scaling hoặc gây mất dữ liệu | Sprint tiếp theo |
+| 🟠 High | Gánh nặng bảo trì đáng kể | Trong 2 sprints |
+| 🟡 Medium | Vấn đề chất lượng code | Trong quý |
+| 🟢 Low | Cải tiến nice-to-have | Backlog |
+
+---
+
+## Debt Items đang hoạt động
 
 ### TD-001 — Zero Test Coverage 🔴
 

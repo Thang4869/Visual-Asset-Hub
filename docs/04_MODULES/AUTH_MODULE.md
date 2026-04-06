@@ -1,22 +1,20 @@
-# AUTH MODULE
+# Auth Module
 
-> **Last Updated**: 2026-03-08
-> **Status**: Active — Services/ layer
-> **Last Updated**: 2026-03-26
-> **Status**: Active — Services/ layer
-> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
+> **Mục đích**: Xác thực người dùng và quản lý JWT token
+> **Last Updated**: 2026-04-06
+
 ---
 
-## §1 — Overview
+## §1 — Tổng quan (Overview)
 
-| Aspect | Detail |
-|--------|--------|
-| **Domain** | User registration, login, JWT issuance |
-| **Entity** | `ApplicationUser` (extends `IdentityUser`) |
+| Khía cạnh | Chi tiết |
+|-----------|----------|
+| **Domain** | Đăng ký người dùng, đăng nhập, cấp JWT |
+| **Entity** | `ApplicationUser` (kế thừa `IdentityUser`) |
 | **Service** | `IAuthService` → `AuthService` |
-| **Controller** | `AuthController` (2 endpoints, rate-limited) — `Register` returns 201 Created |
-| **Identity Provider** | ASP.NET Identity with EF Core stores |
-| **Patterns** | Facade over Identity + JWT generation |
+| **Controller** | `AuthController` (2 endpoints, rate-limited) — `Register` trả về 201 Created |
+| **Identity Provider** | ASP.NET Identity với EF Core stores |
+| **Patterns** | Facade pattern cho Identity + JWT generation |
 
 ## §2 — Domain Model
 
@@ -28,7 +26,7 @@ public class ApplicationUser : IdentityUser
 }
 ```
 
-Extends `IdentityUser` which provides: Id (GUID string), Email, PasswordHash, UserName, etc.
+Kế thừa `IdentityUser` cung cấp: Id (GUID string), Email, PasswordHash, UserName, v.v.
 
 ## §3 — Service Interface
 
@@ -50,12 +48,12 @@ public class AuthResponseDto { string Token, string Email, string DisplayName, D
 
 ## §4 — API Endpoints
 
-| Method | Route | Rate Limit | Description |
-|--------|-------|-----------|-------------|
-| POST | `/api/v1/auth/register` | Fixed (100/min) | Create account + auto-create default collection (201 Created) |
-| POST | `/api/v1/auth/login` | Fixed (100/min) | Authenticate + return JWT (200 OK) |
+| Method | Route | Rate Limit | Mô tả |
+|--------|-------|-----------|-------|
+| POST | `/api/v1/auth/register` | Fixed (100/min) | Tạo tài khoản + tự động tạo collection mặc định (201 Created) |
+| POST | `/api/v1/auth/login` | Fixed (100/min) | Xác thực + trả về JWT (200 OK) |
 
-## §5 — Authentication Flow
+## §5 — Luồng xác thực (Authentication Flow)
 
 ```
 Client                AuthController    IAuthService    UserManager    JwtGenerator
@@ -73,33 +71,33 @@ Client                AuthController    IAuthService    UserManager    JwtGenera
   │←── 200 { token, ... }─│                │               │              │
 ```
 
-## §6 — Registration Side Effects
+## §6 — Tác động phụ khi đăng ký (Registration Side Effects)
 
-When a user registers successfully, `AuthService` performs:
-1. Creates `ApplicationUser` via `UserManager.CreateAsync()`
-2. Calls `ICollectionService.CreateAsync()` to create a default "My Collection" for the new user
-3. Returns JWT token immediately (auto-login after registration)
+Khi người dùng đăng ký thành công, `AuthService` thực hiện:
+1. Tạo `ApplicationUser` qua `UserManager.CreateAsync()`
+2. Gọi `ICollectionService.CreateAsync()` để tạo collection mặc định "My Collection" cho người dùng mới
+3. Trả về JWT token ngay lập tức (tự động đăng nhập sau khi đăng ký)
 
-## §7 — Identity Configuration
+## §7 — Cấu hình Identity (Identity Configuration)
 
-| Setting | Value |
-|---------|-------|
-| Password Min Length | 6 |
-| Require Digit | Yes |
-| Require Lowercase | Yes |
-| Require Uppercase | No |
-| Require Special Char | No |
-| Unique Email | Yes |
+| Cài đặt | Giá trị |
+|---------|---------|
+| Độ dài mật khẩu tối thiểu | 6 |
+| Yêu cầu chữ số | Có |
+| Yêu cầu chữ thường | Có |
+| Yêu cầu chữ hoa | Không |
+| Yêu cầu ký tự đặc biệt | Không |
+| Email duy nhất | Có |
 
-## §8 — JWT Configuration
+## §8 — Cấu hình JWT (JWT Configuration)
 
-| Parameter | Source | Notes |
-|-----------|--------|-------|
-| SecretKey | `Jwt:SecretKey` | ≥ 256-bit, mandatory |
+| Tham số | Nguồn | Ghi chú |
+|---------|-------|---------|
+| SecretKey | `Jwt:SecretKey` | ≥ 256-bit, bắt buộc |
 | Issuer | `Jwt:Issuer` | Token issuer claim |
 | Audience | `Jwt:Audience` | Token audience claim |
-| ClockSkew | `TimeSpan.Zero` | Strict expiration |
-| SignalR | Query string `access_token` | For WebSocket auth |
+| ClockSkew | `TimeSpan.Zero` | Hết hạn chính xác |
+| SignalR | Query string `access_token` | Cho WebSocket auth |
 
 ---
 
