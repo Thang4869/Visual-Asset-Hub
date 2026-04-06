@@ -186,3 +186,7 @@ Cleanup:          Delete branch after merge
 ---
 
 > **Ghi chú**: Điều chỉnh các threshold (số reviewers, required checks) theo quy mô team và mức độ risk của dự án.
+
+---
+
+> **Document End**
