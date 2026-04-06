@@ -1,8 +1,9 @@
-# DTO REFERENCE — Data Transfer Objects
+# Tham Chiếu DTO (DTO Reference — Data Transfer Objects)
 
-> **Last Updated**: 2026-03-03  
-> **Source**: Migrated from `PROJECT_DOCUMENTATION.md` §3  
-> **Status**: Living Document — update when DTOs change
+> **Mục đích**: Tài liệu tham chiếu tất cả Data Transfer Objects trong hệ thống  
+> **Last Updated**: 2026-04-06  
+> **Nguồn**: Migrated từ `PROJECT_DOCUMENTATION.md` §3  
+> **Trạng thái**: Living Document — cập nhật khi DTOs thay đổi
 
 ---
 
@@ -40,7 +41,7 @@
 
 ---
 
-## §4 — Bulk Operation DTOs
+## §4 — DTOs Thao Tác Hàng Loạt (Bulk Operation)
 
 | DTO | Fields |
 |-----|--------|
@@ -72,10 +73,10 @@
 
 ---
 
-## §7 — DTO Location Map
+## §7 — Vị Trí File DTO
 
-| File | DTOs Defined |
-|------|-------------|
+| File | DTOs Được Định Nghĩa |
+|------|----------------------|
 | `Models/DTOs.cs` | CreateFolderDto, CreateColorDto, UpdateAssetDto, CreateLinkDto, CreateColorGroupDto, ReorderAssetsDto, AssetPositionDto, BulkDeleteDto, BulkMoveDto, BulkMoveGroupDto, BulkTagDto, GrantPermissionDto, UpdatePermissionDto, PermissionInfoDto |
 | `Models/AuthDTOs.cs` | RegisterDto, LoginDto, AuthResponseDto, AuthValidationConstants |
 | `Models/Common.cs` | PagedResult\<T\>, PaginationParams, FileUploadConfig, SmartCollectionDefinition |
@@ -84,4 +85,4 @@
 ---
 
 > **Document End**  
-> Related: [API_CONVENTIONS.md](API_CONVENTIONS.md) · [DOMAIN_MODEL.md](../03_ARCHITECTURE/DOMAIN_MODEL.md)
+> Liên quan: [API_CONVENTIONS.md](API_CONVENTIONS.md) · [DOMAIN_MODEL.md](../03_ARCHITECTURE/DOMAIN_MODEL.md)

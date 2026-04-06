@@ -1,22 +1,20 @@
-# REALTIME MODULE
+# Realtime Module
 
-> **Last Updated**: 2026-03-02
-> **Status**: Active — Hubs/ layer
-> **Last Updated**: 2026-03-26
-> **Status**: Active — Services/ layer
-> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
+> **Mục đích**: Thông báo thời gian thực đến các client kết nối
+> **Last Updated**: 2026-04-06
+
 ---
 
-## §1 — Overview
+## §1 — Tổng quan (Overview)
 
-| Aspect | Detail |
-|--------|--------|
-| **Domain** | Real-time push notifications to connected clients |
+| Khía cạnh | Chi tiết |
+|-----------|----------|
+| **Domain** | Thông báo push thời gian thực đến các client kết nối |
 | **Technology** | ASP.NET Core SignalR |
 | **Hub** | `AssetHub` → `/hubs/assets` |
 | **Service** | `INotificationService` → `NotificationService` |
-| **Auth** | JWT via query string (`?access_token=`) |
-| **Patterns** | Observer (hub groups), Mediator (via IHubContext) |
+| **Auth** | JWT qua query string (`?access_token=`) |
+| **Patterns** | Observer (hub groups), Mediator (qua IHubContext) |
 
 ## §2 — Hub Implementation
 
@@ -44,7 +42,7 @@ public class AssetHub : Hub
 }
 ```
 
-**Key Design**: Each user is placed in a SignalR group named by their UserId. This enables targeted push notifications without broadcasting to all connections.
+**Thiết kế chính**: Mỗi người dùng được đặt vào một SignalR group đặt tên theo UserId của họ. Điều này cho phép thông báo push có mục tiêu mà không cần broadcast đến tất cả các kết nối.
 
 ## §3 — Notification Service
 
@@ -55,7 +53,7 @@ public interface INotificationService
 }
 ```
 
-Implementation uses `IHubContext<AssetHub>`:
+Implementation sử dụng `IHubContext<AssetHub>`:
 
 ```csharp
 public class NotificationService : INotificationService
@@ -69,17 +67,17 @@ public class NotificationService : INotificationService
 }
 ```
 
-## §4 — Event Types
+## §4 — Các loại Event (Event Types)
 
-| Event | Trigger | Payload |
-|-------|---------|---------|
-| `AssetCreated` | After upload/create | `AssetResponseDto` |
-| `AssetUpdated` | After update | `AssetResponseDto` |
-| `AssetDeleted` | After delete | `{ id }` |
-| `AssetsMoved` | After bulk move | `{ assetIds, targetCollectionId }` |
-| `AssetsDeleted` | After bulk delete | `{ assetIds }` |
+| Event | Kích hoạt | Payload |
+|-------|-----------|---------|
+| `AssetCreated` | Sau upload/create | `AssetResponseDto` |
+| `AssetUpdated` | Sau update | `AssetResponseDto` |
+| `AssetDeleted` | Sau delete | `{ id }` |
+| `AssetsMoved` | Sau bulk move | `{ assetIds, targetCollectionId }` |
+| `AssetsDeleted` | Sau bulk delete | `{ assetIds }` |
 
-## §5 — Frontend Integration
+## §5 — Tích hợp Frontend (Frontend Integration)
 
 ```javascript
 // useSignalR hook
@@ -94,7 +92,7 @@ connection.on("AssetCreated", (asset) => { /* update local state */ });
 connection.on("AssetDeleted", ({ id }) => { /* remove from state */ });
 ```
 
-## §6 — Connection Lifecycle
+## §6 — Vòng đời kết nối (Connection Lifecycle)
 
 ```
 Browser                          AssetHub                    SignalR Groups
