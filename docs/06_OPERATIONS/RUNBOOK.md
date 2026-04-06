@@ -1,21 +1,21 @@
-# RUNBOOK — Development & Deployment Operations
+# RUNBOOK — Vận hành phát triển & triển khai
 
-> **Last Updated**: 2026-03-28
+> **Last Updated**: 2026-04-06
 
 ---
 
-## §1 — Local Development Setup
+## §1 — Thiết lập phát triển cục bộ
 
-### Prerequisites
+### Điều kiện tiên quyết
 
-| Tool | Version | Purpose |
+| Công cụ | Phiên bản | Mục đích |
 |------|---------|---------|
 | .NET SDK | 9.0+ | Backend build/run |
 | Node.js | 20+ | Frontend build/run |
 | Docker | 24+ | Full-stack containers |
 | Git | 2.40+ | Source control |
 
-### Backend Only (SQLite)
+### Chỉ Backend (SQLite)
 
 ```bash
 cd VAH.Backend
@@ -25,7 +25,7 @@ dotnet run
 # → Swagger: http://localhost:5027/swagger
 ```
 
-### Frontend Only
+### Chỉ Frontend
 
 ```bash
 cd VAH.Frontend
@@ -44,9 +44,9 @@ docker compose up -d
 # Redis:      localhost:6379
 ```
 
-## §2 — Database Operations
+## §2 — Thao tác database
 
-### Run Migrations
+### Chạy migrations
 
 ```bash
 cd VAH.Backend
@@ -61,13 +61,13 @@ dotnet ef migrations add <MigrationName>
 dotnet ef database update <PreviousMigrationName>
 ```
 
-### Auto-Migration (Startup)
+### Auto-migration (startup)
 
-Production/Docker always runs `context.Database.Migrate()` on startup. After migration, a discriminator fix SQL runs to correct any rows with incorrect `ContentType` values.
+Production/Docker luôn chạy `context.Database.Migrate()` khi khởi động. Sau migration, sẽ chạy SQL sửa discriminator để sửa các row có `ContentType` sai.
 
-Note: In production, avoid relying solely on automatic migrations at application startup. Always take a backup before applying migrations and prefer applying migrations via a controlled CI/CD deployment pipeline where preflight checks and schema review can be performed. If automatic migrations are used, ensure they are covered by monitoring and a tested rollback plan.
+Lưu ý: Trong production, tránh phụ thuộc hoàn toàn vào automatic migrations khi ứng dụng khởi động. Luôn backup trước khi áp dụng migration và ưu tiên chạy migration qua pipeline CI/CD có kiểm soát, nơi có thể thực hiện preflight checks và schema review. Nếu vẫn dùng automatic migrations, hãy đảm bảo có monitoring và rollback plan đã kiểm thử.
 
-### Reset Database
+### Reset database
 
 ```bash
 # SQLite — delete the file
@@ -78,9 +78,9 @@ docker compose down -v    # Removes volumes
 docker compose up -d      # Fresh start
 ```
 
-## §3 — Docker Operations
+## §3 — Thao tác Docker
 
-### Build Images
+### Build image
 
 ```bash
 # Build all
@@ -104,22 +104,22 @@ docker compose logs -f backend
 docker compose logs --tail=100 backend
 ```
 
-### Restart Services
+### Restart services
 
 ```bash
 docker compose restart backend
 docker compose restart frontend
 ```
 
-## §4 — Health Checks
+## §4 — Health checks
 
-### Backend Health
+### Backend health
 
 ```bash
 curl http://localhost:5027/api/v1/health
 ```
 
-Response:
+Kết quả:
 ```json
 {
   "status": "healthy",
@@ -129,17 +129,17 @@ Response:
 }
 ```
 
-### Service Status
+### Trạng thái dịch vụ
 
 ```bash
 docker compose ps
 ```
 
-## §5 — Configuration Reference
+## §5 — Tham chiếu cấu hình
 
-### Environment Variables
+### Biến môi trường
 
-| Variable | Default | Description |
+| Biến | Mặc định | Mô tả |
 |----------|---------|-------------|
 | `DatabaseProvider` | `SQLite` | `SQLite` or `PostgreSQL` |
 | `ConnectionStrings__DefaultConnection` | (varies) | DB connection string |
@@ -149,16 +149,16 @@ docker compose ps
 | `Jwt__Audience` | `VAH` | Token audience |
 | `Cors__AllowedOrigins__0` | `localhost:5173` | Frontend URL |
 
-### Configuration Files
+### Tệp cấu hình
 
-| File | Environment | Key Difference |
+| Tệp | Môi trường | Khác biệt chính |
 |------|-------------|---------------|
 | `appsettings.json` | All | Base config, PostgreSQL defaults |
 | `appsettings.Development.json` | Development | SQLite, debug logging |
 
-## §6 — Log Analysis
+## §6 — Phân tích log
 
-Logs written by Serilog to `VAH.Backend/logs/` directory:
+Log được Serilog ghi vào thư mục `VAH.Backend/logs/`:
 
 ```bash
 # Recent logs
@@ -171,9 +171,9 @@ grep -i "error\|exception" VAH.Backend/logs/log-*.txt
 grep "Request finished" VAH.Backend/logs/log-*.txt
 ```
 
-### Log Levels
+### Mức log
 
-| Level | When Used |
+| Mức | Khi sử dụng |
 |-------|-----------|
 | Debug | Development only — detailed EF queries, handler entry/exit |
 | Information | Request start/finish, service registrations, migrations |
@@ -183,11 +183,11 @@ grep "Request finished" VAH.Backend/logs/log-*.txt
 
 ---
 
-## §8 — Deployment Rollback Strategy
+## §8 — Chiến lược rollback triển khai
 
 > **Source**: Migrated from `IMPLEMENTATION_GUIDE.md` §9
 
-### Database Migration Rollback
+### Rollback migration database
 
 EF Core migrations CAN be rolled back by specifying a previous migration:
 
@@ -208,7 +208,7 @@ dotnet ef database update 0
 - Recommendation: write rollback SQL scripts for each migration with destructive ops
 - In production, do not rely on startup auto-migration without separate backup and verification steps; run migrations as part of a controlled deployment process whenever possible.
 
-### Application Rollback (Docker)
+### Rollback ứng dụng (Docker)
 
 ```bash
 # List built image versions
@@ -224,7 +224,7 @@ git checkout v1.2.3
 docker-compose up --build -d
 ```
 
-### Emergency Rollback Checklist
+### Checklist rollback khẩn cấp
 
 1. ☐ Stop traffic (if load balancer: drain)
 2. ☐ `docker-compose down` (stop all services)
@@ -236,11 +236,11 @@ docker-compose up --build -d
 
 ---
 
-## §9 — Backup & Restore
+## §9 — Sao lưu & khôi phục
 
 > **Source**: Migrated from `IMPLEMENTATION_GUIDE.md` §10
 
-### PostgreSQL Backup
+### Sao lưu PostgreSQL
 
 ```bash
 # Manual backup
@@ -253,7 +253,7 @@ docker exec vah-postgres pg_dump -U vah_user -Fc vah_database > backup.dump
 tar czf uploads_backup_$(date +%Y%m%d).tar.gz VAH.Backend/wwwroot/uploads/
 ```
 
-### PostgreSQL Restore
+### Khôi phục PostgreSQL
 
 ```bash
 # Restore from SQL dump
@@ -266,7 +266,7 @@ docker exec -i vah-postgres pg_restore -U vah_user -d vah_database --clean < bac
 tar xzf uploads_backup_20260301.tar.gz -C .
 ```
 
-### Automated Backup (recommended — NOT YET IMPLEMENTED)
+### Sao lưu tự động (khuyến nghị — CHƯA TRIỂN KHAI)
 
 Add cron job or systemd timer:
 ```bash
@@ -274,9 +274,9 @@ Add cron job or systemd timer:
 0 3 * * * root docker exec vah-postgres pg_dump -U vah_user -Fc vah_database > /backups/vah_$(date +\%Y\%m\%d).dump && find /backups -mtime +30 -delete
 ```
 
-> ⚠️ **NOT YET IMPLEMENTED.** This is a critical operational gap identified in [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md) (Failure Mode FM5) and ARCHITECTURE_REVIEW.md §26 (Assumption Critique A3). Prioritize setup before production deployment.
+> ⚠️ **CHƯA TRIỂN KHAI.** Đây là khoảng trống vận hành nghiêm trọng được xác định trong [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md) (Failure Mode FM5) và ARCHITECTURE_REVIEW.md §26 (Assumption Critique A3). Ưu tiên thiết lập trước khi triển khai production.
 
-### TODO: Implement automated backups
+### TODO: Triển khai sao lưu tự động
 
 - Implement scheduled automated backups (daily) for PostgreSQL and a separate backup process for uploaded files under `VAH.Backend/wwwroot/uploads/`.
 - Backup retention: keep at least 30 days of backups; rotate and prune older backups automatically.

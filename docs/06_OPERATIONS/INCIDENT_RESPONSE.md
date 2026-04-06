@@ -1,12 +1,12 @@
-# 06_OPERATIONS — Incident Response, SLOs & Observability
+# 06_OPERATIONS — Ứng phó sự cố, SLO & khả năng quan sát
 
-> **Last Updated**: 2026-03-03  
-> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §18, §19, §20, §21, §22  
-> **Status**: Living Document — review quarterly
+> **Last Updated**: 2026-04-06  
+> **Nguồn**: Di chuyển từ `ARCHITECTURE_REVIEW.md` §18, §19, §20, §21, §22  
+> **Trạng thái**: Tài liệu sống — review hàng quý
 
 ---
 
-## 1. Failure Mode Matrix
+## §1 — Ma trận failure mode
 
 | # | Failure | Trigger | Current Behavior | Expected Behavior | Blast Radius | Recovery |
 |---|---------|---------|-----------------|-------------------|-------------|----------|
@@ -25,9 +25,9 @@
 
 ---
 
-## 2. Incident Simulation Playbooks
+## §2 — Kịch bản mô phỏng sự cố
 
-Run these exercises **before first production deployment** and quarterly thereafter.
+Chạy các bài tập này **trước lần triển khai production đầu tiên** và sau đó theo chu kỳ hàng quý.
 
 ### Sim 1: Database Failure Recovery
 ```
@@ -83,7 +83,7 @@ Run these exercises **before first production deployment** and quarterly thereaf
 
 ---
 
-## 3. Missing Operational Runbooks
+## §3 — Các runbook vận hành còn thiếu
 
 | Scenario | Exists? | Priority | Effort |
 |----------|---------|----------|--------|
@@ -97,9 +97,9 @@ Run these exercises **before first production deployment** and quarterly thereaf
 
 ---
 
-## 4. Performance Profile
+## §4 — Hồ sơ hiệu năng
 
-### 4.1 Current Optimizations
+### §4.1 — Tối ưu hiện tại
 
 | Strategy | Detail | Scope |
 |----------|--------|-------|
@@ -110,7 +110,7 @@ Run these exercises **before first production deployment** and quarterly thereaf
 | DB Indexes | ~22 indexes on FK + common query patterns | Database |
 | Pagination | Server-side, max 100 items/page | API |
 
-### 4.2 Known Performance Risks
+### §4.2 — Rủi ro hiệu năng đã biết
 
 | Risk | Trigger | Mitigation |
 |------|---------|------------|
@@ -121,11 +121,11 @@ Run these exercises **before first production deployment** and quarterly thereaf
 
 ---
 
-## 5. Service Level Objectives (SLOs)
+## §5 — Service Level Objectives (SLOs)
 
 Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 
-### 5.1 Availability & Latency
+### §5.1 — Availability & Latency
 
 | Metric | Target | Current Estimate |
 |--------|--------|------------------|
@@ -136,7 +136,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 | **Upload P95** | <5s (50MB) | ~3–4s local network |
 | **SignalR delivery** | <500ms from mutation | Unknown |
 
-### 5.2 Error Budget
+### §5.2 — Error budget
 
 | Metric | Target |
 |--------|--------|
@@ -144,7 +144,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 | **Failed uploads** | <1% |
 | **SignalR disconnects** | <5% reconnection rate per session |
 
-### 5.3 Recovery Objectives
+### §5.3 — Mục tiêu khôi phục
 
 | Metric | Target | Current | Gap |
 |--------|--------|---------|----|
@@ -152,7 +152,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 | **RPO** | <24h | Manual pg_dump (unscheduled) | ❌ RPO = ∞ |
 | **MTTR** | <1h | No runbook | 🟡 Needs incident response |
 
-### 5.4 SLO Implementation Roadmap
+### §5.4 — Lộ trình triển khai SLO
 
 1. **Stabilize:** Instrument Serilog for latency percentiles. Health monitoring.
 2. **Modularize:** Automated daily backup (RPO <24h). Basic 5xx alerting.
@@ -160,18 +160,18 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 
 ---
 
-## 6. Observability Architecture
+## §6 — Kiến trúc khả năng quan sát
 
-### 6.1 Current State (Tier 0)
+### §6.1 — Trạng thái hiện tại (Tier 0)
 
 ```
 [Serilog Console+File] ─── Manual log reading
 [Health Endpoint]      ─── Docker healthcheck (binary up/down)
 ```
 
-**Gaps:** No metrics, no tracing, no alerting, no dashboards.
+**Khoảng trống:** Không có metrics, tracing, alerting hay dashboard.
 
-### 6.2 Target State (Tier 2)
+### §6.2 — Trạng thái mục tiêu (Tier 2)
 
 ```
 ┌───────────────────────────────────────────────────────────┐
@@ -198,7 +198,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 └───────────────────────────────────────────────────────────┘
 ```
 
-### 6.3 Implementation Path
+### §6.3 — Lộ trình triển khai
 
 | Phase | Add | Effort |
 |-------|-----|--------|
@@ -208,9 +208,9 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 
 ---
 
-## 7. Data Growth & Capacity Planning
+## §7 — Data Growth & Capacity Planning
 
-### 7.1 Storage Projections
+### §7.1 — Storage Projections
 
 | Metric | 100 Users | 1,000 Users | 10,000 Users |
 |--------|-----------|-------------|---------------|
@@ -221,7 +221,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 | **Storage solution** | Local disk | Local/S3 | S3 (mandatory) |
 | **Backup size** | Trivial | ~500 MB/day | ~5 GB/day |
 
-### 7.2 Database Performance
+### §7.2 — Database Performance
 
 | Scale | Assets Rows | LIKE Search | Action |
 |-------|-------------|-------------|--------|
@@ -229,7 +229,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 | 1K users | 200K | 200–500ms | **Add tsvector** |
 | 10K users | 2M | >2s | tsvector + read replicas |
 
-### 7.3 SignalR Projections
+### §7.3 — SignalR Projections
 
 | Scale | Connections | Memory | Action |
 |-------|-------------|--------|--------|
@@ -237,7 +237,7 @@ Targets: 99.5% uptime, <500ms P95, <0.5% error rate.
 | 500 users | ~300 | ~15 MB | Single instance OK |
 | 5K users | ~3,000 | ~150 MB | **Redis backplane** |
 
-### 7.4 Capacity Thresholds
+### §7.4 — Capacity Thresholds
 
 | Indicator | Threshold | Action |
 |-----------|-----------|--------|

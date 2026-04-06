@@ -1,11 +1,10 @@
-# DEPENDENCY GRAPH — Service Registration & Wiring
+# DEPENDENCY GRAPH — Đăng ký service & wiring
 
-> **Last Updated**: 2026-03-08
-> **Last Updated**: 2026-03-26
+> **Last Updated**: 2026-04-06
 
-## §1 — Dependency Injection Registration Groups
+## §1 — Nhóm đăng ký Dependency Injection
 
-All services registered in `ServiceCollectionExtensions.cs` (6 extension methods):
+Tất cả services được đăng ký trong `ServiceCollectionExtensions.cs` (6 extension methods):
 
 ```
 Program.cs
@@ -18,16 +17,16 @@ Program.cs
     └── builder.Services.AddApplicationServices(config)
 ```
 
-## §2 — Service Lifetime Matrix
+## §2 — Ma trận vòng đời service
 
-### 2.1 Singleton Services
+### §2.1 — Singleton services
 
 | Registration | Purpose |
 |-------------|---------|
 | `DatabaseProviderInfo` | Tracks which DB provider active (SQLite/PostgreSQL) |
 | `FileUploadConfig` | Upload size/extension constraints |
 
-### 2.2 Scoped Services (per-request)
+### §2.2 — Scoped services (mỗi request)
 
 | Interface | Implementation | Layer |
 |-----------|---------------|-------|
@@ -51,7 +50,7 @@ Program.cs
 | `IHealthCheckService` | `HealthCheckService` | Services |
 | `AssetCleanupHelper` | (concrete) | Services |
 
-### 2.3 Framework Registrations
+### §2.3 — Đăng ký framework
 
 | Registration | Lifetime | Purpose |
 |-------------|----------|---------|
@@ -63,7 +62,7 @@ Program.cs
 | `UserManager<ApplicationUser>` | Scoped | ASP.NET Identity |
 | `SignInManager<ApplicationUser>` | Scoped | ASP.NET Identity |
 
-## §3 — Service Dependency Graph
+## §3 — Đồ thị phụ thuộc service
 
 ```
 Controller Layer
@@ -116,9 +115,9 @@ Infrastructure Layer
 └── GlobalExceptionHandler  ──→ ILogger
 ```
 
-## §4 — Cross-Cutting Concerns
+## §4 — Cross-cutting concerns
 
-### 4.1 Middleware Pipeline Order
+### §4.1 — Thứ tự middleware pipeline
 
 ```
 Request →
@@ -135,7 +134,7 @@ Request →
   └── Response
 ```
 
-### 4.2 Rate Limiting Policies
+### §4.2 — Chính sách rate limiting
 
 | Policy | Window | Permit | Queue | Applied To |
 |--------|--------|--------|-------|-----------|
@@ -143,7 +142,7 @@ Request →
 | `Upload` | 1 min | 20 | 5 | File upload endpoints |
 | `Search` | 1 min (sliding, 6 segments) | 60 | 0 | `SearchController` |
 
-### 4.3 CORS Configuration
+### §4.3 — Cấu hình CORS
 
 - Policy: `"Frontend"`
 - Origins: Configurable via `Cors:AllowedOrigins` (default: `localhost:5173,5174`)
@@ -151,7 +150,7 @@ Request →
 - Headers: Any
 - Credentials: Allowed (required for SignalR)
 
-## §5 — Configuration Binding
+## §5 — Binding cấu hình
 
 | Config Section | Bound To | Key Settings |
 |---------------|----------|-------------|
@@ -166,11 +165,11 @@ Request →
 
 ---
 
-## §6 — Blast Radius Analysis
+## §6 — Phân tích blast radius
 
-> **Source**: Migrated from `PROJECT_DOCUMENTATION.md` §1.4
+> **Nguồn**: Di chuyển từ `PROJECT_DOCUMENTATION.md` §1.4
 
-### Service Dependency Impact Matrix
+### Ma trận tác động phụ thuộc service
 
 | Service | Depends On | Depended By | Blast Radius if Changed |
 |---------|-----------|-------------|------------------------|
@@ -187,7 +186,7 @@ Request →
 | **AuthService** | UserManager, SignInManager, JWT config | AuthController | 🟢 Low — isolated |
 | **AssetCleanupHelper** | IStorageService | AssetService, BulkAssetService | 🟢 Low — utility |
 
-### Key Observations
+### Quan sát chính
 
 1. **AppDbContext is the single dependency bottleneck** — all 12 services depend on it. This is the main coupling risk.
 2. **PermissionService is a hidden critical path** — AssetService and BulkAssetService both depend on it for authz checks. A bug here = auth bypass.

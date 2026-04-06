@@ -1,176 +1,122 @@
-# PATTERN CATALOG — Design Patterns in VAH
+# Danh Mục Design Patterns (Pattern Catalog)
 
-> **Last Updated**: 2026-03-25  
-> **Total Patterns Identified**: 22
+> **Mục đích**: Tổng hợp 22 design patterns đang sử dụng trong VAH  
+> **Last Updated**: 2026-04-06
 
 ---
 
-## Creational Patterns
+## §1 — Creational Patterns
 
 ### Factory Method — `AssetFactory`
-- **File**: [Models/AssetFactory.cs](../../VAH.Backend/Models/AssetFactory.cs)
-- **Problem**: Creating correct TPH subtype (`FileAsset`, `ImageAsset`, `LinkAsset`, etc.) with consistent defaults and validated input
-- **Solution**: Static factory methods (`CreateImage`, `CreateFile`, `CreateFolder`, `CreateColor`, `CreateLink`, `CreateColorGroup`, `Duplicate`) accepting only primitives — never DTOs
-- **Validation**: `CreateColor` delegates to `AssetValidator.NormalizeHexColor()`, `CreateLink` to `AssetValidator.ValidateUrl()`, all methods use `ArgumentException.ThrowIfNullOrWhiteSpace` guard clauses
-- **Clone**: `Duplicate` uses virtual `InitializeClone()` for subtype-specific property copying (Url, HexCode)
-- **OCP**: Adding new asset type = add new factory method + sealed TPH subclass
+- **File**: `Models/AssetFactory.cs`
+- **Vấn đề**: Tạo đúng TPH subtype với validation nhất quán
+- **Giải pháp**: Static methods (`CreateImage`, `CreateFile`, `CreateFolder`, `CreateColor`, `CreateLink`)
+- **OCP**: Thêm asset type = thêm factory method + sealed subclass
 
 ### Abstract Factory — `IAssetDuplicateStrategyFactory`
-- **File**: [Features/Assets/Application/Duplicate/](../../VAH.Backend/Features/Assets/Application/Duplicate/)
-- **Problem**: Duplicate behavior varies by target (in-place vs target folder)
-- **Solution**: Factory creates correct strategy based on `targetFolderId`
+- **File**: `Features/Assets/Application/Duplicate/`
+- **Giải pháp**: Factory chọn strategy dựa trên `targetFolderId`
 
 ### Factory Method — `ApiErrors`
-- **File**: [Controllers/ApiErrors.cs](../../VAH.Backend/Controllers/ApiErrors.cs)
-- **Problem**: ProblemDetails construction scattered across controllers with inconsistent format
-- **Solution**: Static factory methods (`EmptyBatch()`, `BatchSizeExceeded()`, `InvalidSmartCollectionId()`) producing ProblemDetails with machine-readable `code` extension field
-- **OCP**: Adding new error type = add new factory method
+- **File**: `Controllers/ApiErrors.cs`
+- **Giải pháp**: Static methods tạo ProblemDetails chuẩn hóa
 
 ---
 
-## Structural Patterns
+## §2 — Structural Patterns
 
 ### Facade — `ServiceCollectionExtensions`
-- **File**: [Extensions/ServiceCollectionExtensions.cs](../../VAH.Backend/Extensions/ServiceCollectionExtensions.cs)
-- **Problem**: `Program.cs` would be 200+ LOC of DI registrations
-- **Solution**: 6 extension methods grouping registrations by concern (`AddCorsPolicy`, `AddDatabase`, `AddIdentityAndAuth`, `AddCachingServices`, `AddRateLimitingPolicies`, `AddApplicationServices`)
+- **Vấn đề**: `Program.cs` sẽ có 200+ LOC nếu không tổ chức
+- **Giải pháp**: 6 extension methods nhóm theo concern
 
 ### Facade — `AssetApplicationService`
-- **File**: [Features/Assets/Application/AssetApplicationService.cs](../../VAH.Backend/Features/Assets/Application/AssetApplicationService.cs)
-- **Problem**: Controllers shouldn't know about MediatR, user context extraction, default collection IDs
-- **Solution**: Thin facade wrapping `ISender` + `IUserContextProvider` + `AssetOptions`
+- **Giải pháp**: Wrap `ISender` + `IUserContextProvider` + `AssetOptions`
 
 ### Adapter — `FileMapperService`
-- **File**: [Features/Assets/Infrastructure/Files/](../../VAH.Backend/Features/Assets/Infrastructure/Files/)
-- **Problem**: `IFormFile` is ASP.NET-specific; application layer shouldn't depend on it
-- **Solution**: Maps `IFormFile[]` → `IReadOnlyCollection<UploadedFileDto>`
+- **Giải pháp**: `IFormFile[]` → `IReadOnlyCollection<UploadedFileDto>`
 
 ---
 
-## Behavioral Patterns
+## §3 — Behavioral Patterns
 
 ### Strategy — `ISmartCollectionFilter`
-- **File**: [Services/SmartCollectionFilters.cs](../../VAH.Backend/Services/SmartCollectionFilters.cs)
-- **Problem**: Smart collections need different filter logic (recent, by type, untagged, etc.)
-- **Solution**: `ISmartCollectionFilter` interface with 5 concrete strategies: `RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`
-- **OCP**: New filter = new class + DI registration. Zero modifications to `SmartCollectionService`
+- **File**: `Services/SmartCollectionFilters.cs`
+- **Implementations**: `RecentDaysFilter`, `ContentTypeFilter`, `UntaggedFilter`, `WithThumbnailsFilter`, `TagFilter`
+- **OCP**: New filter = new class + DI registration
 
 ### Strategy — `IAssetDuplicateStrategy`
-- **File**: [Features/Assets/Application/Duplicate/](../../VAH.Backend/Features/Assets/Application/Duplicate/)
-- **Problem**: Duplicate in-place vs duplicate to target folder have different logic
-- **Solution**: `InPlaceDuplicateStrategy`, `TargetFolderDuplicateStrategy` selected by factory
+- `InPlaceDuplicateStrategy`, `TargetFolderDuplicateStrategy`
 
-### Template Method — `Asset` Virtual Properties & `InitializeClone`
-- **File**: [Models/Asset.cs](../../VAH.Backend/Models/Asset.cs), [Models/AssetTypes.cs](../../VAH.Backend/Models/AssetTypes.cs)
-- **Problem**: Different asset types need different behavior for cleanup, thumbnails, file presence, and duplication
-- **Solution**: `virtual bool HasPhysicalFile`, `CanHaveThumbnails` — subtypes override. `internal virtual void InitializeClone()` — `LinkAsset` copies `Url`, `ColorAsset` copies `HexCode`
+### Template Method — `Asset` Virtual Properties
+- `virtual bool HasPhysicalFile`, `CanHaveThumbnails` — subtypes override
 
 ### Validator — `AssetValidator`
-- **File**: [Models/AssetValidator.cs](../../VAH.Backend/Models/AssetValidator.cs)
-- **Problem**: Color hex / URL / filename validation logic scattered across Factory and Service
-- **Solution**: Static centralized validator with `[GeneratedRegex]` (source-generated) for zero-allocation regex. 3 validate methods (`NormalizeHexColor`, `ValidateUrl`, `ValidateFileName`) + 2 bool predicates
-- **Integration**: Called by `AssetFactory` pre-construction — invalid data never reaches domain entities
-
-### Mapper — `AssetMapper`
-- **File**: [Services/AssetMapper.cs](../../VAH.Backend/Services/AssetMapper.cs)
-- **Problem**: DTO mapping in domain entity violates SRP and couples domain to presentation
-- **Solution**: Static mapper in service layer (`ToDto`, `ToDtoList`, `CreateFileFromDto`). Replaces old `Asset.ToDto()` and `AssetFactory.FromDto()`
-
-### Action Filter — `ValidateBatchFilterAttribute`
-- **File**: [Controllers/Filters/ValidateBatchFilterAttribute.cs](../../VAH.Backend/Controllers/Filters/ValidateBatchFilterAttribute.cs)
-- **Problem**: 5 endpoints had identical 8-line batch validation guard blocks (empty check + max-size check)
-- **Solution**: `ActionFilterAttribute` reads `AssetIds` from request body via `IAssetIdsRequest` interface, delegates to `ApiErrors` factory for standardized ProblemDetails
-- **DRY**: Eliminated ~40 lines of duplicated code across `BulkAssetsController` + `AssetLayoutController`
+- Static validator với `[GeneratedRegex]` (zero-allocation)
 
 ### Mediator — MediatR CQRS Pipeline
-- **File**: [CQRS/Assets/](../../VAH.Backend/CQRS/Assets/)
-- **Problem**: Decouple command sender from handler; enable pipeline behaviors
-- **Solution**: `IRequest<T>` records + `IRequestHandler<TReq, TRes>` handlers. Controllers never know handler classes
+- `IRequest<T>` records + `IRequestHandler<TReq, TRes>`
 
 ### Observer — SignalR `AssetHub`
-- **File**: [Hubs/AssetHub.cs](../../VAH.Backend/Hubs/AssetHub.cs) + [Services/NotificationService.cs](../../VAH.Backend/Services/NotificationService.cs)
-- **Problem**: Multiple browser tabs/clients need real-time updates when data changes
-- **Solution**: `AssetHub` manages user groups. `NotificationService.NotifyAssetChanged()` pushes events. Clients subscribe via `useSignalR` hook
-
-### Command — CQRS Records
-- **File**: [CQRS/Assets/Commands/AssetCommands.cs](../../VAH.Backend/CQRS/Assets/Commands/AssetCommands.cs)
-- **Problem**: Encapsulate write operations as immutable data objects
-- **Solution**: `sealed record CreateAssetCommand(...)`, `UploadFilesCommand(...)`, `DeleteAssetCommand(...)`, etc.
+- `NotificationService.NotifyAssetChanged()` → clients via `useSignalR`
 
 ---
 
-## Architectural Patterns
+## §4 — Architectural Patterns
 
-### CQRS (Command Query Responsibility Segregation)
-- **Files**: `CQRS/Assets/Commands/`, `CQRS/Assets/Queries/`, `CQRS/Assets/Handlers/`
-- **Problem**: Read and write operations have different optimization needs
-- **Solution**: Separate `GetAssetsQuery` (read) from `CreateAssetCommand` (write). Each has dedicated handler
+### CQRS
+- Separate `GetAssetsQuery` (read) / `CreateAssetCommand` (write)
 
 ### Modular Monolith (Vertical Slices)
-- **Files**: `Features/Assets/` (Commands/, Queries/, Application/, Infrastructure/, Common/, Contracts/)
-- **Problem**: Traditional layered architecture scatters feature code across folders
-- **Solution**: `Features/Assets/` contains everything for Asset feature. Older modules still in `Services/`, `Controllers/` (migration in progress)
+- `Features/Assets/` chứa Commands, Queries, Application, Infrastructure
 
 ---
 
-## Concurrency & Infrastructure Patterns
+## §5 — Infrastructure Patterns
 
 ### Singleton — `TokenManager` (Frontend)
-- **File**: [src/api/TokenManager.js](../../VAH.Frontend/src/api/TokenManager.js)
-- **Problem**: JWT token must be globally accessible, single source of truth
-- **Solution**: Module-level singleton instance with private `#storageKey` field
+- Module-level instance với private `#storageKey` field
 
 ### Singleton — `DatabaseProviderInfo`
-- **File**: [Program.cs](../../VAH.Backend/Program.cs)
-- **Problem**: Runtime DB provider detection needed across services
-- **Solution**: `record DatabaseProviderInfo(string ProviderName)` registered as singleton
+- `record DatabaseProviderInfo(string ProviderName)` registered singleton
 
 ### Rate Limiter — Fixed Window
-- **File**: [Extensions/ServiceCollectionExtensions.cs](../../VAH.Backend/Extensions/ServiceCollectionExtensions.cs)
-- **Problem**: Protect API from abuse
-- **Solution**: `Fixed` (100 req/min) and `Upload` (20 req/min) rate limiting policies
+- `Fixed` (100 req/min), `Upload` (20 req/min)
 
 ---
 
-## Frontend Patterns
+## §6 — Frontend Patterns
 
 ### Module Pattern — API Barrel Export
-- **File**: [src/api/index.js](../../VAH.Frontend/src/api/index.js)
-- **Problem**: Centralize API service access
-- **Solution**: Single barrel file exports all API singletons (`assetApi`, `collectionApi`, `tagApi`, etc.)
+- Single barrel exports all API singletons
 
-### Inheritance — `BaseApiService` → Subclasses
-- **File**: [src/api/BaseApiService.js](../../VAH.Frontend/src/api/BaseApiService.js)
-- **Problem**: DRY HTTP methods across 7 API services
-- **Solution**: `BaseApiService` provides `_get()`, `_post()`, `_put()`, `_patch()`, `_delete()`. Subclasses (`AssetsApi`, `CollectionsApi`, ...) extend and add domain methods
+### Inheritance — `BaseApiService`
+- `_get()`, `_post()`, `_put()`, `_patch()`, `_delete()` — 7 subclasses extend
 
-### Context + Hook Pattern — State Management
-- **Files**: [src/context/](../../VAH.Frontend/src/context/), [src/hooks/](../../VAH.Frontend/src/hooks/)
-- **Problem**: Global state without prop-drilling, separation of state logic from UI
-- **Solution**: `AppContext` provides global state. 11 custom hooks encapsulate domain logic (`useAssets`, `useCollections`, `useTags`, etc.)
+### Context + Hook Pattern
+- `AppContext` + 11 custom hooks (`useAssets`, `useCollections`, etc.)
 
 ---
 
-## Pattern Decision Guide
+## §7 — Hướng Dẫn Chọn Pattern
 
 ```
-Need to create objects of varying types?
-  └─→ Factory (AssetFactory) or Abstract Factory (DuplicateStrategyFactory)
+Cần tạo nhiều variants?
+  └─→ Factory (AssetFactory)
 
-Need interchangeable algorithms?
-  └─→ Strategy (ISmartCollectionFilter, IAssetDuplicateStrategy)
+Cần thuật toán thay thế được?
+  └─→ Strategy (ISmartCollectionFilter)
 
-Need to decouple sender from receiver?
-  └─→ Mediator (MediatR) or Observer (SignalR)
+Cần decouple sender/receiver?
+  └─→ Mediator (MediatR) hoặc Observer (SignalR)
 
-Need shared base behavior with type-specific overrides?
-  └─→ Template Method (Asset virtual properties)
+Cần shared behavior + type-specific overrides?
+  └─→ Template Method (Asset virtual)
 
-Need to simplify a complex subsystem?
-  └─→ Facade (ServiceCollectionExtensions, AssetApplicationService)
+Cần đơn giản hóa subsystem phức tạp?
+  └─→ Facade (ServiceCollectionExtensions)
 
-Need to adapt incompatible interfaces?
-  └─→ Adapter (FileMapperService: IFormFile → UploadedFileDto)
+Cần adapt interfaces không tương thích?
+  └─→ Adapter (FileMapperService)
 ```
 
 ---

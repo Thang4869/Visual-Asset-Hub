@@ -1,12 +1,13 @@
-# DATABASE CONVENTIONS — EF Core & PostgreSQL
+# Quy Ước Database (Database Conventions — EF Core & PostgreSQL)
 
-> **Last Updated**: 2026-03-26  
+> **Mục đích**: Định nghĩa quy tắc và chuẩn mực cho database với EF Core  
+> **Last Updated**: 2026-04-06  
 > **ORM**: Entity Framework Core 9  
 > **Providers**: PostgreSQL 17 (production) / SQLite (development)
 
 ---
 
-## §1 — Dual Provider Architecture
+## §1 — Kiến Trúc Dual Provider
 
 ```csharp
 // Configured in ServiceCollectionExtensions.AddDatabase()
@@ -14,19 +15,21 @@ var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
 // PostgreSQL for Docker/production, SQLite for local development
 ```
 
-`DatabaseProviderInfo` record injected as Singleton for runtime provider detection.
+`DatabaseProviderInfo` record được inject như Singleton để phát hiện provider lúc runtime.
 
-## §2 — Entity Configuration
+---
 
-### Convention: Current state & migration
+## §2 — Cấu Hình Entity
 
-- Current: some entities use DataAnnotations (`[Key]`, `[Required]`, `[MaxLength]`) — this remains the current, pragmatically-migrated state.
-- Preferred: Use Fluent API via `IEntityTypeConfiguration<T>` in `AppDbContext` to keep domain types framework-agnostic. Moving entity-level validation/shape into the Fluent API is a recommended refactor (`[SHOULD]`).
-- Example: `VAH.Backend/Models/CollectionPermission.cs` contains `[Required]` attributes and should be considered for migration to Fluent API (see migration note below).
+### Quy ước: Trạng thái hiện tại & migration
 
-### Migration note
+- Hiện tại: một số entities sử dụng DataAnnotations (`[Key]`, `[Required]`, `[MaxLength]`) — đây vẫn là trạng thái hiện tại đang được migration dần.
+- Ưu tiên: Sử dụng Fluent API qua `IEntityTypeConfiguration<T>` trong `AppDbContext` để giữ domain types không phụ thuộc framework. Di chuyển entity-level validation/shape vào Fluent API là refactor được khuyến nghị (`[SHOULD]`).
+- Ví dụ: `VAH.Backend/Models/CollectionPermission.cs` chứa `[Required]` attributes và nên được xem xét migration sang Fluent API (xem ghi chú migration bên dưới).
 
-- Track a short-lived migration task to move entity DataAnnotations into Fluent API configurations. Prioritize permission and identity-adjacent types, then core domain entities. Keep DTO DataAnnotations (request validation) until a centralized validation strategy (e.g., FluentValidation) is adopted.
+### Ghi chú migration
+
+- Theo dõi task migration ngắn hạn để di chuyển entity DataAnnotations vào Fluent API configurations. Ưu tiên permission và identity-adjacent types, sau đó đến core domain entities. Giữ DTO DataAnnotations (request validation) cho đến khi áp dụng chiến lược validation tập trung (vd: FluentValidation).
 
 ### TPH Discriminator
 ```csharp
@@ -36,10 +39,12 @@ var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
 // Enum stored as lowercase string via EnumMappings
 ```
 
-## §3 — Naming Conventions
+---
 
-| Element | Convention | Example |
-|---------|-----------|---------|
+## §3 — Quy Ước Đặt Tên
+
+| Thành phần | Quy ước | Ví dụ |
+|------------|---------|-------|
 | Table | Plural PascalCase (EF default) | `Assets`, `Collections`, `Tags` |
 | Column | PascalCase (EF default) | `FileName`, `CreatedAt`, `ParentFolderId` |
 | FK column | `{NavigationProperty}Id` | `CollectionId`, `UserId`, `GroupId` |
@@ -47,7 +52,9 @@ var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
 | Index | `IX_{Table}_{Column}` | `IX_Assets_UserId` |
 | Migration | `{Timestamp}_{Description}` | `20260225203615_InitialCreate` |
 
-## §4 — Current Schema (6 Tables)
+---
+
+## §4 — Schema Hiện Tại (6 Tables)
 
 ```
 ┌─────────────────┐     ┌─────────────────┐    ┌──────────────────┐
@@ -72,44 +79,50 @@ var dbProvider = configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
 └──────────────────┘
 ```
 
-## §5 — Migration Rules
+---
 
-| Rule | Detail |
-|------|--------|
-| Auto-migrate on startup | `db.Database.Migrate()` in `Program.cs` |
-| Never edit generated migrations | Regenerate if needed |
-| Migration naming | Descriptive: `AddTagSystem`, `AddThumbnailColumns` |
-| Data fixups | Raw SQL in `Program.cs` after migrate (ContentType discriminator fix) |
-| **Production**: Disable auto-migrate | Use `dotnet ef database update` manually |
+## §5 — Quy Tắc Migration
 
-## §6 — Query Patterns
+| Quy tắc | Chi tiết |
+|---------|----------|
+| Auto-migrate khi startup | `db.Database.Migrate()` trong `Program.cs` |
+| Không sửa migrations đã generate | Tạo lại nếu cần |
+| Đặt tên migration | Mô tả rõ: `AddTagSystem`, `AddThumbnailColumns` |
+| Data fixups | Raw SQL trong `Program.cs` sau migrate (ContentType discriminator fix) |
+| **Production**: Tắt auto-migrate | Dùng `dotnet ef database update` thủ công |
+
+---
+
+## §6 — Mẫu Query
 
 ```csharp
-// ✅ Always filter by UserId (data isolation)
+// ✅ Luôn filter theo UserId (data isolation)
 var assets = await _context.Assets
     .Where(a => a.UserId == userId)
     .OrderBy(a => a.SortOrder)
     .ToListAsync(ct);
 
-// ✅ Use Include() explicitly (no lazy loading)
+// ✅ Dùng Include() tường minh (không lazy loading)
 var collection = await _context.Collections
     .Include(c => c.Assets)
     .Include(c => c.Children)
     .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, ct);
 
-// ✅ Map to DTO before returning
+// ✅ Map sang DTO trước khi trả về
 return assets.Select(a => a.ToDto()).ToList();
 
-// ❌ Never return IQueryable from service
-// ❌ Never use Find() without ownership check
+// ❌ Không return IQueryable từ service
+// ❌ Không dùng Find() mà không kiểm tra ownership
 ```
 
-## §7 — Current Migrations (5)
+---
 
-| Migration | Date | Description |
-|-----------|------|-------------|
+## §7 — Migrations Hiện Tại (5)
+
+| Migration | Ngày | Mô tả |
+|-----------|------|-------|
 | `InitialCreate` | 2026-02-25 | Base schema: Assets, Collections, Identity |
-| `AddThumbnailColumns` | 2026-02-26 | ThumbnailSm/Md/Lg on Assets |
+| `AddThumbnailColumns` | 2026-02-26 | ThumbnailSm/Md/Lg trên Assets |
 | `AddTagSystem` | 2026-02-27 | Tags + AssetTags M:N |
 | `AddCollectionPermissions` | 2026-02-27 | CollectionPermission table |
 | `SyncModelChanges` | 2026-02-27 | Model cleanup alignment |

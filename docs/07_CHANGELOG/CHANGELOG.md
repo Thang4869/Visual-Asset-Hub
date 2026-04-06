@@ -1,10 +1,7 @@
-# CHANGELOG
+# Nhật ký Thay đổi (Changelog)
 
-> **Last Updated**: 2026-03-19
-
-All notable changes to the Visual Asset Hub project.
-
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+> **Format**: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)  
+> **Last Updated**: 2026-04-06
 
 ---
 

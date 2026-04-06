@@ -1,16 +1,15 @@
-# TAG MODULE
+# Tag Module
 
-> **Last Updated**: 2026-03-08
-> **Status**: Active — Services/ layer
-> **Last Updated**: 2026-03-26
-> **Status**: Active — Services/ layer
-> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
+> **Mục đích**: Hệ thống tag cho assets (many-to-many)
+> **Last Updated**: 2026-04-06
 
-## §1 — Overview
+---
 
-| Aspect | Detail |
-|--------|--------|
-| **Domain** | Tagging system for assets (many-to-many) |
+## §1 — Tổng quan (Overview)
+
+| Khía cạnh | Chi tiết |
+|-----------|----------|
+| **Domain** | Hệ thống tag cho assets (many-to-many) |
 | **Aggregate Root** | `Tag` |
 | **Junction Table** | `AssetTag` (composite PK) |
 | **Service** | `ITagService` → `TagService` |
@@ -42,13 +41,13 @@ public class AssetTag        // Junction table
 
 **Domain Methods:**
 
-| Method | Purpose |
-|--------|---------|
-| `SetName(name)` | Trim + auto-set `NormalizedName` (lowercase) |
-| `UpdateFrom(dto)` | Partial update, delegates to `SetName` |
-| `IsOwnedBy(userId)` | Ownership check |
+| Method | Mục đích |
+|--------|----------|
+| `SetName(name)` | Trim + tự động set `NormalizedName` (lowercase) |
+| `UpdateFrom(dto)` | Cập nhật từng phần, ủy quyền cho `SetName` |
+| `IsOwnedBy(userId)` | Kiểm tra quyền sở hữu |
 
-## §3 — Service Interface
+## §3 — Giao diện Service (Service Interface)
 
 ```csharp
 public interface ITagService
@@ -63,7 +62,7 @@ public interface ITagService
     // Batch operations
     Task<List<Tag>> GetOrCreateTagsAsync(IEnumerable<string> tagNames, string userId, CancellationToken ct);
 
-    // Asset-Tag relationship management
+    // Quản lý quan hệ Asset-Tag
     Task SetAssetTagsAsync(int assetId, List<int> tagIds, string userId, CancellationToken ct);
     Task AddAssetTagsAsync(int assetId, List<int> tagIds, string userId, CancellationToken ct);
     Task RemoveAssetTagsAsync(int assetId, List<int> tagIds, string userId, CancellationToken ct);
@@ -76,22 +75,22 @@ public interface ITagService
 
 ## §4 — API Endpoints
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/tags` | List user's tags |
-| GET | `/api/v1/tags/{id}` | Get single tag |
-| POST | `/api/v1/tags` | Create tag |
-| PUT | `/api/v1/tags/{id}` | Update tag |
-| DELETE | `/api/v1/tags/{id}` | Delete tag |
-| POST | `/api/v1/tags/get-or-create` | Batch: find or create by names |
-| PUT | `/api/v1/tags/assets/{assetId}` | Set (replace all) asset tags |
-| POST | `/api/v1/tags/assets/{assetId}` | Add tags to asset |
-| DELETE | `/api/v1/tags/assets/{assetId}` | Remove tags from asset |
-| GET | `/api/v1/tags/assets/{assetId}` | Get all tags for an asset |
+| Method | Route | Mô tả |
+|--------|-------|-------|
+| GET | `/api/v1/tags` | Danh sách tag của người dùng |
+| GET | `/api/v1/tags/{id}` | Lấy một tag |
+| POST | `/api/v1/tags` | Tạo tag |
+| PUT | `/api/v1/tags/{id}` | Cập nhật tag |
+| DELETE | `/api/v1/tags/{id}` | Xóa tag |
+| POST | `/api/v1/tags/get-or-create` | Batch: tìm hoặc tạo theo tên |
+| PUT | `/api/v1/tags/assets/{assetId}` | Set (thay thế tất cả) tag của asset |
+| POST | `/api/v1/tags/assets/{assetId}` | Thêm tag vào asset |
+| DELETE | `/api/v1/tags/assets/{assetId}` | Xóa tag khỏi asset |
+| GET | `/api/v1/tags/assets/{assetId}` | Lấy tất cả tag cho một asset |
 
-## §5 — Deduplication Strategy
+## §5 — Chiến lược Deduplication (Deduplication Strategy)
 
-Tags are deduplicated per user via `NormalizedName`:
+Tag được dedup theo user qua `NormalizedName`:
 
 ```
 Input: "  React JS  "
@@ -99,21 +98,21 @@ Input: "  React JS  "
 → NormalizedName: "react js"
 ```
 
-- Unique index on `(NormalizedName, UserId)` prevents duplicate tags per user
-- `GetOrCreateTagsAsync` checks NormalizedName before creating — idempotent
+- Unique index trên `(NormalizedName, UserId)` ngăn chặn tag trùng lặp theo user
+- `GetOrCreateTagsAsync` kiểm tra NormalizedName trước khi tạo — idempotent
 
-## §6 — Legacy Migration
+## §6 — Migration Legacy
 
-The system originally stored tags as comma-separated strings in `Asset.Tags`:
+Hệ thống ban đầu lưu tag dưới dạng chuỗi phân tách bằng dấu phẩy trong `Asset.Tags`:
 ```
 "react, javascript, frontend"
 ```
 
 
-`MigrateCommaSeparatedTagsAsync()` processes all assets for a user:
-1. Parses comma-separated `Asset.Tags` string
-2. Calls `GetOrCreateTagsAsync` for each parsed tag name
-3. Creates `AssetTag` junction records
+`MigrateCommaSeparatedTagsAsync()` xử lý tất cả asset của một user:
+1. Phân tích chuỗi `Asset.Tags` phân tách bằng dấu phẩy
+2. Gọi `GetOrCreateTagsAsync` cho mỗi tên tag được phân tích
+3. Tạo các bản ghi junction `AssetTag`
 4. (Legacy) Đã comment lại dòng code cập nhật trường `asset.Tags` (chuẩn bị loại bỏ hoàn toàn trường này, chỉ còn dùng AssetTag junction)
 5. Migration mới đồng bộ model, thêm các cột và index cần thiết cho hệ thống tag mới.
 

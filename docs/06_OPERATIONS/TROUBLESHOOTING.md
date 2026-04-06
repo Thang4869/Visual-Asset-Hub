@@ -1,120 +1,120 @@
-# TROUBLESHOOTING — Common Issues & Solutions
+# TROUBLESHOOTING — Sự cố thường gặp & cách xử lý
 
-> **Last Updated**: 2026-03-02
+> **Last Updated**: 2026-04-06
 
 ---
 
-## §1 — Backend Issues
+## §1 — Sự cố backend
 
-### 1.1 Database Migration Fails
+### §1.1 — Database migration thất bại
 
-**Symptom**: `dotnet ef database update` throws `SqlException` or `SqliteException`
+**Triệu chứng**: `dotnet ef database update` ném ra `SqlException` hoặc `SqliteException`
 
-**Solutions:**
-1. **Check provider**: Ensure `DatabaseProvider` in appsettings matches your target DB
-2. **Pending migrations**: Run `dotnet ef migrations list` to see unapplied migrations
-3. **Reset**: Delete `vah.db` (SQLite) or `docker compose down -v` (PostgreSQL)
-4. **Discriminator mismatch**: The startup SQL fix handles this — ensure `Program.cs` auto-migration runs
+**Cách xử lý:**
+1. **Kiểm tra provider**: Đảm bảo `DatabaseProvider` trong appsettings khớp DB đích
+2. **Migrations đang chờ**: Chạy `dotnet ef migrations list` để xem migration chưa áp dụng
+3. **Reset**: Xóa `vah.db` (SQLite) hoặc `docker compose down -v` (PostgreSQL)
+4. **Sai discriminator**: SQL fix khi startup sẽ xử lý việc này — đảm bảo `Program.cs` chạy auto-migration
 
-### 1.2 JWT Authentication Fails (401)
+### §1.2 — JWT authentication thất bại (401)
 
-**Symptom**: All API calls return 401 Unauthorized
+**Triệu chứng**: Tất cả API calls trả về 401 Unauthorized
 
-**Solutions:**
-1. **Check token**: Decode at https://jwt.io — verify expiry, issuer, audience
-2. **Config mismatch**: `Jwt:SecretKey`, `Jwt:Issuer`, `Jwt:Audience` must match between token generation and validation
-3. **ClockSkew = Zero**: Server time must be accurate — no tolerance for clock drift
-4. **SignalR**: Ensure token sent via `?access_token=` query param, not header
+**Cách xử lý:**
+1. **Kiểm tra token**: Decode tại https://jwt.io — xác minh expiry, issuer, audience
+2. **Sai cấu hình**: `Jwt:SecretKey`, `Jwt:Issuer`, `Jwt:Audience` phải khớp giữa tạo token và validate
+3. **ClockSkew = Zero**: Thời gian server phải chính xác — không chấp nhận clock drift
+4. **SignalR**: Đảm bảo token được gửi qua query param `?access_token=`, không phải header
 
-### 1.3 File Upload Fails
+### §1.3 — File upload thất bại
 
-**Symptom**: 413 Payload Too Large or 400 Bad Request on upload
+**Triệu chứng**: 413 Payload Too Large hoặc 400 Bad Request khi upload
 
-**Solutions:**
-1. **Kestrel limit**: Program.cs sets 100 MB — check if file exceeds this
-2. **FileUploadConfig**: Max 50 MB per file, 20 files per request
-3. **Rate limit**: Upload policy allows 20/min — check if throttled
-4. **Extension**: Verify file extension is in `FileUploadConfig.AllowedExtensions`
-5. **Disk space**: Check `wwwroot/uploads/` has sufficient storage
+**Cách xử lý:**
+1. **Giới hạn Kestrel**: `Program.cs` đặt 100 MB — kiểm tra file có vượt mức này không
+2. **FileUploadConfig**: Tối đa 50 MB mỗi file, 20 files mỗi request
+3. **Rate limit**: Upload policy cho phép 20/phút — kiểm tra có bị throttled không
+4. **Extension**: Xác minh file extension có nằm trong `FileUploadConfig.AllowedExtensions`
+5. **Dung lượng đĩa**: Kiểm tra `wwwroot/uploads/` còn đủ storage
 
-### 1.4 SignalR Connection Fails
+### §1.4 — SignalR connection thất bại
 
-**Symptom**: Real-time updates not working, console shows WebSocket errors
+**Triệu chứng**: Cập nhật realtime không hoạt động, console hiển thị lỗi WebSocket
 
-**Solutions:**
-1. **CORS**: Ensure `AllowCredentials()` is set (required for SignalR)
-2. **Nginx proxy**: WebSocket upgrade headers must be forwarded
-3. **Auth**: Token must be valid when connection is established
-4. **Reconnect**: `withAutomaticReconnect()` should be configured in frontend
+**Cách xử lý:**
+1. **CORS**: Đảm bảo đã bật `AllowCredentials()` (bắt buộc cho SignalR)
+2. **Nginx proxy**: Headers upgrade của WebSocket phải được forward
+3. **Auth**: Token phải hợp lệ khi kết nối được thiết lập
+4. **Reconnect**: `withAutomaticReconnect()` nên được cấu hình ở frontend
 
-### 1.5 Thumbnail Generation Fails
+### §1.5 — Tạo thumbnail thất bại
 
-**Symptom**: Images upload but thumbnails are null
+**Triệu chứng**: Ảnh upload thành công nhưng thumbnail bị null
 
-**Solutions:**
-1. **ImageSharp**: Verify SixLabors.ImageSharp 3.1.12 is installed
-2. **Permissions**: `wwwroot/uploads/thumbs/` directory must be writable
-3. **Format**: ImageSharp supports JPEG, PNG, GIF, WebP, BMP — SVG not supported
-4. **Memory**: Large images may OOM — check Kestrel memory limits
+**Cách xử lý:**
+1. **ImageSharp**: Xác minh đã cài SixLabors.ImageSharp 3.1.12
+2. **Quyền ghi**: Thư mục `wwwroot/uploads/thumbs/` phải cho phép ghi
+3. **Định dạng**: ImageSharp hỗ trợ JPEG, PNG, GIF, WebP, BMP — không hỗ trợ SVG
+4. **Bộ nhớ**: Ảnh lớn có thể OOM — kiểm tra giới hạn bộ nhớ của Kestrel
 
-## §2 — Frontend Issues
+## §2 — Sự cố frontend
 
-### 2.1 CORS Errors
+### §2.1 — Lỗi CORS
 
-**Symptom**: Browser console shows `Access-Control-Allow-Origin` errors
+**Triệu chứng**: Browser console hiển thị lỗi `Access-Control-Allow-Origin`
 
-**Solutions:**
-1. **Origin**: Frontend URL must be in `Cors:AllowedOrigins` (default: `localhost:5173,5174`)
-2. **Credentials**: `AllowCredentials()` required for SignalR — incompatible with `AllowAnyOrigin()`
-3. **Docker**: When using Docker, frontend is at port 3000 — ensure it's in allowed origins
+**Cách xử lý:**
+1. **Origin**: URL frontend phải nằm trong `Cors:AllowedOrigins` (mặc định: `localhost:5173,5174`)
+2. **Credentials**: `AllowCredentials()` là bắt buộc cho SignalR — không tương thích với `AllowAnyOrigin()`
+3. **Docker**: Khi dùng Docker, frontend ở port 3000 — đảm bảo nó có trong allowed origins
 
-### 2.2 API Calls Return Network Error
+### §2.2 — API calls trả về network error
 
-**Symptom**: Axios throws `ERR_NETWORK` or `ERR_CONNECTION_REFUSED`
+**Triệu chứng**: Axios ném `ERR_NETWORK` hoặc `ERR_CONNECTION_REFUSED`
 
-**Solutions:**
-1. **Backend running**: Verify backend is up at `http://localhost:5027/api/v1/health`
-2. **Vite proxy**: Check `vite.config.js` proxy settings for API forwarding
-3. **Docker networking**: Services communicate by container name, not `localhost`
+**Cách xử lý:**
+1. **Backend đang chạy**: Xác minh backend hoạt động tại `http://localhost:5027/api/v1/health`
+2. **Vite proxy**: Kiểm tra cấu hình proxy trong `vite.config.js` cho API forwarding
+3. **Docker networking**: Services giao tiếp qua tên container, không phải `localhost`
 
-### 2.3 State Not Updating After Operations
+### §2.3 — State không cập nhật sau thao tác
 
-**Symptom**: UI doesn't reflect changes after CRUD operations
+**Triệu chứng**: UI không phản ánh thay đổi sau các thao tác CRUD
 
-**Solutions:**
-1. **SignalR disconnected**: Check `useSignalR` hook connection status
-2. **Missing handler**: Verify event type is registered in `AppContext.signalRHandlers`
-3. **Stale closure**: Ensure `refreshItems` is in hook dependency array
-4. **Cache**: Check if `IDistributedCache` is serving stale data
+**Cách xử lý:**
+1. **SignalR bị ngắt**: Kiểm tra trạng thái kết nối của hook `useSignalR`
+2. **Thiếu handler**: Xác minh event type đã được đăng ký trong `AppContext.signalRHandlers`
+3. **Stale closure**: Đảm bảo `refreshItems` nằm trong dependency array của hook
+4. **Cache**: Kiểm tra `IDistributedCache` có đang phục vụ dữ liệu cũ không
 
-## §3 — Docker Issues
+## §3 — Sự cố Docker
 
-### 3.1 Containers Won't Start
+### §3.1 — Container không khởi động được
 
 ```bash
-# Check logs
+# Kiểm tra logs
 docker compose logs backend
 
-# Common fixes
+# Cách khắc phục thường gặp
 docker compose down
 docker compose build --no-cache
 docker compose up -d
 ```
 
-### 3.2 Database Connection Refused
+### §3.2 — Kết nối database bị từ chối
 
-**Symptom**: Backend fails to connect to PostgreSQL on startup
+**Triệu chứng**: Backend không kết nối được PostgreSQL khi khởi động
 
-**Solutions:**
-1. **Startup order**: Backend depends on PostgreSQL — Docker Compose handles this but initial startup may race
-2. **Connection string**: Verify `Host=postgres` (container name, not `localhost`)
-3. **Volume**: If DB volume is corrupted, `docker compose down -v` and recreate
+**Cách xử lý:**
+1. **Thứ tự khởi động**: Backend phụ thuộc PostgreSQL — Docker Compose xử lý việc này nhưng startup ban đầu có thể race
+2. **Connection string**: Xác minh `Host=postgres` (tên container, không phải `localhost`)
+3. **Volume**: Nếu DB volume bị hỏng, chạy `docker compose down -v` rồi tạo lại
 
-### 3.3 Redis Connection Issues
+### §3.3 — Vấn đề kết nối Redis
 
-**Symptom**: Warnings about cache in logs
+**Triệu chứng**: Có cảnh báo về cache trong logs
 
-**Non-critical**: Backend falls back to `DistributedMemoryCache` if Redis is unavailable. Application continues working without Redis, but without distributed caching.
+**Không nghiêm trọng**: Backend sẽ fallback sang `DistributedMemoryCache` nếu Redis không khả dụng. Ứng dụng vẫn chạy không có Redis, nhưng sẽ không có distributed caching.
 
 ---
 

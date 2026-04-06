@@ -1,23 +1,21 @@
-# SMART COLLECTION MODULE
+# Smart Collection Module
 
-> **Last Updated**: 2026-03-08
-> **Status**: Active — Services/ layer
-> **Last Updated**: 2026-03-26
-> **Status**: Active — Services/ layer
-> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
+> **Mục đích**: Các collection động/ảo được tính toán tại thời điểm truy vấn
+> **Last Updated**: 2026-04-06
+
 ---
 
-## §1 — Overview
+## §1 — Tổng quan (Overview)
 
-| Aspect | Detail |
-|--------|--------|
-| **Domain** | Dynamic/virtual collections computed at query time |
+| Khía cạnh | Chi tiết |
+|-----------|----------|
+| **Domain** | Các collection động/ảo được tính toán tại thời điểm truy vấn |
 | **Service** | `ISmartCollectionService` → `SmartCollectionService` |
 | **Controller** | `SmartCollectionsController` (2 endpoints) |
 | **Patterns** | Strategy Pattern (`ISmartCollectionFilter`), Open/Closed Principle |
 | **ADR** | [ADR-006](../03_ARCHITECTURE/ADR/ADR-006_STRATEGY_SMART_COLLECTIONS.md) |
 
-## §2 — Service Interface
+## §2 — Giao diện Service (Service Interface)
 
 ```csharp
 public interface ISmartCollectionService
@@ -27,7 +25,7 @@ public interface ISmartCollectionService
 }
 ```
 
-## §3 — Strategy Interface
+## §3 — Giao diện Strategy (Strategy Interface)
 
 ```csharp
 public interface ISmartCollectionFilter
@@ -38,10 +36,10 @@ public interface ISmartCollectionFilter
 }
 ```
 
-## §4 — Concrete Strategies
+## §4 — Các Strategy cụ thể (Concrete Strategies)
 
-| Strategy | FilterType | Query Logic |
-|----------|----------|-------------|
+| Strategy | FilterType | Logic truy vấn |
+|----------|----------|----------------|
 | `TypeFilter` | `"by-type"` | `WHERE ContentType = @type` |
 | `TagFilter` | `"by-tag"` | `JOIN AssetTags WHERE Tag.Name = @tag` |
 | `DateRangeFilter` | `"by-date"` | `WHERE CreatedAt BETWEEN @start AND @end` |
@@ -50,12 +48,12 @@ public interface ISmartCollectionFilter
 
 ## §5 — API Endpoints
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/smart-collections` | Get all smart collection definitions |
-| GET | `/api/v1/smart-collections/{id}/items` | Get paginated items matching criteria |
+| Method | Route | Mô tả |
+|--------|-------|-------|
+| GET | `/api/v1/smart-collections` | Lấy tất cả định nghĩa smart collection |
+| GET | `/api/v1/smart-collections/{id}/items` | Lấy các item theo phân trang khớp với tiêu chí |
 
-## §6 — Definition Structure
+## §6 — Cấu trúc định nghĩa (Definition Structure)
 
 ```json
 {
@@ -69,14 +67,14 @@ public interface ISmartCollectionFilter
 }
 ```
 
-Definitions are generated server-side (not stored in DB) — they represent pre-defined filter configurations.
+Các định nghĩa được tạo ở phía server (không lưu trong DB) — chúng biểu diễn các cấu hình bộ lọc được định nghĩa trước.
 
-## §7 — Adding New Filters
+## §7 — Thêm bộ lọc mới (Adding New Filters)
 
-1. Create class implementing `ISmartCollectionFilter`
-2. Register in DI (`services.AddScoped<ISmartCollectionFilter, YourFilter>()`)
-3. Service auto-discovers via `IEnumerable<ISmartCollectionFilter>` injection
-4. No changes needed to `SmartCollectionService` or controller (OCP)
+1. Tạo class implements `ISmartCollectionFilter`
+2. Đăng ký trong DI (`services.AddScoped<ISmartCollectionFilter, YourFilter>()`)
+3. Service tự động khám phá qua `IEnumerable<ISmartCollectionFilter>` injection
+4. Không cần thay đổi `SmartCollectionService` hay controller (OCP)
 
 ---
 

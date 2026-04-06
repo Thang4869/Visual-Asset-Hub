@@ -1,11 +1,12 @@
-# CODING STANDARDS — React 19 Frontend
+# Tiêu Chuẩn Code Frontend (Coding Standards — React 19 Frontend)
 
-> **Last Updated**: 2026-03-02  
-> **Applies to**: `VAH.Frontend/src/`
+> **Mục đích**: Định nghĩa quy tắc và chuẩn mực code cho frontend React 19  
+> **Last Updated**: 2026-04-06  
+> **Áp dụng cho**: `VAH.Frontend/src/`
 
 ---
 
-## §1 — Project Structure
+## §1 — Cấu Trúc Dự Án
 
 ```
 src/
@@ -48,9 +49,11 @@ src/
 └── assets/
 ```
 
-## §2 — API Layer (OOP)
+---
 
-### Class Hierarchy
+## §2 — Tầng API (OOP)
+
+### Cấu Trúc Kế Thừa Class
 ```
 BaseApiService          ← Abstract base: _get(), _post(), _put(), _patch(), _delete()
 ├── AssetsApi           ← Asset CRUD + upload + duplicate
@@ -62,17 +65,17 @@ BaseApiService          ← Abstract base: _get(), _post(), _put(), _patch(), _d
 └── PermissionsApi      ← RBAC sharing
 ```
 
-### Rules
+### Quy Tắc
 
-| Rule | Severity |
-|------|----------|
-| Every API service extends `BaseApiService` | `[MUST]` |
-| Use `_get()`, `_post()` helpers — never raw `axios.get()` | `[MUST]` |
-| Export singleton instance (not class) | `[MUST]` |
-| Token management via `TokenManager` singleton only | `[MUST]` |
-| Never import `axios` directly in components/hooks | `[MUST]` |
+| Quy tắc | Mức độ |
+|---------|--------|
+| Mọi API service phải extends `BaseApiService` | `[MUST]` |
+| Sử dụng `_get()`, `_post()` helpers — không dùng trực tiếp `axios.get()` | `[MUST]` |
+| Export singleton instance (không export class) | `[MUST]` |
+| Quản lý token chỉ qua `TokenManager` singleton | `[MUST]` |
+| Không import `axios` trực tiếp trong components/hooks | `[MUST]` |
 
-### JSDoc Template for API Service
+### JSDoc Template cho API Service
 ```javascript
 /**
  * @class AssetsApi
@@ -89,13 +92,15 @@ export class AssetsApi extends BaseApiService {
 }
 ```
 
+---
+
 ## §3 — Custom Hooks
 
-### SRP for Hooks
-Each hook manages exactly ONE concern:
+### Nguyên Tắc SRP cho Hooks
+Mỗi hook quản lý đúng MỘT concern:
 
-| Hook | Concern | API Service Used |
-|------|---------|-----------------|
+| Hook | Concern | API Service Sử Dụng |
+|------|---------|---------------------|
 | `useAuth` | Auth state, login/logout | `authApi` |
 | `useAssets` | Asset CRUD, loading state | `assetApi` |
 | `useAssetSelection` | Multi-select state | None (local state) |
@@ -108,26 +113,28 @@ Each hook manages exactly ONE concern:
 | `useTags` | Tag CRUD, asset-tag ops | `tagApi` |
 | `useUndoRedo` | Command history | None (local state) |
 
-### Rules
+### Quy Tắc
 
-| Rule | Severity |
-|------|----------|
+| Quy tắc | Mức độ |
+|---------|--------|
 | 1 hook = 1 concern (SRP) | `[MUST]` |
-| Hook calls API service, never raw `axios` | `[MUST]` |
-| Hook returns `{ data, isLoading, error, actions }` | `[SHOULD]` |
-| No direct DOM manipulation | `[MUST]` |
+| Hook gọi API service, không dùng raw `axios` | `[MUST]` |
+| Hook trả về `{ data, isLoading, error, actions }` | `[SHOULD]` |
+| Không thao tác DOM trực tiếp | `[MUST]` |
+
+---
 
 ## §4 — Components
 
-### Rules
+### Quy Tắc
 
-| Rule | Severity |
-|------|----------|
-| Component = UI rendering only. Logic lives in hooks | `[MUST]` |
-| Co-located CSS file per component | `[SHOULD]` |
-| Props destructured in function signature | `[SHOULD]` |
-| `ErrorBoundary` wraps component tree | `[MUST]` |
-| No inline styles > 2 properties | `[SHOULD]` |
+| Quy tắc | Mức độ |
+|---------|--------|
+| Component = chỉ render UI. Logic nằm trong hooks | `[MUST]` |
+| CSS file đặt cùng thư mục với component | `[SHOULD]` |
+| Props destructured trong function signature | `[SHOULD]` |
+| `ErrorBoundary` bao component tree | `[MUST]` |
+| Không inline styles > 2 properties | `[SHOULD]` |
 
 ### JSDoc Template
 ```javascript
@@ -142,7 +149,9 @@ Each hook manages exactly ONE concern:
 export default function AssetGrid({ assets, onSelect, layout }) { ... }
 ```
 
-## §5 — State Management
+---
+
+## §5 — Quản Lý State
 
 ```
 AppContext (global)
@@ -156,16 +165,18 @@ ConfirmContext (dialog)
 ├── isOpen, message, onConfirm, onCancel
 ```
 
-**Rules**: No prop-drilling beyond 2 levels. Use Context for global state. Use hook for domain logic. Component dispatches actions via hooks, never modifies context directly.
+**Quy tắc**: Không prop-drilling quá 2 cấp. Dùng Context cho global state. Dùng hook cho domain logic. Component dispatch actions qua hooks, không sửa context trực tiếp.
 
-## §6 — Naming Conventions
+---
 
-| Element | Convention | Example |
-|---------|-----------|---------|
+## §6 — Quy Ước Đặt Tên
+
+| Thành phần | Quy ước | Ví dụ |
+|------------|---------|-------|
 | Component | PascalCase | `AssetGrid.jsx` |
 | Hook | `use{Domain}` camelCase | `useAssets.js` |
 | API service | `{domain}Api` camelCase | `assetsApi.js` |
-| CSS file | Same name as component | `AssetGrid.css` |
+| CSS file | Cùng tên với component | `AssetGrid.css` |
 | Context | `{Name}Context` | `AppContext.js` |
 | Constants | UPPER_SNAKE | `STATIC_URL` |
 | Event handler | `handle{Event}` | `handleClick`, `handleDragEnd` |

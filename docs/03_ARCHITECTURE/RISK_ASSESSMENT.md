@@ -1,12 +1,12 @@
-# 03_ARCHITECTURE — Risk Assessment & Dependency Analysis
+# 03_ARCHITECTURE — Đánh giá rủi ro & phân tích phụ thuộc
 
-> **Last Updated**: 2026-03-03  
-> **Source**: Migrated from `ARCHITECTURE_REVIEW.md` §2, §6, §8, §9, §26  
-> **Status**: Living Document — review quarterly
+> **Last Updated**: 2026-04-06  
+> **Nguồn**: Di chuyển từ `ARCHITECTURE_REVIEW.md` §2, §6, §8, §9, §26  
+> **Trạng thái**: Tài liệu sống — review hàng quý
 
 ---
 
-## 1. Architectural Constraints (Deliberate Non-Support Declarations)
+## §1 — Ràng buộc kiến trúc (các tuyên bố không hỗ trợ có chủ đích)
 
 Intentional boundaries — what VAH will **NOT** support. Each eliminates an entire class of complexity. Violating a constraint without an ADR is an architectural breach.
 
@@ -23,7 +23,7 @@ Intentional boundaries — what VAH will **NOT** support. Each eliminates an ent
 | C9 | **No GraphQL** | REST-only API surface. | Frontend requesting flexible queries across >10 joined entities |
 | C10 | **Max 50MB per file, no chunked upload** | Hard limit. Chunked/resumable upload (tus protocol) is a significant investment. | User demand for video assets or large PSD files |
 
-### Constraint Violation Process
+### Quy trình khi vi phạm ràng buộc
 
 1. **Identify:** Developer recognizes a feature requires violating a constraint
 2. **ADR:** Write ADR documenting why the constraint no longer holds
@@ -33,9 +33,9 @@ Intentional boundaries — what VAH will **NOT** support. Each eliminates an ent
 
 ---
 
-## 2. Identified Anti-Patterns
+## §2 — Anti-pattern đã xác định
 
-### 2.1 God Context (Frontend)
+### §2.1 — God Context (frontend)
 
 **File:** `AppContext.js` — 472 dòng, compose **tất cả** domain hooks.
 
@@ -43,25 +43,25 @@ Intentional boundaries — what VAH will **NOT** support. Each eliminates an ent
 
 **Khuyến nghị:** Tách thành multiple focused contexts hoặc migrate sang Zustand với selector pattern.
 
-### 2.2 Fat Component
+### §2.2 — Component quá lớn
 
 **File:** `App.jsx` — 477 dòng, destructure ~50 values từ `useAppContext()`.
 
 **Khuyến nghị:** Extract layout regions thành container components.
 
-### 2.3 Service–DbContext Direct Coupling
+### §2.3 — Coupling trực tiếp Service–DbContext
 
 **Hiện trạng:** Tất cả 12 services inject `AppDbContext` trực tiếp.
 
 **Đánh giá:** Acceptable cho project size hiện tại (<50 entities). Sẽ trở thành nợ kỹ thuật nghiêm trọng nếu domain mở rộng.
 
-### 2.4 Auto-Migrate on Startup
+### §2.4 — Auto-migrate khi startup
 
 `Database.Migrate()` chạy mỗi khi application start.
 
 **Rủi ro production:** Migration failure = app không start = downtime. Không có rollback path.
 
-### 2.5 Manual Data Fetching (Frontend)
+### §2.5 — Lấy dữ liệu thủ công (frontend)
 
 Pattern `useEffect` + `useState` cho mọi API call — không cache, không dedup, không stale-while-revalidate.
 
@@ -69,7 +69,7 @@ Pattern `useEffect` + `useState` cho mọi API call — không cache, không ded
 
 ---
 
-## 3. Architectural Risk Matrix
+## §3 — Ma trận rủi ro kiến trúc
 
 | # | Risk | Severity | Likelihood | Impact | Mitigation Status |
 |---|------|----------|------------|--------|-------------------|
@@ -84,7 +84,7 @@ Pattern `useEffect` + `useState` cho mọi API call — không cache, không ded
 | R9 | **XSS via link URLs** | 🟡 Medium | Low | `javascript:` URLs saved and rendered | ❌ No mitigation |
 | R10 | **No secret management** | 🟡 Medium | Certain in prod | JWT key + DB creds in appsettings | ❌ No mitigation |
 
-### R1 Deep Dive — Zero Test Coverage
+### Phân tích sâu R1 — Không có test coverage
 
 Đây là rủi ro hệ thống quan trọng nhất. Với 12 backend services, 11 frontend hooks, 17 components và ~47 API endpoints:
 - **Mỗi code change** đều có khả năng gây regression không phát hiện được
@@ -93,9 +93,9 @@ Pattern `useEffect` + `useState` cho mọi API call — không cache, không ded
 
 ---
 
-## 4. External Dependency Risk Matrix
+## §4 — Ma trận rủi ro phụ thuộc bên ngoài
 
-### 4.1 Runtime Dependencies
+### §4.1 — Phụ thuộc runtime
 
 | Dependency | Current Version | EOL / Support Window | Upgrade Risk | Action |
 |------------|----------------|---------------------|--------------|--------|
@@ -108,7 +108,7 @@ Pattern `useEffect` + `useState` cho mọi API call — không cache, không ded
 | **Vite** | 7.x | Active, fast release cycle | 🟡 Breaking changes between majors | Pin major, upgrade quarterly |
 | **Node.js** | (Vite runtime) | Track LTS releases | 🟢 Low risk | Use LTS only |
 
-### 4.2 Library Risk
+### §4.2 — Rủi ro thư viện
 
 | Library | Purpose | Maintenance Status | Risk |
 |---------|---------|-------------------|------|
@@ -120,7 +120,7 @@ Pattern `useEffect` + `useState` cho mọi API call — không cache, không ded
 | `react-dropzone` | File upload UI | 🟡 Moderate | 🟡 Medium — have fallback plan |
 | `react-color` | Color picker | 🟡 Moderate | 🟡 Medium — lightweight, replaceable |
 
-### 4.3 .NET 9 → 10 LTS Migration Checklist
+### §4.3 — Checklist migration .NET 9 → 10 LTS
 
 > **Deadline:** Before .NET 9 EOL (May 2026)
 
@@ -134,11 +134,11 @@ Pattern `useEffect` + `useState` cho mọi API call — không cache, không ded
 
 ---
 
-## 5. Optimistic Assumption Critique
+## §5 — Phản biện các giả định lạc quan
 
 A pre-Series A due diligence review must challenge hidden assumptions. Being wrong about any of these could cause material harm.
 
-### A1: "IStorageService abstraction makes cloud migration easy"
+### A1: "IStorageService abstraction làm cho migration lên cloud dễ"
 
 **Claim:** Cloud storage is a 2–3 day swap.
 
@@ -151,7 +151,7 @@ A pre-Series A due diligence review must challenge hidden assumptions. Being wro
 
 **Realistic estimate:** 5–7 days, not 2–3.
 
-### A2: "SQLite→PostgreSQL drift is manageable"
+### A2: "Sai lệch SQLite→PostgreSQL là có thể quản lý"
 
 **Critique:** This is the **most dangerous assumption**:
 - `DateTime`: SQLite stores as ISO string, PostgreSQL as `timestamp with time zone`
@@ -161,7 +161,7 @@ A pre-Series A due diligence review must challenge hidden assumptions. Being wro
 
 **Recommendation:** Remove SQLite from dev path. Use `docker compose up postgres`. **Single highest-ROI change.**
 
-### A3: "Zero test coverage is the #1 risk"
+### A3: "Không có test coverage là rủi ro #1"
 
 **Critique:** Testing is the most VISIBLE risk, but actual #1 existential risk is: **no backup and no verified recovery procedure.**
 - With zero tests: ship bugs (fixable)
@@ -169,13 +169,13 @@ A pre-Series A due diligence review must challenge hidden assumptions. Being wro
 
 **Correction:** Reclassify automated backup + verified restore as **equal severity to testing**.
 
-### A4: "Rate limiting prevents abuse"
+### A4: "Rate limiting ngăn chặn abuse"
 
 **Critique:** 20 uploads/min × 50MB = 1 GB/minute = **1.4 TB/day**. Rate limiting doesn't prevent storage exhaustion.
 
 **Recommendation:** Per-user storage quota + per-account login throttle.
 
-### A5: "Docker Compose is sufficient for production"
+### A5: "Docker Compose là đủ cho production"
 
 **Critique:** Docker Compose is a dev orchestrator:
 - No rolling updates → downtime on every deploy
@@ -184,7 +184,7 @@ A pre-Series A due diligence review must challenge hidden assumptions. Being wro
 
 **For production:** Add explicit `mem_limit`, `cpus`, external secret injection. Target Docker Swarm or managed K8s.
 
-### A6: "RBAC is implemented"
+### A6: "RBAC đã được triển khai"
 
 **Critique:** RBAC is collection-level only. Missing:
 - ❌ No workspace-level roles
@@ -193,7 +193,7 @@ A pre-Series A due diligence review must challenge hidden assumptions. Being wro
 - ❌ No audit trail for permission changes
 - ❌ No time-limited access
 
-### A7: "The roadmap timeline is realistic"
+### A7: "Mốc thời gian roadmap là thực tế"
 
 **Critique:** Apply 1.5–2× multiplier when feature development competes for engineering time.
 

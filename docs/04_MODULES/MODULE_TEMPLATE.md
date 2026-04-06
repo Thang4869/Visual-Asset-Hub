@@ -1,8 +1,9 @@
-# MODULE TEMPLATE
+# Module Template
 
 > **Hướng dẫn**: Copy file này khi tạo documentation cho module mới.  
 > Thay thế tất cả `{placeholder}` bằng nội dung thực tế.  
 > Xóa các comment hướng dẫn (dòng bắt đầu bằng `>`) sau khi hoàn thành.
+> **Last Updated**: 2026-04-06
 
 ---
 
@@ -12,8 +13,7 @@
 > **Status**: {Active | Planned | Deprecated}  
 > **Owner**: {Team/Person}  
 > **Last Updated**: {YYYY-MM-DD}
-> **Last Updated**: 2026-03-26
-> **Note**: Some domain entities still use DataAnnotations in code. Prefer Fluent API migrations as documented in Architecture Conventions.
+
 ---
 
 ## §1 — Mục đích (Purpose)
@@ -143,12 +143,12 @@ Actor           Controller          Service            DbContext          Extern
 
 ## §7 — API Endpoints
 
-| Method | Route | Description | Auth |
-|--------|-------|-------------|------|
-| `GET` | `/api/v1/{module}` | {description} | `[Authorize]` |
-| `POST` | `/api/v1/{module}` | {description} | `[Authorize]` |
-| `PUT` | `/api/v1/{module}/{id}` | {description} | `[Authorize]` |
-| `DELETE` | `/api/v1/{module}/{id}` | {description} | `[Authorize]` |
+| Method | Route | Mô tả | Auth |
+|--------|-------|-------|------|
+| `GET` | `/api/v1/{module}` | {mô tả} | `[Authorize]` |
+| `POST` | `/api/v1/{module}` | {mô tả} | `[Authorize]` |
+| `PUT` | `/api/v1/{module}/{id}` | {mô tả} | `[Authorize]` |
+| `DELETE` | `/api/v1/{module}/{id}` | {mô tả} | `[Authorize]` |
 
 ---
 
@@ -172,37 +172,37 @@ public record {Entity}ResponseDto
 
 ---
 
-## §9 — Dependencies
+## §9 — Phụ thuộc (Dependencies)
 
-### 9.1 This Module Depends On:
-| Module/Service | Reason |
-|---------------|--------|
-| {dependency} | {why} |
+### 9.1 Module này phụ thuộc vào:
+| Module/Service | Lý do |
+|---------------|-------|
+| {dependency} | {lý do} |
 
-### 9.2 Depended On By:
-| Module/Service | Reason |
-|---------------|--------|
-| {consumer} | {why} |
+### 9.2 Được sử dụng bởi:
+| Module/Service | Lý do |
+|---------------|-------|
+| {consumer} | {lý do} |
 
 ---
 
-## §10 — Testing Strategy
+## §10 — Chiến lược kiểm thử (Testing Strategy)
 
-| Test Type | Coverage Target | Tools |
-|-----------|----------------|-------|
+| Loại Test | Mục tiêu Coverage | Công cụ |
+|-----------|------------------|---------|
 | Unit Tests | Service methods | xUnit, Moq |
 | Integration Tests | API endpoints | WebApplicationFactory |
 | E2E Tests | User workflows | Playwright |
 
 ---
 
-## §11 — Known Issues & Technical Debt
+## §11 — Vấn đề đã biết & Technical Debt
 
-| # | Issue | Severity | Planned Fix |
-|---|-------|----------|-------------|
-| 1 | {issue description} | {High/Medium/Low} | {Sprint/Phase} |
+| # | Vấn đề | Mức độ | Kế hoạch sửa |
+|---|--------|--------|--------------|
+| 1 | {mô tả vấn đề} | {High/Medium/Low} | {Sprint/Phase} |
 
 ---
 
 > **Document End**  
-> Related: [ARCHITECTURE_CONVENTIONS.md](../01_DESIGN_PHILOSOPHY/ARCHITECTURE_CONVENTIONS.md)
+> Liên quan: [ARCHITECTURE_CONVENTIONS.md](../01_DESIGN_PHILOSOPHY/ARCHITECTURE_CONVENTIONS.md)
