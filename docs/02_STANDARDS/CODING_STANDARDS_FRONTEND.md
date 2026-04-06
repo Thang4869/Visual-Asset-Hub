@@ -2,7 +2,7 @@
 
 > **Mục đích**: Định nghĩa quy tắc và chuẩn mực code cho frontend React 19  
 > **Last Updated**: 2026-04-06  
-> **Áp dụng cho**: `VAH.Frontend/src/`
+> **Áp dụng cho**: `src/VAH.Frontend/src/`
 
 ---
 

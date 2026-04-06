@@ -1,7 +1,7 @@
 # QUẢN LÝ TRẠNG THÁI — Kiến trúc Context & Hooks
 
 > **Last Updated**: 2026-04-06
-> **Ghi chú**: Khớp với implementation hiện tại trong `VAH.Frontend/src/` (AppContext được compose từ domain hooks). Giữ AppContext làm orchestrator ở quy mô hiện tại.
+> **Ghi chú**: Khớp với implementation hiện tại trong `src/VAH.Frontend/src/` (AppContext được compose từ domain hooks). Giữ AppContext làm orchestrator ở quy mô hiện tại.
 --- 
 ## §1 — Tổng quan kiến trúc
 
