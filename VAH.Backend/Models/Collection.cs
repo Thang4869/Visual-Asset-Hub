@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using VAH.Backend.Models.DomainEvents;
 
 namespace VAH.Backend.Models;
 
@@ -7,7 +8,7 @@ namespace VAH.Backend.Models;
 /// Represents a collection/category for organizing assets.
 /// Supports hierarchical nesting via ParentId.
 /// </summary>
-public class Collection
+public class Collection : BaseEntity
 {
     [Key]
     public int Id { get; set; }
@@ -21,6 +22,9 @@ public class Collection
     public int? ParentId { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     [MaxLength(20)]
     public string Color { get; internal set; } = "#007bff";
@@ -84,3 +88,6 @@ public class Collection
         Color = code.Value;
     }
 }
+
+
+

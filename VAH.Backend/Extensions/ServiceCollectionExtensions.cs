@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -157,15 +158,19 @@ public static class ServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
 
-        services.AddDbContext<AppDbContext>(options =>
+        services.AddSingleton<Data.Interceptors.InsertOutboxMessagesInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, options) =>
         {
+            var interceptor = sp.GetRequiredService<Data.Interceptors.InsertOutboxMessagesInterceptor>();
+
             if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
             {
-                options.UseNpgsql(connectionString);
+                options.UseNpgsql(connectionString).AddInterceptors(interceptor);
             }
             else
             {
-                options.UseSqlite(connectionString);
+                options.UseSqlite(connectionString).AddInterceptors(interceptor);
             }
         });
 
@@ -289,7 +294,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssetService>());
+        services.AddMediatR(cfg => { cfg.RegisterServicesFromAssemblyContaining<AssetService>(); cfg.AddOpenBehavior(typeof(CQRS.Behaviors.ValidationBehavior<,>)); }); services.AddValidatorsFromAssemblyContaining<AssetService>(includeInternalTypes: true);
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
 
@@ -341,6 +346,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<ISmartCollectionService, SmartCollectionService>();
         services.AddScoped<IPermissionService, PermissionService>();
+
+        // Register Outbox background worker
+        services.AddHostedService<CQRS.Outbox.OutboxBackgroundWorker>();
+
         return services;
     }
 

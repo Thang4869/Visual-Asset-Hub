@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using VAH.Backend.Models.ValueObjects;
+using VAH.Backend.Models.DomainEvents;
 
 namespace VAH.Backend.Models;
 
@@ -10,7 +11,7 @@ namespace VAH.Backend.Models;
 /// All state mutations go through domain methods; setters are private.
 /// Subtypes: FileAsset, ImageAsset, LinkAsset, ColorAsset, ColorGroupAsset, FolderAsset.
 /// </summary>
-public abstract class Asset
+public abstract class Asset : BaseEntity
 {
     // ── Constructors ──
 
@@ -34,6 +35,8 @@ public abstract class Asset
         SortOrder = sortOrder;
         IsFolder = isFolder;
         CreatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new Events.AssetCreatedEvent(0, fileName, userId));
     }
 
     // ── Persisted properties (private set — mutation via domain methods only) ──
@@ -60,6 +63,9 @@ public abstract class Asset
 
     /// <summary>Soft-delete flag. True = logically deleted.</summary>
     public bool IsDeleted { get; private set; }
+
+    [Timestamp]
+    public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
 
     public double PositionX { get; private set; }
     public double PositionY { get; private set; }
@@ -224,3 +230,6 @@ public abstract class Asset
         CreatedAt = DateTime.UtcNow;
     }
 }
+
+
+

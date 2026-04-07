@@ -1,5 +1,6 @@
 using System.Reflection;
 using VAH.Backend.Models;
+using System;
 
 namespace VAH.Backend.Tests.Builders;
 
@@ -202,20 +203,28 @@ public class AssetBuilder
 
     private static void SetProperty(object obj, string propertyName, object? value)
     {
-        var property = obj.GetType().GetProperty(propertyName, 
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        
-        if (property != null && property.CanWrite)
+        Type? currentType = obj.GetType();
+        while (currentType != null)
         {
-            property.SetValue(obj, value);
-        }
-        else
-        {
-            // Try to set via backing field if property has private setter
-            var fieldName = $"<{propertyName}>k__BackingField";
-            var field = obj.GetType().GetField(fieldName, 
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            field?.SetValue(obj, value);
+            var property = currentType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (property != null)
+            {
+                if (property.CanWrite)
+                {
+                    property.SetValue(obj, value);
+                    return;
+                }
+                
+                // CanWrite is false, try backing field
+                var fieldName = "<" + propertyName + ">k__BackingField";
+                var field = currentType.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+                if (field != null)
+                {
+                    field.SetValue(obj, value);
+                    return;
+                }
+            }
+            currentType = currentType.BaseType;
         }
     }
 }

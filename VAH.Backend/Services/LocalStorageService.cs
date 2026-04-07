@@ -22,6 +22,17 @@ public class LocalStorageService : IStorageService
 
     public async Task<string> UploadAsync(Stream fileStream, string originalFileName, string contentType, CancellationToken ct = default)
     {
+        if (fileStream.CanSeek && fileStream.Length >= 2)
+        {
+            var header = new byte[2];
+            await fileStream.ReadAsync(header, 0, 2, ct);
+            if (header[0] == 0x4D && header[1] == 0x5A) // 'M', 'Z'
+            {
+                throw new System.Security.SecurityException("Executable files disguised as safe assets are prohibited.");
+            }
+            fileStream.Position = 0;
+        }
+
         var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
         var uniqueName = $"{Guid.NewGuid()}{extension}";
         var fullPath = Path.Combine(_uploadPath, uniqueName);
@@ -35,16 +46,26 @@ public class LocalStorageService : IStorageService
         return $"/uploads/{uniqueName}";
     }
 
+        private string GetSecureFullPath(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return string.Empty;
+        var relativePath = filePath.TrimStart('/');
+        // Assuming filePath is always prefixed with /uploads/
+        var wwwrootDir = Path.GetDirectoryName(_uploadPath)!;
+        var fullPath = Path.GetFullPath(Path.Combine(wwwrootDir, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        
+        // Anti-directory traversal check
+        if (!fullPath.StartsWith(Path.GetFullPath(wwwrootDir), StringComparison.OrdinalIgnoreCase))
+            throw new System.Security.SecurityException("Path traversal attempt detected: " + filePath);
+            
+        return fullPath;
+    }
+
     public Task<bool> DeleteAsync(string filePath, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(filePath))
-            return Task.FromResult(false);
+        if (string.IsNullOrWhiteSpace(filePath)) return Task.FromResult(false);
 
-        // Normalize: /uploads/filename.ext → full local path
-        var relativePath = filePath.TrimStart('/');
-        var fullPath = Path.Combine(
-            Path.GetDirectoryName(_uploadPath)!, // go up to wwwroot
-            relativePath.Replace('/', Path.DirectorySeparatorChar));
+        var fullPath = GetSecureFullPath(filePath);
 
         if (File.Exists(fullPath))
         {
@@ -62,15 +83,12 @@ public class LocalStorageService : IStorageService
         return filePath; // Already a relative URL like /uploads/guid.ext
     }
 
-    public bool Exists(string filePath)
+        public bool Exists(string filePath)
     {
-        if (string.IsNullOrEmpty(filePath)) return false;
-
-        var relativePath = filePath.TrimStart('/');
-        var fullPath = Path.Combine(
-            Path.GetDirectoryName(_uploadPath)!,
-            relativePath.Replace('/', Path.DirectorySeparatorChar));
-
+        if (string.IsNullOrWhiteSpace(filePath)) return false;
+        var fullPath = GetSecureFullPath(filePath);
         return File.Exists(fullPath);
     }
 }
+
+

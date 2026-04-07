@@ -40,7 +40,7 @@ public abstract class TestFixture : IAsyncLifetime
             options.Password.RequireUppercase = false;
             options.Password.RequiredLength = 1;
         })
-        .AddEntityFrameworkStores<VahDbContext>();
+        .AddEntityFrameworkStores<AppDbContext>();
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public abstract class TestFixture : IAsyncLifetime
     public virtual async Task DisposeAsync()
     {
         await DbContext.Database.EnsureDeletedAsync();
-        await ServiceScope.DisposeAsync();
+        if (ServiceScope is IAsyncDisposable ad) await ad.DisposeAsync(); else ServiceScope.Dispose();
         ServiceProvider.Dispose();
     }
 
@@ -78,3 +78,5 @@ public abstract class TestFixture : IAsyncLifetime
         await DbContext.Database.EnsureCreatedAsync();
     }
 }
+
+

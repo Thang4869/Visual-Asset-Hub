@@ -2,17 +2,20 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VAH.Backend.Data;
 
 #nullable disable
 
-namespace VAH.Backend.Migrations
+namespace VAH.Backend.VAH.Backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260407170226_AddRowVersionConcurrency")]
+    partial class AddRowVersionConcurrency
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.14");
@@ -416,7 +419,6 @@ namespace VAH.Backend.Migrations
                             LayoutType = "grid",
                             Name = "Images",
                             Order = 1,
-                            RowVersion = new byte[0],
                             Type = "image"
                         },
                         new
@@ -428,7 +430,6 @@ namespace VAH.Backend.Migrations
                             LayoutType = "grid",
                             Name = "Links",
                             Order = 2,
-                            RowVersion = new byte[0],
                             Type = "link"
                         },
                         new
@@ -440,7 +441,6 @@ namespace VAH.Backend.Migrations
                             LayoutType = "grid",
                             Name = "Colors",
                             Order = 3,
-                            RowVersion = new byte[0],
                             Type = "color"
                         });
                 });
@@ -480,34 +480,6 @@ namespace VAH.Backend.Migrations
                         .HasDatabaseName("IX_CollectionPermissions_User_Collection");
 
                     b.ToTable("CollectionPermissions");
-                });
-
-            modelBuilder.Entity("VAH.Backend.Models.OutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Error")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("OccurredOnUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ProcessedOnUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("OutboxMessages");
                 });
 
             modelBuilder.Entity("VAH.Backend.Models.Tag", b =>
