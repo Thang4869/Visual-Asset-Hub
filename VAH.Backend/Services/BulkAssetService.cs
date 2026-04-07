@@ -57,7 +57,7 @@ public class BulkAssetService : IBulkAssetService
             ct.ThrowIfCancellationRequested();
 
             // Clean up physical files and thumbnails via helper
-            await _cleanup.CleanupFilesAsync(asset);
+            await _cleanup.CleanupFilesAsync(asset, ct);
 
             // Orphan prevention for folders
             if (asset.IsFolder)

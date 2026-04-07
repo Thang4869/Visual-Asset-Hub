@@ -61,6 +61,7 @@ public sealed class CollectionsController(
     /// <summary>Partially update a collection (standard).</summary>
     [HttpPatch("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateCollection(
@@ -73,6 +74,10 @@ public sealed class CollectionsController(
     /// <summary>PUT backward-compat alias for PATCH update.</summary>
     [HttpPut("{id:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateCollectionPut(
         [FromRoute, Range(1, int.MaxValue)] int id, [FromBody] UpdateCollectionDto dto, CancellationToken ct = default)
         => await UpdateCollection(id, dto, ct);

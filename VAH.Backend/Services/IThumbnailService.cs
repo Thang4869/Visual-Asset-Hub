@@ -11,5 +11,5 @@ public interface IThumbnailService
     /// Returns dictionary of size-label → relative URL (e.g. "/uploads/thumbs/sm_guid.webp").
     /// Returns empty dict if file is not an image or processing fails.
     /// </summary>
-    Task<Dictionary<string, string>> GenerateThumbnailsAsync(string originalFilePath);
+    Task<Dictionary<string, string>> GenerateThumbnailsAsync(string originalFilePath, CancellationToken ct = default);
 }

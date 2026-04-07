@@ -192,7 +192,7 @@ public class AssetService : IAssetService
 
             // Upload via storage service
             await using var stream = file.OpenStream();
-            var filePath = await _storage.UploadAsync(stream, validatedFileName, contentType ?? "application/octet-stream");
+            var filePath = await _storage.UploadAsync(stream, validatedFileName, contentType ?? "application/octet-stream", ct);
 
             // Create correct subtype based on MIME type
             var asset = contentType?.StartsWith("image") == true
@@ -210,7 +210,7 @@ public class AssetService : IAssetService
         {
             try
             {
-                var thumbs = await _thumbnailService.GenerateThumbnailsAsync(asset.FilePath);
+                var thumbs = await _thumbnailService.GenerateThumbnailsAsync(asset.FilePath, ct);
                 if (thumbs.Count > 0)
                 {
                     asset.SetThumbnails(
@@ -325,7 +325,7 @@ public class AssetService : IAssetService
         var asset = await FindAssetWithAccessAsync(id, userId, CollectionRoles.Editor, ct);
 
         // Clean up physical file and thumbnails via helper
-        await _cleanup.CleanupFilesAsync(asset);
+        await _cleanup.CleanupFilesAsync(asset, ct);
 
         // If deleting a folder, move children to parent folder (orphan prevention)
         if (asset.IsFolder)

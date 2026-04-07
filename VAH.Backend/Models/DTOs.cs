@@ -1,118 +1,118 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace VAH.Backend.Models;
 
-// â”€â”€â”€â”€ Response DTOs (Clean Architecture â€” never leak domain entities) â”€â”€â”€â”€
+// ──── Response DTOs (Clean Architecture — never leak domain entities) ────
 
 /// <summary>
 /// API response DTO for Asset. Prevents domain model leakage across API boundary.
 /// </summary>
 public class AssetResponseDto
 {
-    public int Id { get; set; }
-    public string FileName { get; set; } = string.Empty;
-    public string FilePath { get; set; } = string.Empty;
-    public string Tags { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public double PositionX { get; set; }
-    public double PositionY { get; set; }
-    public int CollectionId { get; set; }
-    public AssetContentType ContentType { get; set; }
-    public int? GroupId { get; set; }
-    public int? ParentFolderId { get; set; }
-    public int SortOrder { get; set; }
-    public bool IsFolder { get; set; }
-    public string? ThumbnailSm { get; set; }
-    public string? ThumbnailMd { get; set; }
-    public string? ThumbnailLg { get; set; }
+    public int Id { get; init; }
+    public string FileName { get; init; } = string.Empty;
+    public string FilePath { get; init; } = string.Empty;
+    public string Tags { get; init; } = string.Empty;
+    public DateTime CreatedAt { get; init; }
+    public double PositionX { get; init; }
+    public double PositionY { get; init; }
+    public int CollectionId { get; init; }
+    public AssetContentType ContentType { get; init; }
+    public int? GroupId { get; init; }
+    public int? ParentFolderId { get; init; }
+    public int SortOrder { get; init; }
+    public bool IsFolder { get; init; }
+    public string? ThumbnailSm { get; init; }
+    public string? ThumbnailMd { get; init; }
+    public string? ThumbnailLg { get; init; }
 }
 
-// â”€â”€â”€â”€ Asset Creation DTOs â”€â”€â”€â”€
+// ──── Asset Creation DTOs ────
 
 public class CreateAssetDto
 {
     [Required, MaxLength(500)]
-    public string FileName { get; set; } = string.Empty;
+    public string FileName { get; init; } = string.Empty;
 
     [Required, MaxLength(2048)]
-    public string FilePath { get; set; } = string.Empty;
+    public string FilePath { get; init; } = string.Empty;
 
     [Range(1, int.MaxValue)]
-    public int CollectionId { get; set; } = 1;
+    public int CollectionId { get; init; } = 1;
 
-    public int? ParentFolderId { get; set; }
+    public int? ParentFolderId { get; init; }
 }
 
 public class CreateFolderDto
 {
     [Required, MaxLength(255)]
-    public string FolderName { get; set; } = string.Empty;
+    public string FolderName { get; init; } = string.Empty;
 
     [Range(1, int.MaxValue)]
-    public int CollectionId { get; set; } = 1;
+    public int CollectionId { get; init; } = 1;
 
-    public int? ParentFolderId { get; set; }
+    public int? ParentFolderId { get; init; }
 }
 
 public class CreateColorDto
 {
     [Required, MaxLength(50)]
-    public string ColorCode { get; set; } = string.Empty;
+    public string ColorCode { get; init; } = string.Empty;
 
     [MaxLength(100)]
-    public string? ColorName { get; set; }
+    public string? ColorName { get; init; }
 
     [Range(1, int.MaxValue)]
-    public int CollectionId { get; set; } = 1;
+    public int CollectionId { get; init; } = 1;
 
-    public int? GroupId { get; set; }
-    public int? SortOrder { get; set; }
-    public int? ParentFolderId { get; set; }
+    public int? GroupId { get; init; }
+    public int? SortOrder { get; init; }
+    public int? ParentFolderId { get; init; }
 }
 
 public class UpdateAssetDto
 {
     [MaxLength(500)]
-    public string? FileName { get; set; }
+    public string? FileName { get; init; }
 
-    public int? SortOrder { get; set; }
-    public int? GroupId { get; set; }
-    public int? ParentFolderId { get; set; }
-    public bool? ClearParentFolder { get; set; }
-    public bool? ClearGroup { get; set; }
+    public int? SortOrder { get; init; }
+    public int? GroupId { get; init; }
+    public int? ParentFolderId { get; init; }
+    public bool? ClearParentFolder { get; init; }
+    public bool? ClearGroup { get; init; }
 }
 
 public class CreateLinkDto
 {
     [Required, MaxLength(500)]
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     [Required, MaxLength(2048)]
-    public string Url { get; set; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
 
     [Range(1, int.MaxValue)]
-    public int CollectionId { get; set; } = 1;
+    public int CollectionId { get; init; } = 1;
 
-    public int? ParentFolderId { get; set; }
+    public int? ParentFolderId { get; init; }
 }
 
 public class CreateColorGroupDto
 {
     [Required, MaxLength(255)]
-    public string GroupName { get; set; } = string.Empty;
+    public string GroupName { get; init; } = string.Empty;
 
     [Range(1, int.MaxValue)]
-    public int CollectionId { get; set; } = 1;
+    public int CollectionId { get; init; } = 1;
 
-    public int? ParentFolderId { get; set; }
-    public int? SortOrder { get; set; }
+    public int? ParentFolderId { get; init; }
+    public int? SortOrder { get; init; }
 }
 
 public class ReorderAssetsDto
 {
     [Required]
-    public List<int> AssetIds { get; set; } = new List<int>();
+    public List<int> AssetIds { get; init; } = new List<int>();
 }
 
 
@@ -125,111 +125,111 @@ public sealed record BulkMoveResult(int Moved);
 /// <summary>Typed response for bulk tag operations.</summary>
 public sealed record BulkTagResult(int Affected);
 
-// â”€â”€â”€â”€ Bulk Operation DTOs â”€â”€â”€â”€
+// ──── Bulk Operation DTOs ────
 
 public class BulkDeleteDto
 {
     [Required]
-    public List<int> AssetIds { get; set; } = new();
+    public List<int> AssetIds { get; init; } = new();
 }
 
 public class BulkMoveDto
 {
     [Required]
-    public List<int> AssetIds { get; set; } = new();
+    public List<int> AssetIds { get; init; } = new();
 
-    public int? TargetCollectionId { get; set; }
-    public int? TargetFolderId { get; set; }
-    public bool? ClearParentFolder { get; set; }
+    public int? TargetCollectionId { get; init; }
+    public int? TargetFolderId { get; init; }
+    public bool? ClearParentFolder { get; init; }
 }
 
 public class BulkMoveGroupDto
 {
     [Required]
-    public List<int> AssetIds { get; set; } = new();
+    public List<int> AssetIds { get; init; } = new();
 
     /// <summary>Target group ID. Null means "Ungrouped".</summary>
-    public int? TargetGroupId { get; set; }
+    public int? TargetGroupId { get; init; }
 
     /// <summary>Insert before this asset ID within the group. Null = append at end.</summary>
-    public int? InsertBeforeId { get; set; }
+    public int? InsertBeforeId { get; init; }
 }
 
 public class BulkTagDto
 {
     [Required]
-    public List<int> AssetIds { get; set; } = new();
+    public List<int> AssetIds { get; init; } = new();
 
     [Required]
-    public List<int> TagIds { get; set; } = new();
+    public List<int> TagIds { get; init; } = new();
 
     /// <summary>If true, removes these tags. If false (default), adds them.</summary>
-    public bool Remove { get; set; } = false;
+    public bool Remove { get; init; } = false;
 }
 
-// â”€â”€â”€â”€ Collection Creation DTO â”€â”€â”€â”€
+// ──── Collection Creation DTO ────
 
 public class CreateCollectionDto
 {
     [Required, MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     [MaxLength(2000)]
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
-    public int? ParentId { get; set; }
+    public int? ParentId { get; init; }
 
     [MaxLength(20)]
-    public string? Color { get; set; }
+    public string? Color { get; init; }
 
-    public CollectionType? Type { get; set; }
-    public LayoutType? LayoutType { get; set; }
+    public CollectionType? Type { get; init; }
+    public LayoutType? LayoutType { get; init; }
 }
 
-// â”€â”€â”€â”€ Collection Update DTO â”€â”€â”€â”€
+// ──── Collection Update DTO ────
 
 public class UpdateCollectionDto
 {
     [MaxLength(255)]
-    public string? Name { get; set; }
+    public string? Name { get; init; }
 
     [MaxLength(2000)]
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
     [MaxLength(20)]
-    public string? Color { get; set; }
+    public string? Color { get; init; }
 
-    public CollectionType? Type { get; set; }
-    public int? Order { get; set; }
-    public LayoutType? LayoutType { get; set; }
+    public CollectionType? Type { get; init; }
+    public int? Order { get; init; }
+    public LayoutType? LayoutType { get; init; }
 }
 
-// â”€â”€â”€â”€ Position DTOs â”€â”€â”€â”€
+// ──── Position DTOs ────
 
 public class AssetPositionDto
 {
     [Range(-1_000_000, 1_000_000)]
-    public double PositionX { get; set; }
+    public double PositionX { get; init; }
 
     [Range(-1_000_000, 1_000_000)]
-    public double PositionY { get; set; }
+    public double PositionY { get; init; }
 }
 
-// â”€â”€â”€â”€ Result DTOs â”€â”€â”€â”€
+// ──── Result DTOs ────
 
 /// <summary>
 /// Combined search result for assets and collections.
 /// </summary>
 public class SearchResult
 {
-    public string Query { get; set; } = string.Empty;
-    public List<AssetResponseDto> Assets { get; set; } = new();
-    public int TotalAssets { get; set; }
-    public List<Collection> Collections { get; set; } = new();
-    public int TotalCollections { get; set; }
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public bool HasNextPage { get; set; }
+    public string Query { get; init; } = string.Empty;
+    public List<AssetResponseDto> Assets { get; init; } = new();
+    public int TotalAssets { get; init; }
+    public List<Collection> Collections { get; init; } = new();
+    public int TotalCollections { get; init; }
+    public int Page { get; init; }
+    public int PageSize { get; init; }
+    public bool HasNextPage { get; init; }
 }
 
 /// <summary>
@@ -237,9 +237,9 @@ public class SearchResult
 /// </summary>
 public class CollectionWithItemsResult
 {
-    public Collection Collection { get; set; } = null!;
-    public List<AssetResponseDto> Items { get; set; } = new();
-    public List<Collection> SubCollections { get; set; } = new();
+    public Collection Collection { get; init; } = null!;
+    public List<AssetResponseDto> Items { get; init; } = new();
+    public List<Collection> SubCollections { get; init; } = new();
 }
 
 /// <summary>
@@ -247,23 +247,23 @@ public class CollectionWithItemsResult
 /// </summary>
 public class SmartCollectionDefinition
 {
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Icon { get; set; } = "đŸ“";
-    public string Color { get; set; } = "#2196F3";
-    public int Count { get; set; }
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string Icon { get; init; } = "📁";
+    public string Color { get; init; } = "#2196F3";
+    public int Count { get; init; }
 }
 
-// â”€â”€â”€â”€ Thin response DTOs (replaces anonymous objects for type-safe Swagger) â”€â”€â”€â”€
+// ──── Thin response DTOs (replaces anonymous objects for type-safe Swagger) ────
 
-/// <summary>Typed response for role queries â€” replaces <c>new { role }</c>.</summary>
+/// <summary>Typed response for role queries — replaces <c>new { role }</c>.</summary>
 public sealed record RoleResult(string? Role);
 
 /// <summary>Typed response for one-off operational messages.</summary>
 public sealed record MessageResult(string Message);
 
-// â”€â”€â”€â”€ Search request DTO (cohesion: groups all search params) â”€â”€â”€â”€
+// ──── Search request DTO (cohesion: groups all search params) ────
 
 /// <summary>
 /// Query-string parameters for the search endpoint.

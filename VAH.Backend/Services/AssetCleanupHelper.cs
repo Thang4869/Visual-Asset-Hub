@@ -29,7 +29,7 @@ public class AssetCleanupHelper
     /// <summary>
     /// Delete the physical file and any generated thumbnails for an asset.
     /// </summary>
-    public async Task CleanupFilesAsync(Models.Asset asset)
+    public async Task CleanupFilesAsync(Models.Asset asset, CancellationToken ct = default)
     {
         if (!RequiresFileCleanup(asset)) return;
 
@@ -42,20 +42,20 @@ public class AssetCleanupHelper
             _logger.LogWarning(ex, "Failed to delete file {FilePath} for asset {AssetId}", asset.FilePath, asset.Id);
         }
 
-        await CleanupThumbnailsAsync(asset);
+        await CleanupThumbnailsAsync(asset, ct);
     }
 
     /// <summary>
     /// Delete generated thumbnails (sm, md, lg) for an asset.
     /// </summary>
-    public async Task CleanupThumbnailsAsync(Models.Asset asset)
+    public async Task CleanupThumbnailsAsync(Models.Asset asset, CancellationToken ct = default)
     {
-        await TryDeleteAsync(asset.ThumbnailSm, asset.FilePath, asset.Id);
-        await TryDeleteAsync(asset.ThumbnailMd, asset.FilePath, asset.Id);
-        await TryDeleteAsync(asset.ThumbnailLg, asset.FilePath, asset.Id);
+        await TryDeleteAsync(asset.ThumbnailSm, asset.FilePath, asset.Id, ct);
+        await TryDeleteAsync(asset.ThumbnailMd, asset.FilePath, asset.Id, ct);
+        await TryDeleteAsync(asset.ThumbnailLg, asset.FilePath, asset.Id, ct);
     }
 
-    private async Task TryDeleteAsync(string? thumbnailPath, string? originalPath, int assetId)
+    private async Task TryDeleteAsync(string? thumbnailPath, string? originalPath, int assetId, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(thumbnailPath) || thumbnailPath == originalPath)
             return;

@@ -7,10 +7,10 @@ namespace VAH.Backend.Services;
 public interface IStorageService
 {
     /// <summary>Upload a file and return the relative public path.</summary>
-    Task<string> UploadAsync(Stream fileStream, string originalFileName, string contentType);
+    Task<string> UploadAsync(Stream fileStream, string originalFileName, string contentType, CancellationToken ct = default);
 
     /// <summary>Delete a file by its relative path.</summary>
-    Task<bool> DeleteAsync(string filePath);
+    Task<bool> DeleteAsync(string filePath, CancellationToken ct = default);
 
     /// <summary>Get the full public URL for a stored file.</summary>
     string GetPublicUrl(string filePath);

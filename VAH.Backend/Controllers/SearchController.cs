@@ -26,7 +26,14 @@ public sealed class SearchController(ISearchService searchService) : BaseApiCont
     public async Task<ActionResult<SearchResult>> Search(
         [FromQuery] SearchRequestParams request,
         CancellationToken ct = default)
-        => Ok(await searchService.SearchAsync(
+    {
+        if (string.IsNullOrWhiteSpace(request.Query))
+        {
+            return BadRequest();
+        }
+        
+        return Ok(await searchService.SearchAsync(
             GetUserId(), request.Query, request.Type,
             request.CollectionId, request.Page, request.PageSize, ct));
+    }
 }

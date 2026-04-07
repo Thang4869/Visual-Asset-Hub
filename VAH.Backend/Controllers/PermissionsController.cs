@@ -82,6 +82,10 @@ public sealed class PermissionsController(
         [FromRoute] int collectionId, CancellationToken ct = default)
     {
         var role = await permissionService.GetRoleAsync(collectionId, GetUserId(), ct);
+        if (role == null)
+        {
+            return NotFound();
+        }
         return Ok(new RoleResult(role));
     }
 }

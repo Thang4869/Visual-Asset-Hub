@@ -31,7 +31,7 @@ public class ThumbnailService : IThumbnailService
         _logger = logger;
     }
 
-    public async Task<Dictionary<string, string>> GenerateThumbnailsAsync(string originalFilePath)
+    public async Task<Dictionary<string, string>> GenerateThumbnailsAsync(string originalFilePath, CancellationToken ct = default)
     {
         var result = new Dictionary<string, string>();
 
@@ -62,7 +62,7 @@ public class ThumbnailService : IThumbnailService
 
         try
         {
-            using var image = await Image.LoadAsync(fullPath);
+            using var image = await Image.LoadAsync(fullPath, ct);
             var originalWidth = image.Width;
             var originalHeight = image.Height;
 
@@ -92,7 +92,7 @@ public class ThumbnailService : IThumbnailService
                 {
                     Quality = 80,
                     FileFormat = WebpFileFormatType.Lossy,
-                });
+                }, ct);
 
                 result[label] = thumbRelativeUrl;
                 _logger.LogDebug("Thumbnail generated: {Label} → {Path} ({W}×{H})",
