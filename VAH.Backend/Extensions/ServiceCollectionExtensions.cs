@@ -158,15 +158,19 @@ public static class ServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
 
-        services.AddDbContext<AppDbContext>(options =>
+        services.AddSingleton<Data.Interceptors.InsertOutboxMessagesInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, options) =>
         {
+            var interceptor = sp.GetRequiredService<Data.Interceptors.InsertOutboxMessagesInterceptor>();
+
             if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
             {
-                options.UseNpgsql(connectionString);
+                options.UseNpgsql(connectionString).AddInterceptors(interceptor);
             }
             else
             {
-                options.UseSqlite(connectionString);
+                options.UseSqlite(connectionString).AddInterceptors(interceptor);
             }
         });
 
@@ -342,6 +346,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<ISmartCollectionService, SmartCollectionService>();
         services.AddScoped<IPermissionService, PermissionService>();
+
+        // Register Outbox background worker
+        services.AddHostedService<CQRS.Outbox.OutboxBackgroundWorker>();
+
         return services;
     }
 

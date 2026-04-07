@@ -18,6 +18,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Collection> Collections { get; set; }
     public DbSet<Tag> Tags { get; set; }
     public DbSet<AssetTag> AssetTags { get; set; }
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
     public DbSet<CollectionPermission> CollectionPermissions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
