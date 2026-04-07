@@ -20,14 +20,14 @@ public class LocalStorageService : IStorageService
         }
     }
 
-    public async Task<string> UploadAsync(Stream fileStream, string originalFileName, string contentType)
+    public async Task<string> UploadAsync(Stream fileStream, string originalFileName, string contentType, CancellationToken ct = default)
     {
         var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
         var uniqueName = $"{Guid.NewGuid()}{extension}";
         var fullPath = Path.Combine(_uploadPath, uniqueName);
 
         await using var outputStream = new FileStream(fullPath, FileMode.Create);
-        await fileStream.CopyToAsync(outputStream);
+        await fileStream.CopyToAsync(outputStream, ct);
 
         _logger.LogInformation("File uploaded: {FileName} → {StoredName} ({Size} bytes)",
             originalFileName, uniqueName, outputStream.Length);
@@ -35,7 +35,7 @@ public class LocalStorageService : IStorageService
         return $"/uploads/{uniqueName}";
     }
 
-    public Task<bool> DeleteAsync(string filePath)
+    public Task<bool> DeleteAsync(string filePath, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(filePath))
             return Task.FromResult(false);
