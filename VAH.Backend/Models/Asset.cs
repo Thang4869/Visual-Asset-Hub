@@ -61,6 +61,9 @@ public abstract class Asset
     /// <summary>Soft-delete flag. True = logically deleted.</summary>
     public bool IsDeleted { get; private set; }
 
+    [Timestamp]
+    public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
+
     public double PositionX { get; private set; }
     public double PositionY { get; private set; }
 
@@ -224,3 +227,6 @@ public abstract class Asset
         CreatedAt = DateTime.UtcNow;
     }
 }
+
+
+

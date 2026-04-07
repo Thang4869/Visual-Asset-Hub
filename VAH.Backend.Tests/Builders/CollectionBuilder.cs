@@ -1,4 +1,6 @@
 using VAH.Backend.Models;
+using System;
+using System.Reflection;
 
 namespace VAH.Backend.Tests.Builders;
 
@@ -83,18 +85,17 @@ public class CollectionBuilder
     /// </summary>
     public Collection Build()
     {
-        return new Collection
-        {
-            Id = _id,
-            Name = _name,
-            Description = _description,
-            ParentId = _parentId,
-            CreatedAt = _createdAt,
-            Color = _color,
-            Type = _type,
-            Order = _order,
-            LayoutType = _layoutType,
-            UserId = _userId
-        };
+        var collection = new Collection();
+        typeof(Collection).GetProperty("Id")?.SetValue(collection, _id);
+        typeof(Collection).GetProperty("Name")?.SetValue(collection, _name);
+        typeof(Collection).GetProperty("Description")?.SetValue(collection, _description);
+        typeof(Collection).GetProperty("ParentId")?.SetValue(collection, _parentId);
+        typeof(Collection).GetProperty("CreatedAt")?.SetValue(collection, _createdAt);
+        typeof(Collection).GetProperty("Color")?.SetValue(collection, _color);
+        typeof(Collection).GetProperty("Type")?.SetValue(collection, _type);
+        typeof(Collection).GetProperty("Order")?.SetValue(collection, _order);
+        typeof(Collection).GetProperty("LayoutType")?.SetValue(collection, _layoutType);
+        typeof(Collection).GetProperty("UserId")?.SetValue(collection, _userId);
+        return collection;
     }
 }

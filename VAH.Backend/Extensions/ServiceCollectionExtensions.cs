@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -289,7 +290,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssetService>());
+        services.AddMediatR(cfg => { cfg.RegisterServicesFromAssemblyContaining<AssetService>(); cfg.AddOpenBehavior(typeof(CQRS.Behaviors.ValidationBehavior<,>)); }); services.AddValidatorsFromAssemblyContaining<AssetService>(includeInternalTypes: true);
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
 

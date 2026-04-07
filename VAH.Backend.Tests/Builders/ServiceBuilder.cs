@@ -24,7 +24,7 @@ public class ServiceBuilder
     private void ConfigureDefaults()
     {
         // Add in-memory database
-        _services.AddDbContext<VahDbContext>(options =>
+        _services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(Guid.NewGuid().ToString())
         );
 
@@ -37,7 +37,7 @@ public class ServiceBuilder
             options.Password.RequireUppercase = false;
             options.Password.RequiredLength = 1;
         })
-        .AddEntityFrameworkStores<VahDbContext>();
+        .AddEntityFrameworkStores<AppDbContext>();
     }
 
     /// <summary>
@@ -68,7 +68,7 @@ public class ServiceBuilder
     public ServiceBuilder AddMockService<TInterface>() where TInterface : class
     {
         var mock = new Mock<TInterface>();
-        _services.AddScoped(_ => mock.Object);
+        var localMock = mock; _services.AddScoped(_ => localMock.Object);
         return this;
     }
 
@@ -79,7 +79,7 @@ public class ServiceBuilder
         where TInterface : class
     {
         mock = new Mock<TInterface>();
-        _services.AddScoped(_ => mock.Object);
+        var localMock = mock; _services.AddScoped(_ => localMock.Object);
         return this;
     }
 
@@ -96,3 +96,6 @@ public class ServiceBuilder
     /// </summary>
     public IServiceCollection GetServices() => _services;
 }
+
+
+

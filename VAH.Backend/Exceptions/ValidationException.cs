@@ -1,5 +1,7 @@
 namespace VAH.Backend.Exceptions;
 
+using FluentValidation.Results;
+
 /// <summary>
 /// Thrown when a business rule or input validation fails. Maps to HTTP 400.
 /// </summary>
@@ -18,5 +20,13 @@ public sealed class ValidationException : Exception
         : base("One or more validation errors occurred.")
     {
         Errors = errors;
+    }
+
+    public ValidationException(IEnumerable<ValidationFailure> failures)
+        : base("One or more validation errors occurred.")
+    {
+        Errors = failures
+            .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
+            .ToDictionary(failureGroup => failureGroup.Key, failureGroup => failureGroup.ToArray());
     }
 }
