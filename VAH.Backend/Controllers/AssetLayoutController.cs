@@ -31,11 +31,13 @@ public sealed class AssetLayoutController(
 
     /// <summary>Reorder assets by providing the desired ID sequence.</summary>
     /// <remarks>Batch validation (empty check + <see cref="BulkOperationLimits.MaxBatchSize"/>)
-    /// is enforced by <see cref="Filters.ValidateBatchFilterAttribute"/> before action execution.</remarks>
+    /// is enforced by <see cref="Filters.ValidateBatchFilterAttribute"/> before action execution.
+    /// <para>AssetIds must not contain duplicates; duplicate entries return 400 BadRequest.</para></remarks>
     [HttpPost("reorder")]
     [Authorize(Policy = PolicyNames.RequireAssetWrite)]
     [ValidateBatchFilter]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ReorderAssets(
         [FromBody] ReorderAssetsDto dto,
         CancellationToken ct = default)

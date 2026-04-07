@@ -26,6 +26,7 @@ public sealed class BulkAssetsController(
     [HttpPost("bulk-delete")]
     [ValidateBatchFilter]
     [ProducesResponseType(typeof(BulkDeleteResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BulkDeleteResult>> BulkDelete(
         [FromBody] BulkDeleteDto dto, CancellationToken ct = default)
     {
@@ -40,6 +41,7 @@ public sealed class BulkAssetsController(
     [HttpPost("bulk-move")]
     [ValidateBatchFilter]
     [ProducesResponseType(typeof(BulkMoveResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BulkMoveResult>> BulkMove(
         [FromBody] BulkMoveDto dto, CancellationToken ct = default)
@@ -55,6 +57,7 @@ public sealed class BulkAssetsController(
     [HttpPost("bulk-move-group")]
     [ValidateBatchFilter]
     [ProducesResponseType(typeof(BulkMoveResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BulkMoveResult>> BulkMoveGroup(
         [FromBody] BulkMoveGroupDto dto, CancellationToken ct = default)
@@ -70,6 +73,7 @@ public sealed class BulkAssetsController(
     [HttpPost("bulk-tag")]
     [ValidateBatchFilter]
     [ProducesResponseType(typeof(BulkTagResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BulkTagResult>> BulkTag(
         [FromBody] BulkTagDto dto, CancellationToken ct = default)
     {

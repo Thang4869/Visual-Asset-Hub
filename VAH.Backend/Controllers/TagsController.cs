@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -18,20 +18,20 @@ public sealed class TagsController(
     ISender sender,
     ILogger<TagsController> logger) : BaseApiController
 {
-    private readonly ISender _sender = sender;
+    
 
     /// <summary>Get all tags for the current user.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(List<Tag>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<Tag>>> GetTags(CancellationToken ct = default)
-        => Ok(await _sender.Send(new GetAllTagsQuery(GetUserId()), ct));
+        => Ok(await sender.Send(new GetAllTagsQuery(GetUserId()), ct));
 
     /// <summary>Get a single tag by ID.</summary>
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(Tag), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Tag>> GetTag([FromRoute] int id, CancellationToken ct = default)
-        => Ok(await _sender.Send(new GetTagByIdQuery(id, GetUserId()), ct));
+        => Ok(await sender.Send(new GetTagByIdQuery(id, GetUserId()), ct));
 
     /// <summary>Create a new tag (returns existing if duplicate name).</summary>
     [HttpPost]
@@ -42,7 +42,7 @@ public sealed class TagsController(
         var userId = GetUserId();
         logger.LogInformation(LogEvents.TagCreated, "Creating tag '{Name}' by user {UserId}", dto.Name, userId);
         
-        var (tag, created) = await _sender.Send(new CreateTagCommand(dto, userId), ct);
+        var (tag, created) = await sender.Send(new CreateTagCommand(dto, userId), ct);
         return created
             ? CreatedAtAction(nameof(GetTag), new { id = tag.Id }, tag)
             : Ok(tag);
@@ -54,7 +54,7 @@ public sealed class TagsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Tag>> UpdateTag(
         [FromRoute] int id, [FromBody] UpdateTagDto dto, CancellationToken ct = default)
-        => Ok(await _sender.Send(new UpdateTagCommand(id, dto, GetUserId()), ct));
+        => Ok(await sender.Send(new UpdateTagCommand(id, dto, GetUserId()), ct));
 
     /// <summary>Delete a tag.</summary>
     [HttpDelete("{id:int}")]
@@ -64,7 +64,7 @@ public sealed class TagsController(
     {
         var userId = GetUserId();
         logger.LogInformation(LogEvents.TagDeleted, "Deleting tag {TagId} by user {UserId}", id, userId);
-        await _sender.Send(new DeleteTagCommand(id, userId), ct);
+        await sender.Send(new DeleteTagCommand(id, userId), ct);
         return NoContent();
     }
 
@@ -74,7 +74,7 @@ public sealed class TagsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<Tag>>> GetAssetTags(
         [FromRoute] int assetId, CancellationToken ct = default)
-        => Ok(await _sender.Send(new GetAssetTagsQuery(assetId, GetUserId()), ct));
+        => Ok(await sender.Send(new GetAssetTagsQuery(assetId, GetUserId()), ct));
 
     /// <summary>Replace all tags on an asset.</summary>
     [HttpPut("asset/{assetId:int}")]
@@ -83,7 +83,7 @@ public sealed class TagsController(
     public async Task<IActionResult> SetAssetTags(
         [FromRoute] int assetId, [FromBody] AssetTagsDto dto, CancellationToken ct = default)
     {
-        await _sender.Send(new SetAssetTagsCommand(assetId, dto, GetUserId()), ct);
+        await sender.Send(new SetAssetTagsCommand(assetId, dto, GetUserId()), ct);
         return NoContent();
     }
 
@@ -94,7 +94,7 @@ public sealed class TagsController(
     public async Task<IActionResult> AddAssetTags(
         [FromRoute] int assetId, [FromBody] AssetTagsDto dto, CancellationToken ct = default)
     {
-        await _sender.Send(new AddAssetTagsCommand(assetId, dto, GetUserId()), ct);
+        await sender.Send(new AddAssetTagsCommand(assetId, dto, GetUserId()), ct);
         return NoContent();
     }
 
@@ -105,7 +105,7 @@ public sealed class TagsController(
     public async Task<IActionResult> RemoveAssetTags(
         [FromRoute] int assetId, [FromBody] AssetTagsDto dto, CancellationToken ct = default)
     {
-        await _sender.Send(new RemoveAssetTagsCommand(assetId, dto, GetUserId()), ct);
+        await sender.Send(new RemoveAssetTagsCommand(assetId, dto, GetUserId()), ct);
         return NoContent();
     }
 
@@ -118,7 +118,7 @@ public sealed class TagsController(
     public async Task<ActionResult<MessageResult>> MigrateCommaSeparatedTags(CancellationToken ct = default)
     {
         logger.LogWarning(LogEvents.TagMigration, "Tag migration triggered by user {UserId}", GetUserId());
-        await _sender.Send(new MigrateTagsCommand(GetUserId()), ct);
+        await sender.Send(new MigrateTagsCommand(GetUserId()), ct);
         return Ok(new MessageResult("Tag migration completed successfully."));
     }
 }

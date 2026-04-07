@@ -23,8 +23,7 @@ public sealed class SmartCollectionsController(ISmartCollectionService smartServ
 
     /// <summary>Get paginated items matching a smart collection’s criteria.</summary>
     [HttpGet("{id}/items")]
-    [ProducesResponseType(typeof(PagedResult<AssetResponseDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResult<AssetResponseDto>>> GetSmartCollectionItems(
+    [ProducesResponseType(typeof(PagedResult<AssetResponseDto>), StatusCodes.Status200OK)]    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]    public async Task<ActionResult<PagedResult<AssetResponseDto>>> GetSmartCollectionItems(
         [FromRoute, RegularExpression(@"^[a-z0-9\-]+$")] string id,
         [FromQuery] PaginationParams pagination,
         CancellationToken ct = default)
