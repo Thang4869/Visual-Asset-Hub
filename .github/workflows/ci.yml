@@ -1,9 +1,13 @@
+---
 name: VAH Backend CI/CD
-"on":
+
+'on':
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
