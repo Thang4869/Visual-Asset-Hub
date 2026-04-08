@@ -1,10 +1,16 @@
 name: VAH Backend CI/CD
 
-on:
+"on":
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
+env:
+  # Opt-in to Node 24 để tránh warning deprecation của Node 20 từ các action v4
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Tắt telemetry của .NET
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
   build_and_test:
@@ -21,7 +27,10 @@ jobs:
       run: dotnet restore VAH.sln
       
     - name: Build
-      run: dotnet build VAH.sln --no-restore --configuration Release
+      run: dotnet build VAH.sln --no-restore --configuration Release -p:UseSharedCompilation=false /nodeReuse:false
       
     - name: Test
       run: dotnet test VAH.sln --no-build --verbosity normal --configuration Release
+      
+    - name: Shutdown Build Server
+      run: dotnet build-server shutdown
