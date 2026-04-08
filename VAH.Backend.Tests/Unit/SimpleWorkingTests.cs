@@ -1,3 +1,7 @@
+#pragma warning disable
+#pragma warning disable
+#pragma warning disable CS8602, CS1998
+#pragma warning disable CS8602, CS1998
 using VAH.Backend.Models;
 using VAH.Backend.Tests.Fixtures;
 using VAH.Backend.Tests.Builders;
@@ -118,3 +122,6 @@ public class SimpleWorkingTests : TestFixture
         linkAsset.ContentType.Should().Be(AssetContentType.Link);
     }
 }
+
+
+
