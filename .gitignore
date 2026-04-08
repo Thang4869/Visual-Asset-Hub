@@ -3,27 +3,99 @@
 # ======================
 bin/
 obj/
+artifacts/
+**/artifacts/
+
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+TestResults/
+
+# Databases
 *.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Logs
+**/logs/
+*.log
+
+# NuGet artifacts
+*.nupkg
+*.snupkg
+packages/
+
+# Publish & Deployment config
+*.pubxml
+*.publishproj
+*.azurePubxml
+PublishScripts/
+
+# Sensitive .NET config
+appsettings.Development.json
+appsettings.*.Development.json
+
+# Tooling / Cache
+_ReSharper*/
+*.DotSettings.user
+BenchmarkDotNet.Artifacts/
+
+# Coverage / test artifacts
+coverage/
+coverage*.json
+coverage*.xml
+*.coverage
+*.coveragexml
+*.trx
+*.coverage.cobertura.xml
 
 # ======================
 # Upload files
 # ======================
-wwwroot/uploads/
+**/wwwroot/uploads/
 
 # ======================
-# Frontend
+# Frontend / Node
 # ======================
 node_modules/
 dist/
+build/
 .env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # ======================
-# VSCode
+# IDEs / Editors
 # ======================
 .vscode/
+.idea/
+.cursor/
 
 # ======================
 # OS
 # ======================
 .DS_Store
-Thumbs.dbVAH.Backend/logs/
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ======================
+# System / Temp files
+# ======================
+*.tmp
+*.temp
+*.cache
+*.pid
+
+# ======================
+# Docker
+# ======================
+docker-compose.override.yml
+*.local.yml
