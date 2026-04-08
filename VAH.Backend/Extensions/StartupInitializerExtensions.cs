@@ -12,7 +12,13 @@ public static class StartupInitializerExtensions
     /// </summary>
     public static IServiceCollection AddStartupInitializers(this IServiceCollection services, IHostEnvironment env)
     {
-        services.AddScoped<IStartupInitializer, DatabaseMigrationInitializer>();
+        // Avoid fully automated background migrations in production by default.
+        // Set MIGRATION_ON_STARTUP=true in Env to force it.
+        var runMigration = env.IsDevelopment() || Environment.GetEnvironmentVariable("MIGRATION_ON_STARTUP") == "true";
+        if (runMigration)
+        {
+            services.AddScoped<IStartupInitializer, DatabaseMigrationInitializer>();
+        }
 
         return services;
     }
