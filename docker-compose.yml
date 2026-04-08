@@ -76,7 +76,7 @@ services:
   # ---- React Frontend (Nginx) ----
   frontend:
     build:
-      context: ./VAH.Frontend
+      context: ./src/VAH.Frontend
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL:-http://localhost:5027/api/v1}
