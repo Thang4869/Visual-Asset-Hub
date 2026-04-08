@@ -1,4 +1,5 @@
 #pragma warning disable
+#pragma warning disable
 #pragma warning disable CS8602
 #pragma warning disable CS8602
 using System.Collections.Generic;
@@ -409,6 +410,7 @@ public class AssetService : IAssetService
         return _assetMapper.ToDto(clone);
     }
 }
+
 
 
 
