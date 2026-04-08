@@ -6,16 +6,13 @@ namespace VAH.Backend.Extensions;
 public static class StartupInitializerExtensions
 {
     /// <summary>
-    /// Register the database migration initializer (Development only).
+    /// Register the database migration initializer.
     /// Add more <see cref="IStartupInitializer"/> registrations here as needed
     /// (e.g. default admin seeding, cache warm-up).
     /// </summary>
     public static IServiceCollection AddStartupInitializers(this IServiceCollection services, IHostEnvironment env)
     {
-        if (env.IsDevelopment())
-        {
-            services.AddScoped<IStartupInitializer, DatabaseMigrationInitializer>();
-        }
+        services.AddScoped<IStartupInitializer, DatabaseMigrationInitializer>();
 
         return services;
     }

@@ -13,9 +13,9 @@ services:
     image: postgres:17-alpine
     container_name: vah-postgres
     environment:
-      POSTGRES_DB: vah
-      POSTGRES_USER: vah
-      POSTGRES_PASSWORD: vah_secret
+      POSTGRES_DB: ${POSTGRES_DB:-vah}
+      POSTGRES_USER: ${POSTGRES_USER:-vah}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vah_secret}
     ports:
       - "5432:5432"
     volumes:
@@ -54,8 +54,9 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5027
       - DatabaseProvider=PostgreSQL
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=vah;Username=vah;Password=vah_secret
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-vah};Username=${POSTGRES_USER:-vah};Password=${POSTGRES_PASSWORD:-vah_secret}
       - ConnectionStrings__Redis=redis:6379
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-VAH-SuperSecret-Key-For-Development-Only-32chars!}
     volumes:
       - backend-uploads:/app/wwwroot/uploads
       - backend-logs:/app/logs
@@ -78,7 +79,7 @@ services:
       context: ./VAH.Frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://localhost:5027/api/v1
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:5027/api/v1}
     container_name: vah-frontend
     ports:
       - "3000:80"
