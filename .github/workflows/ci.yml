@@ -18,10 +18,10 @@ jobs:
         dotnet-version: '9.0.x'
         
     - name: Restore dependencies
-      run: dotnet restore VAH.Backend/VAH.Backend.csproj
+      run: dotnet restore VAH.sln
       
     - name: Build
-      run: dotnet build VAH.Backend/VAH.Backend.csproj --no-restore --configuration Release
+      run: dotnet build VAH.sln --no-restore --configuration Release
       
     - name: Test
-      run: dotnet test VAH.Backend.Tests/VAH.Backend.Tests.csproj --no-build --verbosity normal --configuration Release
+      run: dotnet test VAH.sln --no-build --verbosity normal --configuration Release
