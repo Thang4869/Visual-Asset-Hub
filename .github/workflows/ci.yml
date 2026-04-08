@@ -1,0 +1,27 @@
+name: VAH Backend CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET Default (9.0)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore VAH.Backend/VAH.Backend.csproj
+      
+    - name: Build
+      run: dotnet build VAH.Backend/VAH.Backend.csproj --no-restore --configuration Release
+      
+    - name: Test
+      run: dotnet test VAH.Backend.Tests/VAH.Backend.Tests.csproj --no-build --verbosity normal --configuration Release

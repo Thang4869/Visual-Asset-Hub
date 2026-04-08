@@ -57,6 +57,7 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-vah};Username=${POSTGRES_USER:-vah};Password=${POSTGRES_PASSWORD:-vah_secret}
       - ConnectionStrings__Redis=redis:6379
       - Jwt__SecretKey=${JWT_SECRET_KEY:-VAH-SuperSecret-Key-For-Development-Only-32chars!}
+      - MIGRATION_ON_STARTUP=${MIGRATION_ON_STARTUP:-false}
     volumes:
       - backend-uploads:/app/wwwroot/uploads
       - backend-logs:/app/logs
@@ -76,7 +77,7 @@ services:
   # ---- React Frontend (Nginx) ----
   frontend:
     build:
-      context: ./VAH.Frontend
+      context: ./src/VAH.Frontend
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL:-http://localhost:5027/api/v1}
