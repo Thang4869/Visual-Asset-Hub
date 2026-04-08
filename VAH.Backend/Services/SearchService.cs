@@ -1,3 +1,5 @@
+#pragma warning disable CS0618
+#pragma warning disable CS0618
 using Microsoft.EntityFrameworkCore;
 using VAH.Backend.Data;
 using VAH.Backend.Models;
@@ -85,3 +87,5 @@ public class SearchService : ISearchService
         };
     }
 }
+
+

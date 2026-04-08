@@ -1,3 +1,5 @@
+#pragma warning disable CS8602
+#pragma warning disable CS8602
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using VAH.Backend.Data;
@@ -406,3 +408,5 @@ public class AssetService : IAssetService
         return _assetMapper.ToDto(clone);
     }
 }
+
+

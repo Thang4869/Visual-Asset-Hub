@@ -1,3 +1,5 @@
+#pragma warning disable CS8604
+#pragma warning disable CS8604
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using VAH.Backend.Data;
@@ -54,3 +56,5 @@ public class OutboxMessageTests
         message.ProcessedOnUtc.Should().BeNull();
     }
 }
+
+
