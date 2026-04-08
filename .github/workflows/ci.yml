@@ -7,10 +7,10 @@ name: VAH Backend CI/CD
     branches: [ "main" ]
 
 env:
-  # Opt-in to Node 24 để tránh warning deprecation của Node 20 từ các action v4
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # Tắt telemetry của .NET
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # Tắt hoàn toàn MSBuild Node Reuse cho mọi lệnh (chống Orphan Process triệt để)
+  MSBUILDDISABLENODEREUSE: '1'
 
 jobs:
   build_and_test:
