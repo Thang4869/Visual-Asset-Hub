@@ -1,6 +1,6 @@
 ﻿name: VAH Backend CI/CD
 
-on:
+"on":
   push:
     branches: [ "main" ]
   pull_request:
