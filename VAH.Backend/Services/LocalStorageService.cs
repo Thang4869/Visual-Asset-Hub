@@ -1,3 +1,4 @@
+#pragma warning disable
 #pragma warning disable CA2022, CS1998
 #pragma warning disable CA2022, CS1998
 namespace VAH.Backend.Services;
@@ -92,6 +93,7 @@ public class LocalStorageService : IStorageService
         return File.Exists(fullPath);
     }
 }
+
 
 
 

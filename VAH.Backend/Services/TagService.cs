@@ -1,3 +1,4 @@
+#pragma warning disable
 #pragma warning disable CS0618
 #pragma warning disable CS0618
 using Microsoft.EntityFrameworkCore;
@@ -284,4 +285,7 @@ public class TagService : ITagService
     }
 }
 
+
+
+#pragma warning disable CS0618
 

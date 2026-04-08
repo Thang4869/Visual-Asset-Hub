@@ -1,3 +1,4 @@
+#pragma warning disable
 #pragma warning disable CS0618
 #pragma warning disable CS0618
 using Microsoft.EntityFrameworkCore;
@@ -87,5 +88,6 @@ public class SearchService : ISearchService
         };
     }
 }
+
 
 
