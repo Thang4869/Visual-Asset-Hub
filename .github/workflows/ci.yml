@@ -1,5 +1,4 @@
-﻿name: VAH Backend CI/CD
-
+name: VAH Backend CI/CD
 "on":
   push:
     branches: [ "main" ]
