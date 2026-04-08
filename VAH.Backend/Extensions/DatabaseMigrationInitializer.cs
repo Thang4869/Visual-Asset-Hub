@@ -4,7 +4,7 @@ using VAH.Backend.Data;
 namespace VAH.Backend.Extensions;
 
 /// <summary>
-/// Applies pending EF Core migrations. Registered only in Development.
+/// Applies pending EF Core migrations.
 /// </summary>
 public sealed class DatabaseMigrationInitializer(
     AppDbContext context,
@@ -14,7 +14,7 @@ public sealed class DatabaseMigrationInitializer(
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {
-        logger.LogInformation("Applying pending EF Core migrations (Development mode)...");
+        logger.LogInformation("Applying pending EF Core migrations...");
         await context.Database.MigrateAsync(ct);
         logger.LogInformation("Database migration completed");
     }
