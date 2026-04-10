@@ -27,9 +27,7 @@ app.UseCoreHostingPipeline();
 // ── Endpoint modules (explicit for readability) ─────────────────
 app.MapSystemEndpoints();    // Swagger, /health/live, /health/ready, /version
 app.MapAssetEndpoints();     // api/v1/assets/*, SignalR /hubs/assets
-app.MapAutoDiscoveredEndpoints(); // IEndpointModule auto-discovery
-
-// ── Startup tasks ─────────────────────────────────────────────
+    app.MapHub<VAH.Backend.Hubs.NotificationHub>("/hubs/notifications"); // Notification Real-time hub
 await app.RunStartupInitializersAsync();
 await app.RunAsync();
 
