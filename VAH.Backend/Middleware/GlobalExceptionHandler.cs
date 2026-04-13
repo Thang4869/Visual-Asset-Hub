@@ -78,9 +78,8 @@ public sealed class GlobalExceptionHandler(
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
                 Title = "Internal Server Error",
                 Status = StatusCodes.Status500InternalServerError,
-                Detail = env.IsDevelopment()
-                    ? exception.Message
-                    : "An unexpected error occurred."
+                // TEMPORARY FOR DEBUGGING ON RENDER: show full exception
+                Detail = exception.ToString()
             }
         };
 
