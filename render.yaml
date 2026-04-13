@@ -1,9 +1,9 @@
-services:
+databases:
   # 1. PostgreSQL Database (Free Tier eligible)
-  - type: psql
-    name: vah-postgres
+  - name: vah-postgres
     plan: free # Note: Free databases are deleted after 90 days if inactive
 
+services:
   # 2. .NET Backend API (Docker)
   - type: web
     name: vah-backend
