@@ -182,6 +182,9 @@ public static class ServiceCollectionExtensions
             {
                 options.UseSqlite(connectionString).AddInterceptors(interceptor);
             }
+
+            options.ConfigureWarnings(warnings => 
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         // Expose provider name so AppDbContext can adapt SQL dialect
