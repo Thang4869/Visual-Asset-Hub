@@ -16,7 +16,7 @@ services:
       - key: ConnectionStrings__DefaultConnection
         fromDatabase:
           name: vah-postgres
-          property: connectionString
+          property: internalConnectionString
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: DatabaseProvider
