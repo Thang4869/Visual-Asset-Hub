@@ -37,5 +37,6 @@ EXPOSE 5027
 # Environment variables
 ENV ASPNETCORE_URLS=http://+:5027
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_gcServer=0
 
 ENTRYPOINT ["dotnet", "VAH.Backend.dll"]
