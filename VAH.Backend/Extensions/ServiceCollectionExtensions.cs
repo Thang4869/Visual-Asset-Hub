@@ -163,7 +163,16 @@ public static class ServiceCollectionExtensions
         {
             var uri = new Uri(connectionString);
             var userInfo = uri.UserInfo.Split(':');
-            connectionString = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;TrustServerCertificate=true;";
+            var host = uri.Host;
+            
+            // Hack for Render cross-region: if the connection string gave us the internal host (dpg-xxx-a)
+            // but we need the external one, append the render.com domain suffix.
+            if (host.StartsWith("dpg-") && !host.Contains(".render.com"))
+            {
+                host = $"{host}.oregon-postgres.render.com";
+            }
+
+            connectionString = $"Host={host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;TrustServerCertificate=true;";
         }
 
         services.AddSingleton<Data.Interceptors.InsertOutboxMessagesInterceptor>();
