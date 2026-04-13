@@ -10,7 +10,8 @@ services:
     env: docker
     plan: free # Free tier may spin down after 15 mins of inactivity
     region: singapore # or ohio/frankfurt
-    dockerfilePath: ./VAH.Backend/Dockerfile
+    rootDir: ./VAH.Backend
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: ConnectionStrings__DefaultConnection
         fromDatabase:
@@ -18,4 +19,9 @@ services:
           property: connectionString
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
-    healthCheckPath: /api/health # Or whatever health ping you have if any, or remove
+      - key: DatabaseProvider
+        value: PostgreSQL
+      - key: Jwt__SecretKey
+        value: VAH-SuperSecret-Key-For-Production-Random-String-!@#
+      - key: ASPNETCORE_URLS
+        value: http://+:10000
