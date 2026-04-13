@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -188,7 +188,7 @@ namespace VAH.Backend.Migrations
                     Description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
                     ParentId = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true),
                     Color = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     Type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Order = table.Column<int>(type: "integer", nullable: false),
@@ -247,7 +247,7 @@ namespace VAH.Backend.Migrations
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true),
                     PositionX = table.Column<double>(type: "double precision", nullable: false),
                     PositionY = table.Column<double>(type: "double precision", nullable: false),
                     CollectionId = table.Column<int>(type: "integer", nullable: false),
@@ -344,9 +344,9 @@ namespace VAH.Backend.Migrations
                 columns: new[] { "Id", "Color", "CreatedAt", "Description", "LayoutType", "Name", "Order", "ParentId", "Type", "UserId" },
                 values: new object[,]
                 {
-                    { 1, "#007bff", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lưu trữ hình ảnh", "grid", "Images", 1, null, "image", null },
-                    { 2, "#28a745", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lưu trữ đường dẫn", "grid", "Links", 2, null, "link", null },
-                    { 3, "#ffc107", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lưu trữ màu sắc", "grid", "Colors", 3, null, "color", null }
+                    { 1, "#007bff", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "L�u tr? h?nh ?nh", "grid", "Images", 1, null, "image", null },
+                    { 2, "#28a745", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "L�u tr? ��?ng d?n", "grid", "Links", 2, null, "link", null },
+                    { 3, "#ffc107", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "L�u tr? m�u s?c", "grid", "Colors", 3, null, "color", null }
                 });
 
             migrationBuilder.CreateIndex(
