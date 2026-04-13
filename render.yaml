@@ -2,6 +2,9 @@ databases:
   # 1. PostgreSQL Database (Free Tier eligible)
   - name: vah-postgres
     plan: free # Note: Free databases are deleted after 90 days if inactive
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: Allow everywhere (Fix for Singapore Web <-> Oregon DB)
 
 services:
   # 2. .NET Backend API (Docker)

@@ -163,7 +163,7 @@ public static class ServiceCollectionExtensions
         {
             var uri = new Uri(connectionString);
             var userInfo = uri.UserInfo.Split(':');
-            connectionString = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Prefer;Trust Server Certificate=true;";
+            connectionString = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;TrustServerCertificate=true;";
         }
 
         services.AddSingleton<Data.Interceptors.InsertOutboxMessagesInterceptor>();
