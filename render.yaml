@@ -1,0 +1,21 @@
+services:
+  # 1. PostgreSQL Database (Free Tier eligible)
+  - type: psql
+    name: vah-postgres
+    plan: free # Note: Free databases are deleted after 90 days if inactive
+
+  # 2. .NET Backend API (Docker)
+  - type: web
+    name: vah-backend
+    env: docker
+    plan: free # Free tier may spin down after 15 mins of inactivity
+    region: singapore # or ohio/frankfurt
+    dockerfilePath: ./VAH.Backend/Dockerfile
+    envVars:
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: vah-postgres
+          property: connectionString
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+    healthCheckPath: /api/health # Or whatever health ping you have if any, or remove
