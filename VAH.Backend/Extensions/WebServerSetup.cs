@@ -166,12 +166,11 @@ public static class WebServerSetup
     /// </summary>
     public static WebApplication MapSystemEndpoints(this WebApplication app)
     {
-        if (!app.Environment.IsProduction())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-            app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
-        }
+        // Hiện tại thiết lập để CÓ THỂ xem Swagger trên CẢ môi trường Production (Render) để dễ test
+        // Rủi ro: Nếu không muốn lộ danh sách API cho người ngoài, hãy bọc lại bằng if (!app.Environment.IsProduction())
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
         app.MapHealthCheckEndpoints();
 
