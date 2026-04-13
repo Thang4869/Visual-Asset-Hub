@@ -344,9 +344,9 @@ namespace VAH.Backend.Migrations
                 columns: new[] { "Id", "Color", "CreatedAt", "Description", "LayoutType", "Name", "Order", "ParentId", "Type", "UserId" },
                 values: new object[,]
                 {
-                    { 1, "#007bff", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lýu tr? h?nh ?nh", "grid", "Images", 1, null, "image", null },
-                    { 2, "#28a745", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lýu tr? ðý?ng d?n", "grid", "Links", 2, null, "link", null },
-                    { 3, "#ffc107", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lýu tr? màu s?c", "grid", "Colors", 3, null, "color", null }
+                    { 1, "#007bff", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lï¿½u tr? h?nh ?nh", "grid", "Images", 1, null, "image", null },
+                    { 2, "#28a745", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lï¿½u tr? ï¿½ï¿½?ng d?n", "grid", "Links", 2, null, "link", null },
+                    { 3, "#ffc107", new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Lï¿½u tr? mï¿½u s?c", "grid", "Colors", 3, null, "color", null }
                 });
 
             migrationBuilder.CreateIndex(
@@ -415,7 +415,7 @@ namespace VAH.Backend.Migrations
                 name: "IX_Assets_IsDeleted",
                 table: "Assets",
                 column: "IsDeleted",
-                filter: "IsDeleted = 0");
+                filter: "\"IsDeleted\" = false");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Assets_IsFolder",

@@ -321,7 +321,7 @@ namespace VAH.Backend.Migrations
 
                     b.HasIndex("IsDeleted")
                         .HasDatabaseName("IX_Assets_IsDeleted")
-                        .HasFilter("IsDeleted = 0");
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.HasIndex("IsFolder");
 
@@ -425,7 +425,7 @@ namespace VAH.Backend.Migrations
                             Id = 1,
                             Color = "#007bff",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Lýu tr? h?nh ?nh",
+                            Description = "Lï¿½u tr? h?nh ?nh",
                             LayoutType = "grid",
                             Name = "Images",
                             Order = 1,
@@ -437,7 +437,7 @@ namespace VAH.Backend.Migrations
                             Id = 2,
                             Color = "#28a745",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Lýu tr? ðý?ng d?n",
+                            Description = "Lï¿½u tr? ï¿½ï¿½?ng d?n",
                             LayoutType = "grid",
                             Name = "Links",
                             Order = 2,
@@ -449,7 +449,7 @@ namespace VAH.Backend.Migrations
                             Id = 3,
                             Color = "#ffc107",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Lýu tr? màu s?c",
+                            Description = "Lï¿½u tr? mï¿½u s?c",
                             LayoutType = "grid",
                             Name = "Colors",
                             Order = 3,

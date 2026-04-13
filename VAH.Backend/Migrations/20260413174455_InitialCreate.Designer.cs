@@ -324,7 +324,7 @@ namespace VAH.Backend.Migrations
 
                     b.HasIndex("IsDeleted")
                         .HasDatabaseName("IX_Assets_IsDeleted")
-                        .HasFilter("IsDeleted = 0");
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.HasIndex("IsFolder");
 

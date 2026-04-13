@@ -48,7 +48,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasQueryFilter(a => !a.IsDeleted);
             entity.HasIndex(a => a.IsDeleted)
                   .HasDatabaseName("IX_Assets_IsDeleted")
-                  .HasFilter("IsDeleted = 0");
+                  .HasFilter("\"IsDeleted\" = false");
 
             // FK: Asset → Collection (with navigation)
             entity.HasOne(a => a.Collection)
