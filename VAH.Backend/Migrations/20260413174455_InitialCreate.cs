@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -17,10 +18,10 @@ namespace VAH.Backend.Migrations
                 name: "AspNetRoles",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -31,24 +32,24 @@ namespace VAH.Backend.Migrations
                 name: "AspNetUsers",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    DisplayName = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedUserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedEmail = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    EmailConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    PasswordHash = table.Column<string>(type: "TEXT", nullable: true),
-                    SecurityStamp = table.Column<string>(type: "TEXT", nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "TEXT", nullable: true),
-                    PhoneNumber = table.Column<string>(type: "TEXT", nullable: true),
-                    PhoneNumberConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    TwoFactorEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    LockoutEnd = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    LockoutEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    AccessFailedCount = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    DisplayName = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedEmail = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    EmailConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: true),
+                    SecurityStamp = table.Column<string>(type: "text", nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true),
+                    PhoneNumber = table.Column<string>(type: "text", nullable: true),
+                    PhoneNumberConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    TwoFactorEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    LockoutEnd = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    LockoutEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    AccessFailedCount = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,12 +60,12 @@ namespace VAH.Backend.Migrations
                 name: "OutboxMessages",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Type = table.Column<string>(type: "TEXT", nullable: false),
-                    Content = table.Column<string>(type: "TEXT", nullable: false),
-                    OccurredOnUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    ProcessedOnUtc = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    Error = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<string>(type: "text", nullable: false),
+                    Content = table.Column<string>(type: "text", nullable: false),
+                    OccurredOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ProcessedOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Error = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -75,11 +76,11 @@ namespace VAH.Backend.Migrations
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    RoleId = table.Column<string>(type: "TEXT", nullable: false),
-                    ClaimType = table.Column<string>(type: "TEXT", nullable: true),
-                    ClaimValue = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RoleId = table.Column<string>(type: "text", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -96,11 +97,11 @@ namespace VAH.Backend.Migrations
                 name: "AspNetUserClaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    ClaimType = table.Column<string>(type: "TEXT", nullable: true),
-                    ClaimValue = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -117,10 +118,10 @@ namespace VAH.Backend.Migrations
                 name: "AspNetUserLogins",
                 columns: table => new
                 {
-                    LoginProvider = table.Column<string>(type: "TEXT", nullable: false),
-                    ProviderKey = table.Column<string>(type: "TEXT", nullable: false),
-                    ProviderDisplayName = table.Column<string>(type: "TEXT", nullable: true),
-                    UserId = table.Column<string>(type: "TEXT", nullable: false)
+                    LoginProvider = table.Column<string>(type: "text", nullable: false),
+                    ProviderKey = table.Column<string>(type: "text", nullable: false),
+                    ProviderDisplayName = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -137,8 +138,8 @@ namespace VAH.Backend.Migrations
                 name: "AspNetUserRoles",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    RoleId = table.Column<string>(type: "TEXT", nullable: false)
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    RoleId = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -161,10 +162,10 @@ namespace VAH.Backend.Migrations
                 name: "AspNetUserTokens",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    LoginProvider = table.Column<string>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    Value = table.Column<string>(type: "TEXT", nullable: true)
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    LoginProvider = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Value = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -181,18 +182,18 @@ namespace VAH.Backend.Migrations
                 name: "Collections",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    ParentId = table.Column<int>(type: "INTEGER", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "datetime('now')"),
-                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false),
-                    Color = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Type = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Order = table.Column<int>(type: "INTEGER", nullable: false),
-                    LayoutType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    UserId = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    ParentId = table.Column<int>(type: "integer", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false),
+                    Color = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Order = table.Column<int>(type: "integer", nullable: false),
+                    LayoutType = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    UserId = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -215,13 +216,13 @@ namespace VAH.Backend.Migrations
                 name: "Tags",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    NormalizedName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Color = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true),
-                    UserId = table.Column<string>(type: "TEXT", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "datetime('now')")
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    NormalizedName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Color = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    UserId = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
@@ -238,29 +239,29 @@ namespace VAH.Backend.Migrations
                 name: "Assets",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    FileName = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    FilePath = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: false),
-                    Tags = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "datetime('now')"),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false),
-                    PositionX = table.Column<double>(type: "REAL", nullable: false),
-                    PositionY = table.Column<double>(type: "REAL", nullable: false),
-                    CollectionId = table.Column<int>(type: "INTEGER", nullable: false),
-                    ContentType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    GroupId = table.Column<int>(type: "INTEGER", nullable: true),
-                    ParentFolderId = table.Column<int>(type: "INTEGER", nullable: true),
-                    SortOrder = table.Column<int>(type: "INTEGER", nullable: false),
-                    IsFolder = table.Column<bool>(type: "INTEGER", nullable: false),
-                    UserId = table.Column<string>(type: "TEXT", nullable: true),
-                    ThumbnailSm = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: true),
-                    ThumbnailMd = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: true),
-                    ThumbnailLg = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: true),
-                    HexCode = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    Url = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FileName = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    FilePath = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    Tags = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false),
+                    PositionX = table.Column<double>(type: "double precision", nullable: false),
+                    PositionY = table.Column<double>(type: "double precision", nullable: false),
+                    CollectionId = table.Column<int>(type: "integer", nullable: false),
+                    ContentType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    GroupId = table.Column<int>(type: "integer", nullable: true),
+                    ParentFolderId = table.Column<int>(type: "integer", nullable: true),
+                    SortOrder = table.Column<int>(type: "integer", nullable: false),
+                    IsFolder = table.Column<bool>(type: "boolean", nullable: false),
+                    UserId = table.Column<string>(type: "text", nullable: true),
+                    ThumbnailSm = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    ThumbnailMd = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    ThumbnailLg = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    HexCode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    Url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -289,13 +290,13 @@ namespace VAH.Backend.Migrations
                 name: "CollectionPermissions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserId = table.Column<string>(type: "TEXT", nullable: false),
-                    CollectionId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Role = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    GrantedBy = table.Column<string>(type: "TEXT", nullable: true),
-                    GrantedAt = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "datetime('now')")
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    CollectionId = table.Column<int>(type: "integer", nullable: false),
+                    Role = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    GrantedBy = table.Column<string>(type: "text", nullable: true),
+                    GrantedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
@@ -318,8 +319,8 @@ namespace VAH.Backend.Migrations
                 name: "AssetTags",
                 columns: table => new
                 {
-                    AssetId = table.Column<int>(type: "INTEGER", nullable: false),
-                    TagId = table.Column<int>(type: "INTEGER", nullable: false)
+                    AssetId = table.Column<int>(type: "integer", nullable: false),
+                    TagId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
