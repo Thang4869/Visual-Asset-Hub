@@ -158,17 +158,21 @@ public static class ServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
 
-        // Fix Render PostgreSQL URL format
+        // Fix Render PostgreSQL URL format internally (add SSL settings)
         if (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://"))
         {
             var uri = new Uri(connectionString);
             var userInfo = uri.UserInfo.Split(':');
             var host = uri.Host;
-            
-              // We do not append regional suffixes manually anymore, 
-              // assuming the web service and database are in the same Render region for internal DNS (dpg-xxx-a) to work.
+            var password = userInfo.Length > 1 ? userInfo[1] : "";
+            connectionString = $"Host={host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={password};SslMode=Prefer;TrustServerCertificate=true;";
+        }
 
-              connectionString = $"Host={host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};SslMode=Prefer;TrustServerCertificate=true;";
+        services.AddSingleton<Data.Interceptors.InsertOutboxMessagesInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, options) =>
+        {
+            var interceptor = sp.GetRequiredService<Data.Interceptors.InsertOutboxMessagesInterceptor>();
 
             if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
             {
@@ -178,8 +182,6 @@ public static class ServiceCollectionExtensions
             {
                 options.UseSqlite(connectionString).AddInterceptors(interceptor);
             }
-
-            options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         // Expose provider name so AppDbContext can adapt SQL dialect
