@@ -23,9 +23,6 @@ public class Collection : BaseEntity
 
     public DateTime CreatedAt { get; set; }
 
-    [Timestamp]
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
-
     [MaxLength(20)]
     public string Color { get; internal set; } = "#007bff";
 

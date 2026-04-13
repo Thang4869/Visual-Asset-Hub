@@ -235,7 +235,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 Color = "#007bff",
                 Order = 1,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                RowVersion = []
+
             },
             new Collection
             {
@@ -246,7 +246,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 Color = "#28a745",
                 Order = 2,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                RowVersion = []
+
             },
             new Collection
             {
@@ -257,7 +257,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 Color = "#ffc107",
                 Order = 3,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                RowVersion = []
+
             }
         );
     }
