@@ -165,21 +165,10 @@ public static class ServiceCollectionExtensions
             var userInfo = uri.UserInfo.Split(':');
             var host = uri.Host;
             
-            // Hack for Render cross-region: if the connection string gave us the internal host (dpg-xxx-a)
-            // but we need the external one, append the render.com domain suffix.
-            if (host.StartsWith("dpg-") && !host.Contains(".render.com"))
-            {
-                host = $"{host}.oregon-postgres.render.com";
-            }
+              // We do not append regional suffixes manually anymore, 
+              // assuming the web service and database are in the same Render region for internal DNS (dpg-xxx-a) to work.
 
-            connectionString = $"Host={host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;TrustServerCertificate=true;";
-        }
-
-        services.AddSingleton<Data.Interceptors.InsertOutboxMessagesInterceptor>();
-
-        services.AddDbContext<AppDbContext>((sp, options) =>
-        {
-            var interceptor = sp.GetRequiredService<Data.Interceptors.InsertOutboxMessagesInterceptor>();
+              connectionString = $"Host={host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.LocalPath.TrimStart('/')};Username={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};SslMode=Prefer;TrustServerCertificate=true;";
 
             if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
             {
